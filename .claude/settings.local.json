@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install)",
+      "Bash(curl:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev)"
+    ]
+  }
+}
