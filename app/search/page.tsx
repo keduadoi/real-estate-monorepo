@@ -3,7 +3,7 @@ import SearchBar from '@/components/SearchBar';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
 import { getMockProperties } from '@/lib/mockData';
-import { filterProperties, paginateArray } from '@/lib/utils';
+import { filterProperties, paginateArray, sortProperties, SortOption } from '@/lib/utils';
 import { PropertyType, PropertyStatus, SearchFilters } from '@/types';
 
 interface SearchPageProps {
@@ -16,6 +16,7 @@ interface SearchPageProps {
     maxPrice?: string;
     bedrooms?: string;
     page?: string;
+    sort?: SortOption;
   };
 }
 
@@ -37,14 +38,17 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
   // Filter properties
   const filteredProperties = filterProperties(getMockProperties(), filters);
 
+  // Sort properties
+  const sortedProperties = sortProperties(filteredProperties, searchParams.sort);
+
   // Paginate results
-  const paginatedResult = paginateArray(filteredProperties, {
+  const paginatedResult = paginateArray(sortedProperties, {
     page: currentPage,
     perPage,
   });
 
-  // Check if any filters are active
-  const hasFilters = Object.values(filters).some((value) => value !== undefined);
+  // Check if any filters or sort are active
+  const hasFilters = Object.values(filters).some((value) => value !== undefined) || searchParams.sort;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -122,6 +126,17 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
           {searchParams.bedrooms && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
               {searchParams.bedrooms}+ phòng ngủ
+            </span>
+          )}
+          {searchParams.sort && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+              Sắp xếp:{' '}
+              {{
+                newest: 'Mới nhất',
+                oldest: 'Cũ nhất',
+                'price-low': 'Giá thấp - cao',
+                'price-high': 'Giá cao - thấp',
+              }[searchParams.sort]}
             </span>
           )}
         </div>

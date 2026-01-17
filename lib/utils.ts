@@ -105,6 +105,42 @@ export function formatArea(area: number): string {
 }
 
 /**
+ * Sort properties by various criteria
+ */
+export type SortOption = 'newest' | 'oldest' | 'price-low' | 'price-high';
+
+export function sortProperties(
+  properties: Property[],
+  sortBy?: SortOption
+): Property[] {
+  if (!sortBy) {
+    // Default: newest first
+    return [...properties].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  const sorted = [...properties];
+
+  switch (sortBy) {
+    case 'newest':
+      return sorted.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    case 'oldest':
+      return sorted.sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    case 'price-low':
+      return sorted.sort((a, b) => a.price - b.price);
+    case 'price-high':
+      return sorted.sort((a, b) => b.price - a.price);
+    default:
+      return sorted;
+  }
+}
+
+/**
  * Combine multiple class names
  */
 export function cn(...classes: (string | undefined | null | false)[]): string {

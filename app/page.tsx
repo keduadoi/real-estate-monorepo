@@ -2,11 +2,12 @@ import SearchBar from '@/components/SearchBar';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
 import { getMockProperties } from '@/lib/mockData';
-import { paginateArray } from '@/lib/utils';
+import { paginateArray, sortProperties, SortOption } from '@/lib/utils';
 
 interface HomePageProps {
   searchParams: {
     page?: string;
+    sort?: SortOption;
   };
 }
 
@@ -14,7 +15,11 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const currentPage = Number(searchParams.page) || 1;
   const perPage = 12;
 
-  const paginatedResult = paginateArray(getMockProperties(), {
+  // Get and sort properties
+  const properties = getMockProperties();
+  const sortedProperties = sortProperties(properties, searchParams.sort);
+
+  const paginatedResult = paginateArray(sortedProperties, {
     page: currentPage,
     perPage,
   });
@@ -34,6 +39,21 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
       {/* Search Bar */}
       <SearchBar />
+
+      {/* Sort Indicator */}
+      {searchParams.sort && (
+        <div className="mb-4">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            Sắp xếp:{' '}
+            {{
+              newest: 'Mới nhất',
+              oldest: 'Cũ nhất',
+              'price-low': 'Giá thấp - cao',
+              'price-high': 'Giá cao - thấp',
+            }[searchParams.sort]}
+          </span>
+        </div>
+      )}
 
       {/* Results Info */}
       <div className="mb-6">

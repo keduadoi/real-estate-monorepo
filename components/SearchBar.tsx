@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { PropertyType, PropertyStatus } from '@/types';
+import { SortOption } from '@/lib/utils';
 
 export default function SearchBar() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType | ''>('');
@@ -13,6 +17,7 @@ export default function SearchBar() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [bedrooms, setBedrooms] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption | ''>(searchParams.get('sort') as SortOption || '');
   const [showFilters, setShowFilters] = useState(false);
 
   const cities = [
@@ -28,6 +33,25 @@ export default function SearchBar() {
     'Thủ Đức',
   ];
 
+  const handleSortChange = (newSort: SortOption | '') => {
+    setSortBy(newSort);
+
+    // Build URL with current params
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (newSort) {
+      params.set('sort', newSort);
+    } else {
+      params.delete('sort');
+    }
+
+    // Reset to page 1 when sort changes
+    params.delete('page');
+
+    // Navigate to current path with updated sort
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
@@ -40,6 +64,7 @@ export default function SearchBar() {
     if (minPrice) params.set('minPrice', minPrice);
     if (maxPrice) params.set('maxPrice', maxPrice);
     if (bedrooms) params.set('bedrooms', bedrooms);
+    if (sortBy) params.set('sort', sortBy);
 
     router.push(`/search?${params.toString()}`);
   };
@@ -56,6 +81,19 @@ export default function SearchBar() {
               onChange={(e) => setQuery(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
+          </div>
+          <div className="md:w-48">
+            <select
+              value={sortBy}
+              onChange={(e) => handleSortChange(e.target.value as SortOption)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Sắp xếp</option>
+              <option value="newest">Mới nhất</option>
+              <option value="oldest">Cũ nhất</option>
+              <option value="price-low">Giá thấp - cao</option>
+              <option value="price-high">Giá cao - thấp</option>
+            </select>
           </div>
           <button
             type="button"
