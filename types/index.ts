@@ -48,3 +48,29 @@ export interface PaginatedResult<T> {
   perPage: number;
   totalPages: number;
 }
+
+export interface Post {
+  id: string;                    // "post-1", "post-2", etc.
+  content: string;               // Post text content
+  userId: string;                // Creator's user ID
+  createdAt: string;             // ISO timestamp
+  updatedAt?: string;            // ISO timestamp (for edits - future)
+}
+
+export interface Like {
+  id: string;                    // "like-{timestamp}"
+  postId: string;                // Associated post ID
+  userId: string;                // User who liked
+  createdAt: string;             // ISO timestamp
+}
+
+export interface PostWithMetadata extends Post {
+  user: {                        // Author information
+    id: string;
+    name: string;
+    email: string;
+  };
+  likeCount: number;             // Total likes
+  isLikedByCurrentUser: boolean; // Current user's like status
+  likes: Like[];                 // All likes (for display)
+}

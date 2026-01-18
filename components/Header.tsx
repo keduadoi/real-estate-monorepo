@@ -29,6 +29,12 @@ export default function Header() {
               Trang chủ
             </Link>
             <Link
+              href="/feed"
+              className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Bảng tin
+            </Link>
+            <Link
               href="/search"
               className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
             >
@@ -106,6 +112,13 @@ export default function Header() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Trang chủ
+            </Link>
+            <Link
+              href="/feed"
+              className="block text-gray-700 hover:text-primary-600 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Bảng tin
             </Link>
             <Link
               href="/search"
