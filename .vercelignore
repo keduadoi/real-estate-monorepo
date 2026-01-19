@@ -1,0 +1,16 @@
+# Vercel Ignore
+
+# Backend (don't deploy Java files)
+backend/
+
+# Frontend build artifacts (handled by Vercel)
+frontend/.next
+frontend/node_modules
+frontend/out
+
+# IDE
+.idea
+.vscode
+
+# OS
+.DS_Store
