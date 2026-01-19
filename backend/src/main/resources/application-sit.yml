@@ -1,0 +1,77 @@
+# System Integration Testing (SIT) Environment Configuration
+spring:
+  # JPA Configuration for SIT
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # Flyway Configuration
+  flyway:
+    clean-disabled: true
+    clean-on-validation-error: false
+    validate-on-migrate: true
+
+
+# Server Configuration
+server:
+  port: 8080
+  error:
+    include-stacktrace: on-param
+    include-binding-errors: on-param
+  shutdown: graceful
+
+# Connection Pool Configuration
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration for SIT
+logging:
+  level:
+    root: INFO
+    com.realestate.backend: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: INFO
+    org.flywaydb: INFO
+  file:
+    name: logs/sit-application.log
+    max-size: 100MB
+    max-history: 30
+
+# CORS Configuration for SIT
+cors:
+  allowed-origins: ${FRONTEND_URL:https://sit-realestate.example.com}
+
+# Storage Configuration for SIT
+storage:
+  type: s3
+  s3:
+    bucket-name: ${S3_BUCKET_NAME:realestate-images-sit}
+    region: ${AWS_REGION:us-east-1}
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}

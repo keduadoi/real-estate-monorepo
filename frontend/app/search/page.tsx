@@ -2,9 +2,11 @@ import Link from 'next/link';
 import SearchBar from '@/components/SearchBar';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
-import { getMockProperties } from '@/lib/mockData';
-import { filterProperties, paginateArray, sortProperties, SortOption } from '@/lib/utils';
-import { PropertyType, PropertyStatus, SearchFilters } from '@/types';
+import { propertyApi } from '@/lib/api/propertyApi';
+import { mapApiPropertyToUi, mapUiPropertyTypeToApi, mapUiPropertyStatusToApi } from '@/lib/api/mapper';
+import { SortOption } from '@/lib/utils';
+import { PropertyType, PropertyStatus } from '@/types';
+import { PropertySearchRequest } from '@/types/api';
 
 interface SearchPageProps {
   searchParams: {
@@ -20,35 +22,55 @@ interface SearchPageProps {
   };
 }
 
-export default function SearchPage({ searchParams }: SearchPageProps) {
+export default async function SearchPage({ searchParams }: SearchPageProps) {
   const currentPage = Number(searchParams.page) || 1;
   const perPage = 12;
 
-  // Build filters object
-  const filters: SearchFilters = {
+  // Map sort option to API parameters
+  const getSortParams = (sort?: SortOption): { sortBy: string; sortDirection: 'asc' | 'desc' } => {
+    switch (sort) {
+      case 'newest':
+        return { sortBy: 'createdAt', sortDirection: 'desc' };
+      case 'oldest':
+        return { sortBy: 'createdAt', sortDirection: 'asc' };
+      case 'price-low':
+        return { sortBy: 'price', sortDirection: 'asc' };
+      case 'price-high':
+        return { sortBy: 'price', sortDirection: 'desc' };
+      default:
+        return { sortBy: 'createdAt', sortDirection: 'desc' };
+    }
+  };
+
+  const { sortBy, sortDirection } = getSortParams(searchParams.sort);
+
+  // Build API search request
+  const apiSearchRequest: PropertySearchRequest = {
     query: searchParams.query,
     city: searchParams.city,
-    propertyType: searchParams.propertyType,
-    status: searchParams.status,
+    propertyType: searchParams.propertyType ? mapUiPropertyTypeToApi(searchParams.propertyType) : undefined,
+    status: searchParams.status ? mapUiPropertyStatusToApi(searchParams.status) : undefined,
     minPrice: searchParams.minPrice ? Number(searchParams.minPrice) * 1000000 : undefined,
     maxPrice: searchParams.maxPrice ? Number(searchParams.maxPrice) * 1000000 : undefined,
     bedrooms: searchParams.bedrooms ? Number(searchParams.bedrooms) : undefined,
+    sortBy,
+    sortDirection,
   };
 
-  // Filter properties
-  const filteredProperties = filterProperties(getMockProperties(), filters);
+  // Search properties via API (page is 0-indexed in backend)
+  const apiResponse = await propertyApi.search(apiSearchRequest, currentPage - 1, perPage);
 
-  // Sort properties
-  const sortedProperties = sortProperties(filteredProperties, searchParams.sort);
-
-  // Paginate results
-  const paginatedResult = paginateArray(sortedProperties, {
-    page: currentPage,
-    perPage,
-  });
+  // Convert API properties to UI properties
+  const paginatedResult = {
+    data: apiResponse.data.map(mapApiPropertyToUi),
+    total: apiResponse.total,
+    page: apiResponse.page + 1, // Convert back to 1-indexed for UI
+    perPage: apiResponse.perPage,
+    totalPages: apiResponse.totalPages,
+  };
 
   // Check if any filters or sort are active
-  const hasFilters = Object.values(filters).some((value) => value !== undefined) || searchParams.sort;
+  const hasFilters = Object.values(apiSearchRequest).some((value) => value !== undefined && value !== sortBy && value !== sortDirection);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

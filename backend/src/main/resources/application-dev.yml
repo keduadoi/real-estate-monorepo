@@ -1,0 +1,66 @@
+# Development Environment Configuration
+spring:
+  # JPA Configuration for Development
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  # Flyway Configuration
+  flyway:
+    clean-disabled: false
+    clean-on-validation-error: true
+
+  # DevTools Configuration
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+
+# Server Configuration
+server:
+  port: 8080
+  error:
+    include-stacktrace: always
+    include-binding-errors: always
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration for Development
+logging:
+  level:
+    root: INFO
+    com.realestate.backend: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.flywaydb: DEBUG
+  file:
+    name: logs/dev-application.log
+
+# CORS Configuration for Development
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:3001
+
+# Storage Configuration for Development
+storage:
+  type: local
+  local:
+    upload-dir: ./uploads
+    base-url: http://localhost:8080

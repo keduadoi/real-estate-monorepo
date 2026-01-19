@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { addProperty } from '@/lib/mockData';
+import { propertyApi } from '@/lib/api/propertyApi';
+import { mapApiPropertyToUi, mapUiPropertyToApiCreate } from '@/lib/api/mapper';
 import { PropertyType, PropertyStatus } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
       propertyType,
       status,
       features,
+      images,
     } = body;
 
     // Validate required fields
@@ -41,8 +43,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new property
-    const newProperty = addProperty({
+    // Create API request from UI data
+    const apiRequest = mapUiPropertyToApiCreate({
       title,
       description,
       price: Number(price),
@@ -55,20 +57,26 @@ export async function POST(request: NextRequest) {
       status: status as PropertyStatus,
       userId: session.user.id,
       features: features || [],
+      images: images || [],
     });
+
+    // Create property via backend API
+    const apiProperty = await propertyApi.create(apiRequest);
+    const uiProperty = mapApiPropertyToUi(apiProperty);
 
     return NextResponse.json(
       {
         success: true,
-        property: newProperty
+        property: uiProperty
       },
       { status: 201 }
     );
 
   } catch (error) {
     console.error('Error creating property:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

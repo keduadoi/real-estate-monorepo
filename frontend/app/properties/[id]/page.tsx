@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ImageGallery from '@/components/ImageGallery';
-import { getMockProperties } from '@/lib/mockData';
+import { propertyApi } from '@/lib/api/propertyApi';
+import { mapApiPropertyToUi } from '@/lib/api/mapper';
 import { formatPrice, formatArea } from '@/lib/utils';
 
 interface PropertyDetailPageProps {
@@ -10,10 +11,13 @@ interface PropertyDetailPageProps {
   };
 }
 
-export default function PropertyDetailPage({ params }: PropertyDetailPageProps) {
-  const property = getMockProperties().find((p) => p.id === params.id);
+export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
+  let property;
 
-  if (!property) {
+  try {
+    const apiProperty = await propertyApi.getById(Number(params.id));
+    property = mapApiPropertyToUi(apiProperty);
+  } catch (error) {
     notFound();
   }
 

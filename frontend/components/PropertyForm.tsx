@@ -3,6 +3,8 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { PropertyType, PropertyStatus } from '@/types';
+import ImageUpload from './ImageUpload';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 export default function PropertyForm() {
   const router = useRouter();
@@ -23,6 +25,7 @@ export default function PropertyForm() {
   });
 
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const imageUpload = useImageUpload();
 
   const cities = [
     'Hà Nội',
@@ -72,6 +75,69 @@ export default function PropertyForm() {
         return;
       }
 
+      // Validate title length
+      if (formData.title.length < 10 || formData.title.length > 255) {
+        setError('Tiêu đề phải có từ 10 đến 255 ký tự');
+        setLoading(false);
+        return;
+      }
+
+      // Validate description length
+      if (formData.description.length < 20 || formData.description.length > 5000) {
+        setError('Mô tả phải có từ 20 đến 5000 ký tự');
+        setLoading(false);
+        return;
+      }
+
+      // Validate address length
+      if (formData.address.length > 255) {
+        setError('Địa chỉ không được vượt quá 255 ký tự');
+        setLoading(false);
+        return;
+      }
+
+      // Validate numeric ranges
+      const bedrooms = Number(formData.bedrooms);
+      const bathrooms = Number(formData.bathrooms);
+      const area = Number(formData.area);
+      const price = Number(formData.price);
+
+      if (bedrooms < 0 || bedrooms > 50) {
+        setError('Số phòng ngủ phải từ 0 đến 50');
+        setLoading(false);
+        return;
+      }
+
+      if (bathrooms < 0 || bathrooms > 50) {
+        setError('Số phòng tắm phải từ 0 đến 50');
+        setLoading(false);
+        return;
+      }
+
+      if (area < 1 || area > 100000) {
+        setError('Diện tích phải từ 1 đến 100,000 m²');
+        setLoading(false);
+        return;
+      }
+
+      if (price <= 0) {
+        setError('Giá phải lớn hơn 0');
+        setLoading(false);
+        return;
+      }
+
+      // Upload images first if any
+      let uploadedImageUrls: string[] = [];
+      if (imageUpload.images.length > 0) {
+        try {
+          uploadedImageUrls = await imageUpload.uploadImages();
+        } catch (uploadError) {
+          setError('Không thể tải lên hình ảnh. Vui lòng thử lại.');
+          setLoading(false);
+          return;
+        }
+      }
+
       // Submit to API
       const response = await fetch('/api/properties', {
         method: 'POST',
@@ -81,6 +147,7 @@ export default function PropertyForm() {
         body: JSON.stringify({
           ...formData,
           features: selectedFeatures,
+          images: uploadedImageUrls,
         }),
       });
 
@@ -117,11 +184,16 @@ export default function PropertyForm() {
           type="text"
           id="title"
           required
+          minLength={10}
+          maxLength={255}
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           placeholder="VD: Villa 2 tầng tại Hà Nội"
         />
+        <p className="mt-1 text-sm text-gray-500">
+          {formData.title.length}/255 ký tự (tối thiểu 10 ký tự)
+        </p>
       </div>
 
       <div>
@@ -131,12 +203,17 @@ export default function PropertyForm() {
         <textarea
           id="description"
           required
+          minLength={20}
+          maxLength={5000}
           rows={4}
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           placeholder="Mô tả chi tiết về bất động sản..."
         />
+        <p className="mt-1 text-sm text-gray-500">
+          {formData.description.length}/5000 ký tự (tối thiểu 20 ký tự)
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -187,12 +264,15 @@ export default function PropertyForm() {
           type="number"
           id="price"
           required
-          min="0"
+          min="1"
           value={formData.price}
           onChange={(e) => setFormData({ ...formData, price: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           placeholder="5000000000"
         />
+        <p className="mt-1 text-sm text-gray-500">
+          Giá phải lớn hơn 0 VND
+        </p>
       </div>
 
       <div>
@@ -203,11 +283,15 @@ export default function PropertyForm() {
           type="text"
           id="address"
           required
+          maxLength={255}
           value={formData.address}
           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           placeholder="123 Nguyễn Huệ"
         />
+        <p className="mt-1 text-sm text-gray-500">
+          {formData.address.length}/255 ký tự
+        </p>
       </div>
 
       <div>
@@ -239,11 +323,15 @@ export default function PropertyForm() {
             type="number"
             id="bedrooms"
             required
-            min="1"
+            min="0"
+            max="50"
             value={formData.bedrooms}
             onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
+          <p className="mt-1 text-sm text-gray-500">
+            0-50 phòng
+          </p>
         </div>
 
         <div>
@@ -254,11 +342,15 @@ export default function PropertyForm() {
             type="number"
             id="bathrooms"
             required
-            min="1"
+            min="0"
+            max="50"
             value={formData.bathrooms}
             onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
+          <p className="mt-1 text-sm text-gray-500">
+            0-50 phòng
+          </p>
         </div>
 
         <div>
@@ -270,10 +362,14 @@ export default function PropertyForm() {
             id="area"
             required
             min="1"
+            max="100000"
             value={formData.area}
             onChange={(e) => setFormData({ ...formData, area: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
+          <p className="mt-1 text-sm text-gray-500">
+            1-100,000 m²
+          </p>
         </div>
       </div>
 
@@ -296,12 +392,7 @@ export default function PropertyForm() {
         </div>
       </div>
 
-      <div className="bg-blue-50 p-4 rounded-md">
-        <p className="text-sm text-blue-800">
-          Lưu ý: Hình ảnh sẽ được tự động sử dụng từ thư viện mẫu. Trong phiên bản
-          thực tế, bạn sẽ có thể tải lên hình ảnh của riêng mình.
-        </p>
-      </div>
+      <ImageUpload imageUpload={imageUpload} />
 
       <div className="flex gap-4">
         <button

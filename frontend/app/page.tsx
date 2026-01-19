@@ -1,8 +1,9 @@
 import SearchBar from '@/components/SearchBar';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
-import { getMockProperties } from '@/lib/mockData';
-import { paginateArray, sortProperties, SortOption } from '@/lib/utils';
+import { propertyApi } from '@/lib/api/propertyApi';
+import { mapApiPropertyToUi } from '@/lib/api/mapper';
+import { SortOption } from '@/lib/utils';
 
 interface HomePageProps {
   searchParams: {
@@ -11,18 +12,39 @@ interface HomePageProps {
   };
 }
 
-export default function HomePage({ searchParams }: HomePageProps) {
+export default async function HomePage({ searchParams }: HomePageProps) {
   const currentPage = Number(searchParams.page) || 1;
   const perPage = 12;
 
-  // Get and sort properties
-  const properties = getMockProperties();
-  const sortedProperties = sortProperties(properties, searchParams.sort);
+  // Map sort option to API parameters
+  const getSortParams = (sort?: SortOption): { sortBy: string; sortDirection: 'asc' | 'desc' } => {
+    switch (sort) {
+      case 'newest':
+        return { sortBy: 'createdAt', sortDirection: 'desc' };
+      case 'oldest':
+        return { sortBy: 'createdAt', sortDirection: 'asc' };
+      case 'price-low':
+        return { sortBy: 'price', sortDirection: 'asc' };
+      case 'price-high':
+        return { sortBy: 'price', sortDirection: 'desc' };
+      default:
+        return { sortBy: 'createdAt', sortDirection: 'desc' };
+    }
+  };
 
-  const paginatedResult = paginateArray(sortedProperties, {
-    page: currentPage,
-    perPage,
-  });
+  const { sortBy, sortDirection } = getSortParams(searchParams.sort);
+
+  // Fetch properties from API (page is 0-indexed in backend)
+  const apiResponse = await propertyApi.getAll(currentPage - 1, perPage, sortBy, sortDirection);
+
+  // Convert API properties to UI properties
+  const paginatedResult = {
+    data: apiResponse.data.map(mapApiPropertyToUi),
+    total: apiResponse.total,
+    page: apiResponse.page + 1, // Convert back to 1-indexed for UI
+    perPage: apiResponse.perPage,
+    totalPages: apiResponse.totalPages,
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
