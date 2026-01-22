@@ -1,0 +1,19 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "real-estate-backend.postgresql.serviceName" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "real-estate-backend.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  type: {{ .Values.postgresql.service.type }}
+  ports:
+    - port: {{ .Values.postgresql.service.port }}
+      targetPort: {{ .Values.postgresql.service.targetPort }}
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "real-estate-backend.postgresql.selectorLabels" . | nindent 4 }}
+{{- end }}

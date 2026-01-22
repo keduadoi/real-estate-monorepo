@@ -1,0 +1,137 @@
+# Default values for real-estate-backend
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Namespace
+namespace:
+  name: real-estate
+  create: true
+
+# Backend Application Configuration
+backend:
+  name: real-estate-backend
+  replicaCount: 1
+
+  image:
+    repository: real-estate-backend
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  service:
+    type: NodePort
+    port: 8080
+    targetPort: 8080
+    nodePort: 30080
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  # Persistent storage for uploads
+  persistence:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 5Gi
+    path: /app/uploads
+
+  # Environment variables
+  env:
+    springProfile: dev
+    serverPort: 8080
+    corsAllowedOrigins: "http://localhost:3000,http://localhost:3001"
+
+  # Health check probes
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# PostgreSQL Database Configuration
+postgresql:
+  enabled: true
+  name: postgres
+
+  image:
+    repository: postgres
+    tag: "18-alpine"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+
+  # Database credentials (change in production!)
+  auth:
+    database: realestatedb
+    username: postgres
+    password: postgres
+
+  # Persistent storage
+  persistence:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 5Gi
+    path: /var/lib/postgresql/data
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Health check
+  livenessProbe:
+    enabled: true
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - pg_isready -U postgres
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+
+  readinessProbe:
+    enabled: true
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - pg_isready -U postgres
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+
+# ConfigMap for application properties
+configmap:
+  data:
+    application.yml: |
+      spring:
+        application:
+          name: real-estate-backend

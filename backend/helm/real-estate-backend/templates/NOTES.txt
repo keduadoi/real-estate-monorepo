@@ -1,0 +1,91 @@
+================================================================================
+  Real Estate Backend Application - Successfully Deployed!
+================================================================================
+
+Your Real Estate Backend application has been deployed to Kubernetes!
+
+Namespace: {{ .Values.namespace.name }}
+Release:   {{ .Release.Name }}
+
+--------------------------------------------------------------------------------
+1. Check the application status:
+--------------------------------------------------------------------------------
+
+  kubectl get pods -n {{ .Values.namespace.name }}
+  kubectl get services -n {{ .Values.namespace.name }}
+
+--------------------------------------------------------------------------------
+2. Access your application:
+--------------------------------------------------------------------------------
+
+{{- if eq .Values.backend.service.type "NodePort" }}
+
+  # Get the application URL:
+  export NODE_PORT=$(kubectl get --namespace {{ .Values.namespace.name }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "real-estate-backend.backend.serviceName" . }})
+  export NODE_IP=$(minikube ip)
+  echo "Application URL: http://$NODE_IP:$NODE_PORT"
+
+  # Or simply use:
+  minikube service {{ include "real-estate-backend.backend.serviceName" . }} -n {{ .Values.namespace.name }}
+
+{{- else if eq .Values.backend.service.type "LoadBalancer" }}
+
+  # Get the application URL:
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Values.namespace.name }} {{ include "real-estate-backend.backend.serviceName" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "Application URL: http://$SERVICE_IP:{{ .Values.backend.service.port }}"
+
+{{- else }}
+
+  # Forward port to access the application:
+  kubectl port-forward --namespace {{ .Values.namespace.name }} svc/{{ include "real-estate-backend.backend.serviceName" . }} 8080:{{ .Values.backend.service.port }}
+  echo "Application URL: http://localhost:8080"
+
+{{- end }}
+
+--------------------------------------------------------------------------------
+3. Check application health:
+--------------------------------------------------------------------------------
+
+  # Once you have the URL, check the health endpoint:
+  curl http://<application-url>/actuator/health
+
+--------------------------------------------------------------------------------
+4. View application logs:
+--------------------------------------------------------------------------------
+
+  # Backend logs:
+  kubectl logs -n {{ .Values.namespace.name }} -l app.kubernetes.io/component=backend -f
+
+  # PostgreSQL logs:
+  kubectl logs -n {{ .Values.namespace.name }} -l app.kubernetes.io/component=database -f
+
+--------------------------------------------------------------------------------
+5. Database information:
+--------------------------------------------------------------------------------
+
+  Database: {{ .Values.postgresql.auth.database }}
+  Service:  {{ include "real-estate-backend.postgresql.serviceName" . }}
+  Port:     {{ .Values.postgresql.service.port }}
+
+  # Connect to PostgreSQL (from within the cluster):
+  kubectl exec -it -n {{ .Values.namespace.name }} {{ include "real-estate-backend.fullname" . }}-postgres-0 -- psql -U {{ .Values.postgresql.auth.username }} -d {{ .Values.postgresql.auth.database }}
+
+--------------------------------------------------------------------------------
+6. Useful commands:
+--------------------------------------------------------------------------------
+
+  # Upgrade the release:
+  helm upgrade {{ .Release.Name }} ./backend/helm/real-estate-backend -f ./backend/helm/real-estate-backend/values-dev.yaml
+
+  # Rollback to previous version:
+  helm rollback {{ .Release.Name }}
+
+  # Uninstall the release:
+  helm uninstall {{ .Release.Name }} -n {{ .Values.namespace.name }}
+
+  # View release history:
+  helm history {{ .Release.Name }} -n {{ .Values.namespace.name }}
+
+================================================================================
+  Happy coding! 🚀
+================================================================================

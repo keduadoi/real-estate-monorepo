@@ -1,0 +1,15 @@
+apiVersion: v2
+name: real-estate-backend
+description: A Helm chart for Real Estate Backend Application with PostgreSQL
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - real-estate
+  - spring-boot
+  - postgresql
+maintainers:
+  - name: Real Estate Team
+home: https://github.com/yourusername/real-estate-ui
+sources:
+  - https://github.com/yourusername/real-estate-ui

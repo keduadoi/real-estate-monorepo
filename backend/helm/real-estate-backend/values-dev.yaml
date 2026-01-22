@@ -1,0 +1,53 @@
+# Development environment overrides
+# These values override the defaults in values.yaml for local development
+
+namespace:
+  name: real-estate-dev
+
+backend:
+  replicaCount: 1
+
+  image:
+    pullPolicy: Never  # Use local images only in minikube
+    tag: "latest"
+
+  service:
+    type: NodePort
+    nodePort: 30080
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  persistence:
+    size: 2Gi
+
+  env:
+    springProfile: dev
+
+  # More lenient probes for development
+  livenessProbe:
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    failureThreshold: 5
+
+  readinessProbe:
+    initialDelaySeconds: 90
+    periodSeconds: 20
+    failureThreshold: 5
+
+postgresql:
+  persistence:
+    size: 2Gi
+
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
