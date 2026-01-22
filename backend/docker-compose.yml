@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: realestatedb
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
@@ -38,6 +37,8 @@ services:
       DB_PASSWORD: postgres
     ports:
       - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
