@@ -29,7 +29,7 @@ services:
       dockerfile: Dockerfile
     container_name: real-estate-backend
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: dev
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: realestatedb
