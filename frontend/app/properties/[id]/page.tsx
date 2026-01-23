@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ImageGallery from '@/components/ImageGallery';
+import PropertyActionButtons from '@/components/PropertyActionButtons';
 import { propertyApi } from '@/lib/api/propertyApi';
 import { mapApiPropertyToUi } from '@/lib/api/mapper';
 import { formatPrice, formatArea } from '@/lib/utils';
@@ -37,8 +38,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb */}
-      <div className="mb-6">
+      {/* Breadcrumb and Actions */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Link
           href="/"
           className="text-primary-600 hover:text-primary-700 text-sm font-medium inline-flex items-center"
@@ -58,6 +59,13 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           </svg>
           Quay lại danh sách
         </Link>
+
+        {/* Edit/Delete buttons (visible only to owner) */}
+        <PropertyActionButtons
+          propertyId={property.id}
+          propertyUserId={property.userId}
+          propertyTitle={property.title}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

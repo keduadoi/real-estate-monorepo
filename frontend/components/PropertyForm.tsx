@@ -1,30 +1,50 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PropertyType, PropertyStatus } from '@/types';
+import { PropertyType, PropertyStatus, Property } from '@/types';
 import ImageUpload from './ImageUpload';
 import { useImageUpload } from '@/hooks/useImageUpload';
+import { propertyApi } from '@/lib/api/propertyApi';
+import { mapUiPropertyTypeToApi, mapUiPropertyStatusToApi } from '@/lib/api/mapper';
 
-export default function PropertyForm() {
+interface PropertyFormProps {
+  mode?: 'create' | 'edit';
+  initialData?: Property;
+  propertyId?: string;
+}
+
+export default function PropertyForm({
+  mode = 'create',
+  initialData,
+  propertyId,
+}: PropertyFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    price: '',
-    address: '',
-    city: '',
-    bedrooms: '1',
-    bathrooms: '1',
-    area: '',
-    propertyType: 'house' as PropertyType,
-    status: 'for-sale' as PropertyStatus,
+    title: initialData?.title || '',
+    description: initialData?.description || '',
+    price: initialData?.price?.toString() || '',
+    address: initialData?.address || '',
+    city: initialData?.city || '',
+    bedrooms: initialData?.bedrooms?.toString() || '1',
+    bathrooms: initialData?.bathrooms?.toString() || '1',
+    area: initialData?.area?.toString() || '',
+    propertyType: (initialData?.propertyType || 'house') as PropertyType,
+    status: (initialData?.status || 'for-sale') as PropertyStatus,
   });
 
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(
+    initialData?.features || []
+  );
+
+  // For edit mode, track existing images separately
+  const [existingImages, setExistingImages] = useState<string[]>(
+    initialData?.images || []
+  );
+
   const imageUpload = useImageUpload();
 
   const cities = [
@@ -59,6 +79,10 @@ export default function PropertyForm() {
         ? prev.filter((f) => f !== feature)
         : [...prev, feature]
     );
+  };
+
+  const handleRemoveExistingImage = (imageUrl: string) => {
+    setExistingImages((prev) => prev.filter((url) => url !== imageUrl));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -126,11 +150,11 @@ export default function PropertyForm() {
         return;
       }
 
-      // Upload images first if any
-      let uploadedImageUrls: string[] = [];
+      // Upload new images if any
+      let newImageUrls: string[] = [];
       if (imageUpload.images.length > 0) {
         try {
-          uploadedImageUrls = await imageUpload.uploadImages();
+          newImageUrls = await imageUpload.uploadImages();
         } catch (uploadError) {
           setError('Không thể tải lên hình ảnh. Vui lòng thử lại.');
           setLoading(false);
@@ -138,30 +162,55 @@ export default function PropertyForm() {
         }
       }
 
-      // Submit to API
-      const response = await fetch('/api/properties', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
+      // Combine existing images with new uploads
+      const allImages = [...existingImages, ...newImageUrls];
+
+      if (mode === 'edit' && propertyId) {
+        // Update existing property
+        await propertyApi.update(Number(propertyId), {
+          title: formData.title,
+          description: formData.description,
+          price: Number(formData.price),
+          address: formData.address,
+          city: formData.city,
+          bedrooms: Number(formData.bedrooms),
+          bathrooms: Number(formData.bathrooms),
+          area: Number(formData.area),
+          propertyType: mapUiPropertyTypeToApi(formData.propertyType),
+          status: mapUiPropertyStatusToApi(formData.status),
           features: selectedFeatures,
-          images: uploadedImageUrls,
-        }),
-      });
+          images: allImages,
+        });
 
-      const data = await response.json();
+        // Success - redirect to property detail page
+        router.push(`/properties/${propertyId}`);
+        router.refresh();
+      } else {
+        // Create new property
+        const response = await fetch('/api/properties', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            features: selectedFeatures,
+            images: allImages,
+          }),
+        });
 
-      if (!response.ok) {
-        setError(data.error || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
-        setLoading(false);
-        return;
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+          setLoading(false);
+          return;
+        }
+
+        // Success - redirect to home page
+        router.push('/');
+        router.refresh();
       }
-
-      // Success - redirect to home page
-      router.push('/');
-      router.refresh();
     } catch (err) {
       setError('Đã có lỗi xảy ra. Vui lòng thử lại.');
       setLoading(false);
@@ -392,7 +441,11 @@ export default function PropertyForm() {
         </div>
       </div>
 
-      <ImageUpload imageUpload={imageUpload} />
+      <ImageUpload
+        imageUpload={imageUpload}
+        existingImages={existingImages}
+        onRemoveExisting={handleRemoveExistingImage}
+      />
 
       <div className="flex gap-4">
         <button
@@ -400,7 +453,13 @@ export default function PropertyForm() {
           disabled={loading}
           className="flex-1 bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Đang đăng tin...' : 'Đăng tin'}
+          {loading
+            ? mode === 'edit'
+              ? 'Đang cập nhật...'
+              : 'Đang đăng tin...'
+            : mode === 'edit'
+            ? 'Cập nhật tin'
+            : 'Đăng tin'}
         </button>
         <button
           type="button"

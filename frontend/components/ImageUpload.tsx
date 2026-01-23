@@ -9,9 +9,14 @@ const MAX_IMAGES = parseInt(process.env.NEXT_PUBLIC_MAX_IMAGES_PER_PROPERTY || '
 interface ImageUploadProps {
   imageUpload: ReturnType<typeof useImageUpload>;
   existingImages?: string[];
+  onRemoveExisting?: (imageUrl: string) => void;
 }
 
-export default function ImageUpload({ imageUpload, existingImages = [] }: ImageUploadProps) {
+export default function ImageUpload({
+  imageUpload,
+  existingImages = [],
+  onRemoveExisting,
+}: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     images,
@@ -55,7 +60,7 @@ export default function ImageUpload({ imageUpload, existingImages = [] }: ImageU
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="block text-sm font-medium text-gray-700">
-          Property Images
+          Hình ảnh bất động sản
         </label>
         <span className="text-sm text-gray-500">
           {totalImages} / {MAX_IMAGES} images
@@ -143,7 +148,7 @@ export default function ImageUpload({ imageUpload, existingImages = [] }: ImageU
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-gray-700">
-              New Images ({images.length})
+              Hình ảnh mới ({images.length})
             </h3>
             {!uploading && (
               <button
@@ -193,11 +198,11 @@ export default function ImageUpload({ imageUpload, existingImages = [] }: ImageU
       {existingImages.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-3">
-            Existing Images ({existingImages.length})
+            Hình ảnh hiện có ({existingImages.length})
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {existingImages.map((url, index) => (
-              <div key={url} className="relative aspect-square">
+              <div key={url} className="relative group aspect-square">
                 <Image
                   src={url}
                   alt={`Property image ${index + 1}`}
@@ -209,6 +214,28 @@ export default function ImageUpload({ imageUpload, existingImages = [] }: ImageU
                     target.src = '/placeholder-image.png';
                   }}
                 />
+                {onRemoveExisting && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveExisting(url)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove image"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
               </div>
             ))}
           </div>
