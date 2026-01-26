@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: real-estate
+
+bases:
+  - ../../base
+
+# Patches for minikube
+patchesStrategicMerge:
+  - configmap-patch.yaml
+
+# Common labels for minikube environment
+commonLabels:
+  environment: minikube

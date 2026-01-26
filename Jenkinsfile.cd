@@ -1,0 +1,425 @@
+// Continuous Deployment Pipeline
+// Manually triggered to deploy a pre-built image to an environment
+// Requires CI pipeline to have already built and published the image
+
+pipeline {
+    agent any
+
+    environment {
+        // AWS Configuration
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ECR_REPOSITORY = 'real-estate-backend'
+
+        // EKS Configuration
+        EKS_CLUSTER_NAME = 'real-estate-cluster'
+
+        // Application Configuration
+        APP_NAME = 'real-estate-backend'
+
+        // Helm Configuration
+        HELM_CHART_PATH = './backend/helm/real-estate-backend'
+
+        // Credentials
+        AWS_CREDENTIALS = credentials('aws-credentials')
+        SLACK_WEBHOOK = credentials('slack-webhook-url')
+    }
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'staging', 'prod'],
+            description: 'Target deployment environment'
+        )
+        string(
+            name: 'IMAGE_TAG',
+            defaultValue: '',
+            description: 'Docker image tag to deploy (e.g., abc12345 from CI build)'
+        )
+        booleanParam(
+            name: 'SKIP_DB_MIGRATION',
+            defaultValue: false,
+            description: 'Skip database migration (use with caution)'
+        )
+        booleanParam(
+            name: 'RUN_SMOKE_TESTS',
+            defaultValue: true,
+            description: 'Run smoke tests after deployment'
+        )
+        booleanParam(
+            name: 'RUN_PERFORMANCE_TESTS',
+            defaultValue: false,
+            description: 'Run performance tests (staging only)'
+        )
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        timestamps()
+        ansiColor('xterm')
+    }
+
+    stages {
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "CD Pipeline - Deployment"
+                    echo "=========================================="
+                    echo "Environment: ${params.ENVIRONMENT}"
+                    echo "Image Tag: ${params.IMAGE_TAG}"
+                    echo "=========================================="
+
+                    // Validate image tag is provided
+                    if (!params.IMAGE_TAG || params.IMAGE_TAG.trim() == '') {
+                        error("IMAGE_TAG parameter is required. Get it from the CI pipeline build.")
+                    }
+
+                    // Set full image name
+                    env.FULL_IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}:${params.IMAGE_TAG}"
+
+                    slackSend(
+                        color: '#0099CC',
+                        message: """
+                            *CD Pipeline Started* 🚀
+                            Environment: ${params.ENVIRONMENT}
+                            Image Tag: ${params.IMAGE_TAG}
+                            Deployer: ${env.BUILD_USER}
+                            Build: ${env.BUILD_URL}
+                        """.stripIndent()
+                    )
+                }
+            }
+        }
+
+        stage('Verify Image Exists') {
+            steps {
+                script {
+                    echo "Verifying image exists in ECR..."
+
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    """
+
+                    // Check if image exists in ECR
+                    def imageExists = sh(
+                        script: """
+                            aws ecr describe-images \
+                                --repository-name ${ECR_REPOSITORY} \
+                                --image-ids imageTag=${params.IMAGE_TAG} \
+                                --region ${AWS_REGION} \
+                                --query 'imageDetails[0].imageTags[0]' \
+                                --output text 2>/dev/null || echo 'NOT_FOUND'
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    if (imageExists == 'NOT_FOUND' || imageExists == 'None') {
+                        error("Image ${env.FULL_IMAGE_NAME} not found in ECR. Run CI pipeline first.")
+                    }
+
+                    echo "✓ Image verified: ${env.FULL_IMAGE_NAME}"
+                }
+            }
+        }
+
+        stage('Production Approval') {
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "⚠️  PRODUCTION DEPLOYMENT"
+                    echo "=========================================="
+                    echo ""
+                    echo "Environment: ${params.ENVIRONMENT}"
+                    echo "Image: ${env.FULL_IMAGE_NAME}"
+                    echo ""
+                    echo "This will deploy to PRODUCTION!"
+                    echo ""
+                    echo "=========================================="
+
+                    slackSend(
+                        color: 'warning',
+                        message: """
+                            *Production Deployment Approval Required* ⚠️
+                            Environment: ${params.ENVIRONMENT}
+                            Image Tag: ${params.IMAGE_TAG}
+                            Deployer: ${env.BUILD_USER}
+
+                            Waiting for approval...
+                        """.stripIndent()
+                    )
+
+                    // Manual approval for production
+                    timeout(time: 30, unit: 'MINUTES') {
+                        input(
+                            message: "Deploy ${params.IMAGE_TAG} to PRODUCTION?",
+                            ok: 'Deploy',
+                            submitter: 'admin,devops-team'
+                        )
+                    }
+
+                    slackSend(
+                        color: 'good',
+                        message: "✅ Production deployment approved"
+                    )
+                }
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                echo "Checking out source code for Helm charts..."
+                checkout scm
+            }
+        }
+
+        stage('Database Migration') {
+            when {
+                expression { params.SKIP_DB_MIGRATION == false }
+            }
+            steps {
+                script {
+                    echo "Running database migrations..."
+
+                    // Get RDS endpoint from Terraform
+                    def dbHost = sh(
+                        script: "cd terraform/environments/${params.ENVIRONMENT} && terraform output -raw rds_address",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Database host: ${dbHost}"
+
+                    // Run Flyway migrations using Docker
+                    sh """
+                        docker run --rm \
+                            -v \${PWD}/backend/src/main/resources/db/migration:/flyway/sql \
+                            -e FLYWAY_URL=jdbc:postgresql://${dbHost}:5432/realestatedb \
+                            -e FLYWAY_USER=postgres \
+                            -e FLYWAY_PASSWORD=\$(aws secretsmanager get-secret-value --secret-id real-estate-db-password-${params.ENVIRONMENT} --query SecretString --output text | jq -r .password) \
+                            flyway/flyway:latest migrate
+                    """
+
+                    echo "✓ Database migrations completed"
+                }
+            }
+        }
+
+        stage('Update Kubeconfig') {
+            steps {
+                echo "Updating kubeconfig for EKS cluster..."
+                sh """
+                    aws eks update-kubeconfig \
+                        --region ${AWS_REGION} \
+                        --name ${EKS_CLUSTER_NAME}
+                """
+
+                sh "kubectl cluster-info"
+                sh "kubectl get nodes"
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    echo "Deploying to ${params.ENVIRONMENT} with Helm..."
+
+                    // Get RDS endpoint from Terraform
+                    def dbHost = sh(
+                        script: "cd terraform/environments/${params.ENVIRONMENT} && terraform output -raw rds_address 2>/dev/null || echo 'localhost'",
+                        returnStdout: true
+                    ).trim()
+
+                    // Determine values file
+                    def valuesFile = fileExists("${HELM_CHART_PATH}/values-${params.ENVIRONMENT}.yaml") ?
+                        "-f ${HELM_CHART_PATH}/values-${params.ENVIRONMENT}.yaml" : ""
+
+                    // Deploy with Helm
+                    sh """
+                        helm upgrade --install ${APP_NAME} ${HELM_CHART_PATH} \
+                            --namespace ${params.ENVIRONMENT} \
+                            --create-namespace \
+                            ${valuesFile} \
+                            --set backend.image.repository=${ECR_REGISTRY}/${ECR_REPOSITORY} \
+                            --set backend.image.tag=${params.IMAGE_TAG} \
+                            --set postgresql.enabled=false \
+                            --set backend.env.DB_HOST=${dbHost} \
+                            --set backend.env.SPRING_PROFILES_ACTIVE=${params.ENVIRONMENT} \
+                            --wait \
+                            --timeout 5m \
+                            --atomic
+                    """
+
+                    echo "✓ Deployment completed successfully"
+
+                    // Get deployment info
+                    sh """
+                        echo ""
+                        echo "Deployment Status:"
+                        kubectl get pods -n ${params.ENVIRONMENT} -l app=${APP_NAME}
+                        echo ""
+                        kubectl get services -n ${params.ENVIRONMENT} -l app=${APP_NAME}
+                    """
+                }
+            }
+        }
+
+        stage('Smoke Tests') {
+            when {
+                expression { params.RUN_SMOKE_TESTS == true }
+            }
+            steps {
+                script {
+                    echo "Running smoke tests..."
+
+                    // Get service endpoint
+                    def serviceUrl = sh(
+                        script: """
+                            kubectl get service ${APP_NAME}-backend \
+                                -n ${params.ENVIRONMENT} \
+                                -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Service URL: ${serviceUrl}"
+
+                    // Wait for service to be ready
+                    sleep(time: 30, unit: 'SECONDS')
+
+                    // Health check
+                    retry(3) {
+                        sh """
+                            curl -f -s -o /dev/null -w "%{http_code}" http://${serviceUrl}:8080/actuator/health || exit 1
+                        """
+                    }
+
+                    echo "✓ Smoke tests passed!"
+                }
+            }
+        }
+
+        stage('Performance Tests') {
+            when {
+                expression {
+                    params.RUN_PERFORMANCE_TESTS == true &&
+                    params.ENVIRONMENT == 'staging'
+                }
+            }
+            steps {
+                echo "Running performance tests with JMeter..."
+                sh '''
+                    jmeter -n -t backend/src/test/jmeter/load-test.jmx \
+                        -l results.jtl \
+                        -e -o performance-report
+                '''
+            }
+            post {
+                always {
+                    publishHTML(target: [
+                        reportDir: 'performance-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Performance Test Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Tag Deployment') {
+            steps {
+                script {
+                    echo "Creating deployment tag..."
+
+                    def deploymentTag = "deploy-${params.ENVIRONMENT}-${params.IMAGE_TAG}-${env.BUILD_NUMBER}"
+
+                    sh """
+                        # Create deployment info
+                        cat > deployment-info.json <<EOF
+{
+    "environment": "${params.ENVIRONMENT}",
+    "image_tag": "${params.IMAGE_TAG}",
+    "deployed_by": "${env.BUILD_USER}",
+    "deployed_at": "\$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "build_number": "${env.BUILD_NUMBER}",
+    "deployment_tag": "${deploymentTag}"
+}
+EOF
+                    """
+
+                    archiveArtifacts artifacts: 'deployment-info.json', fingerprint: true
+
+                    echo "✓ Deployment tag: ${deploymentTag}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                echo "=========================================="
+                echo "✓ DEPLOYMENT SUCCESSFUL"
+                echo "=========================================="
+                echo ""
+                echo "Environment: ${params.ENVIRONMENT}"
+                echo "Image Tag: ${params.IMAGE_TAG}"
+                echo ""
+                echo "=========================================="
+
+                slackSend(
+                    color: 'good',
+                    message: """
+                        *Deployment Succeeded* ✅
+                        Environment: ${params.ENVIRONMENT}
+                        Image Tag: ${params.IMAGE_TAG}
+                        Deployed by: ${env.BUILD_USER}
+                        Duration: ${currentBuild.durationString}
+                        Build: ${env.BUILD_URL}
+                    """.stripIndent()
+                )
+            }
+        }
+
+        failure {
+            script {
+                echo "=========================================="
+                echo "❌ DEPLOYMENT FAILED"
+                echo "=========================================="
+                echo ""
+                echo "Environment: ${params.ENVIRONMENT}"
+                echo "Image Tag: ${params.IMAGE_TAG}"
+                echo "Failed Stage: ${env.STAGE_NAME}"
+                echo ""
+                echo "=========================================="
+
+                slackSend(
+                    color: 'danger',
+                    message: """
+                        *Deployment Failed* ❌
+                        Environment: ${params.ENVIRONMENT}
+                        Image Tag: ${params.IMAGE_TAG}
+                        Stage: ${env.STAGE_NAME}
+                        Deployer: ${env.BUILD_USER}
+                        Build: ${env.BUILD_URL}
+                    """.stripIndent()
+                )
+
+                // Rollback on production failure (optional)
+                if (params.ENVIRONMENT == 'prod') {
+                    echo "Consider rolling back the deployment"
+                }
+            }
+        }
+
+        always {
+            echo "Cleaning up..."
+            cleanWs()
+        }
+    }
+}

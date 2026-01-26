@@ -1,0 +1,26 @@
+# Production Environment Configuration
+# Copy this file to terraform.tfvars and update values
+# NEVER commit terraform.tfvars to version control!
+
+aws_region   = "us-east-1"
+project_name = "real-estate"
+
+# VPC Configuration
+# vpc_id = "vpc-xxxxx"  # Use custom VPC for production (recommended)
+
+# Database Configuration
+db_name     = "realestatedb"
+db_username = "postgres"
+db_password = "CHANGE_THIS_TO_SECURE_PASSWORD_MIN_16_CHARS"  # REQUIRED for production
+
+# Instance Configuration
+instance_class    = "db.t3.small"   # Minimum for production
+allocated_storage = 100              # GB
+
+# Network Security - CRITICAL: Restrict to EKS cluster CIDR only
+allowed_cidr_blocks = [
+  "10.0.0.0/16",  # Replace with your EKS VPC CIDR
+  # "10.1.0.0/16", # Add bastion host CIDR if needed
+]
+
+# DO NOT USE: allowed_cidr_blocks = ["0.0.0.0/0"]

@@ -1,0 +1,14 @@
+# Development Environment Configuration
+# Copy this file to terraform.tfvars and update values
+
+aws_region  = "us-east-1"
+project_name = "real-estate"
+
+# Database Configuration
+db_name     = "realestatedb"
+db_username = "postgres"
+# db_password = "YourSecurePassword123!"  # Uncomment to set password, or leave commented for auto-generated
+
+# Network Security
+# allowed_cidr_blocks = ["0.0.0.0/0"]     # Open to all (dev only!)
+# allowed_cidr_blocks = ["YOUR_IP/32"]    # Restrict to your IP

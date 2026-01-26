@@ -8,7 +8,13 @@ metadata:
 data:
   SPRING_PROFILES_ACTIVE: {{ .Values.backend.env.springProfile | quote }}
   SERVER_PORT: {{ .Values.backend.env.serverPort | quote }}
+  {{- if .Values.postgresql.enabled }}
   DB_HOST: {{ include "real-estate-backend.postgresql.serviceName" . }}
   DB_PORT: {{ .Values.postgresql.service.port | quote }}
   DB_NAME: {{ .Values.postgresql.auth.database | quote }}
+  {{- else }}
+  DB_HOST: {{ .Values.backend.env.dbHost | quote }}
+  DB_PORT: {{ .Values.backend.env.dbPort | quote }}
+  DB_NAME: {{ .Values.backend.env.dbName | quote }}
+  {{- end }}
   CORS_ALLOWED_ORIGINS: {{ .Values.backend.env.corsAllowedOrigins | quote }}

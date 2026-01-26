@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: real-estate-backend-postgres
+  namespace: real-estate
+  labels:
+    app: real-estate-backend
+    component: database
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: real-estate-backend
+    component: database

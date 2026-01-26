@@ -19,7 +19,28 @@
       "Bash(java:*)",
       "Bash(./mvnw:*)",
       "Bash(ls:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(kubectl config current-context:*)",
+      "Bash(kubectl get:*)",
+      "Bash(helm list:*)",
+      "Bash(helm uninstall:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(minikube status:*)",
+      "Bash(./k8s-start-external.sh:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(minikube ip:*)",
+      "Bash(kubectl exec:*)",
+      "Bash(./k8s-status-external.sh)",
+      "Bash(docker exec:*)",
+      "Bash(./k8s-stop-external.sh:*)",
+      "Bash({ echo \"3\")",
+      "Bash(})",
+      "Bash(printf:*)",
+      "Bash(docker-compose:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(docker volume:*)",
+      "Bash(kubectl scale:*)"
     ]
   }
 }
