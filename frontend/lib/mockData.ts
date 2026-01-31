@@ -1,4 +1,4 @@
-import { Property, User, PropertyType, PropertyStatus, Post, Like, PostWithMetadata } from '@/types';
+import { Property, User, PropertyType, PropertyStatus, LegacyPost as Post, Like, LegacyPostWithMetadata as PostWithMetadata } from '@/types';
 
 // Mock users for authentication
 export const mockUsers: User[] = [

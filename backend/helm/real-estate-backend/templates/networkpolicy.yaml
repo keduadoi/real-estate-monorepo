@@ -1,0 +1,82 @@
+{{- if .Values.networkPolicy }}
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "real-estate-backend.fullname" . }}-network-policy
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "real-estate-backend.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "real-estate-backend.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from Kong Gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: kong
+        - podSelector:
+            matchLabels:
+              app: kong
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.service.port }}
+    # Allow traffic from Prometheus for scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.service.port }}
+    # Allow internal service-to-service communication
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.service.port }}
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow PostgreSQL connection
+    - to:
+        - podSelector:
+            matchLabels:
+              app: {{ .Values.postgresql.name | default "postgres" }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow external PostgreSQL (RDS) - for production
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow HTTPS egress (for S3, external APIs)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}
+{{- end }}

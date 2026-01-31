@@ -1,0 +1,89 @@
+{{- if .Values.redis.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.redis.name }}-config
+  namespace: {{ .Values.namespace.name }}
+data:
+  redis.conf: |
+    # Redis configuration for Kong rate limiting
+    maxmemory {{ .Values.redis.maxmemory | default "128mb" }}
+    maxmemory-policy allkeys-lru
+    appendonly no
+    save ""
+    tcp-keepalive 300
+    timeout 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.redis.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.redis.name }}
+spec:
+  replicas: {{ .Values.redis.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ .Values.redis.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.redis.name }}
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 6379
+              name: redis
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+          volumeMounts:
+            - name: redis-config
+              mountPath: /etc/redis
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: redis-config
+          configMap:
+            name: {{ .Values.redis.name }}-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.redis.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.redis.name }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: {{ .Values.redis.name }}
+{{- end }}

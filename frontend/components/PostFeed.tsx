@@ -1,66 +1,45 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PostWithMetadata } from '@/types';
+import { Post } from '@/types';
 import PostCard from './PostCard';
 
 interface PostFeedProps {
-  initialPosts: PostWithMetadata[];
+  posts: Post[];
+  hasMore: boolean;
+  onLoadMore: () => Promise<void>;
+  onLikeToggle: (postId: string) => Promise<void>;
   isAuthenticated: boolean;
 }
 
-const POSTS_PER_PAGE = 10;
-
-export default function PostFeed({ initialPosts, isAuthenticated }: PostFeedProps) {
-  const [allPosts, setAllPosts] = useState<PostWithMetadata[]>(initialPosts);
-  const [displayedPosts, setDisplayedPosts] = useState<PostWithMetadata[]>(
-    initialPosts.slice(0, POSTS_PER_PAGE)
-  );
-  const [page, setPage] = useState(1);
+export default function PostFeed({
+  posts,
+  hasMore,
+  onLoadMore,
+  onLikeToggle,
+  isAuthenticated,
+}: PostFeedProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(initialPosts.length > POSTS_PER_PAGE);
-
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  // Update all posts when initialPosts change (e.g., after creating a new post)
-  useEffect(() => {
-    setAllPosts(initialPosts);
-    setDisplayedPosts(initialPosts.slice(0, POSTS_PER_PAGE));
-    setPage(1);
-    setHasMore(initialPosts.length > POSTS_PER_PAGE);
-  }, [initialPosts]);
-
-  // Load more posts
-  const loadMorePosts = useCallback(() => {
+  // Load more posts with loading state
+  const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
 
     setIsLoading(true);
-
-    // Simulate loading delay (like fetching from API)
-    setTimeout(() => {
-      const nextPage = page + 1;
-      const startIndex = page * POSTS_PER_PAGE;
-      const endIndex = startIndex + POSTS_PER_PAGE;
-      const newPosts = allPosts.slice(startIndex, endIndex);
-
-      if (newPosts.length > 0) {
-        setDisplayedPosts(prev => [...prev, ...newPosts]);
-        setPage(nextPage);
-        setHasMore(endIndex < allPosts.length);
-      } else {
-        setHasMore(false);
-      }
-
+    try {
+      await onLoadMore();
+    } finally {
       setIsLoading(false);
-    }, 500);
-  }, [allPosts, page, isLoading, hasMore]);
+    }
+  }, [isLoading, hasMore, onLoadMore]);
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading) {
-          loadMorePosts();
+          loadMore();
         }
       },
       { threshold: 0.1 }
@@ -76,82 +55,10 @@ export default function PostFeed({ initialPosts, isAuthenticated }: PostFeedProp
         observer.unobserve(currentTarget);
       }
     };
-  }, [loadMorePosts, hasMore, isLoading]);
-
-  const handleLikeToggle = async (postId: string) => {
-    if (!isAuthenticated) return;
-
-    // Find the post in both arrays
-    const displayedIndex = displayedPosts.findIndex(p => p.id === postId);
-    const allIndex = allPosts.findIndex(p => p.id === postId);
-
-    if (displayedIndex === -1 || allIndex === -1) return;
-
-    const post = displayedPosts[displayedIndex];
-    const isLiked = post.isLikedByCurrentUser;
-
-    // Store previous state for reverting
-    const previousDisplayedPosts = [...displayedPosts];
-    const previousAllPosts = [...allPosts];
-
-    // Optimistic update for both arrays
-    const updatedDisplayedPosts = [...displayedPosts];
-    updatedDisplayedPosts[displayedIndex] = {
-      ...post,
-      isLikedByCurrentUser: !isLiked,
-      likeCount: isLiked ? post.likeCount - 1 : post.likeCount + 1,
-    };
-
-    const updatedAllPosts = [...allPosts];
-    updatedAllPosts[allIndex] = {
-      ...updatedAllPosts[allIndex],
-      isLikedByCurrentUser: !isLiked,
-      likeCount: isLiked ? allPosts[allIndex].likeCount - 1 : allPosts[allIndex].likeCount + 1,
-    };
-
-    setDisplayedPosts(updatedDisplayedPosts);
-    setAllPosts(updatedAllPosts);
-
-    try {
-      // Make API request
-      const response = await fetch(`/api/posts/${postId}/like`, {
-        method: isLiked ? 'DELETE' : 'POST',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Revert on error
-        setDisplayedPosts(previousDisplayedPosts);
-        setAllPosts(previousAllPosts);
-
-        console.error('Error toggling like:', {
-          status: response.status,
-          error: data.error,
-          action: isLiked ? 'unlike' : 'like',
-          postId,
-        });
-
-        // Show error to user
-        alert(`Lỗi: ${data.error || 'Không thể thực hiện thao tác'}`);
-      } else {
-        console.log('Successfully toggled like:', {
-          action: isLiked ? 'unlike' : 'like',
-          postId,
-          response: data,
-        });
-      }
-    } catch (error) {
-      // Revert on error
-      setDisplayedPosts(previousDisplayedPosts);
-      setAllPosts(previousAllPosts);
-      console.error('Error toggling like:', error);
-      alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
-    }
-  };
+  }, [loadMore, hasMore, isLoading]);
 
   // Empty state
-  if (displayedPosts.length === 0 && !isLoading) {
+  if (posts.length === 0 && !isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-12 text-center">
         <svg
@@ -180,11 +87,11 @@ export default function PostFeed({ initialPosts, isAuthenticated }: PostFeedProp
 
   return (
     <div className="space-y-6">
-      {displayedPosts.map((post) => (
+      {posts.map((post) => (
         <PostCard
           key={post.id}
           post={post}
-          onLikeToggle={handleLikeToggle}
+          onLikeToggle={onLikeToggle}
           isAuthenticated={isAuthenticated}
         />
       ))}
@@ -203,7 +110,7 @@ export default function PostFeed({ initialPosts, isAuthenticated }: PostFeedProp
       )}
 
       {/* End of feed message */}
-      {!hasMore && displayedPosts.length > 0 && (
+      {!hasMore && posts.length > 0 && (
         <div className="text-center py-8">
           <p className="text-gray-500 text-sm">
             Bạn đã xem hết tất cả bài viết

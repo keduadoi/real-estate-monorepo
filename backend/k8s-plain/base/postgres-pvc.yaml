@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: real-estate-backend-postgres-pvc
+  namespace: real-estate
+  labels:
+    app: real-estate-backend
+    component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 5Gi

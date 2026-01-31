@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "post-service.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "post-service.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.postService.service.type }}
+  ports:
+    - port: {{ .Values.postService.service.port }}
+      targetPort: {{ .Values.postService.service.targetPort }}
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.postService.service.type "NodePort") .Values.postService.service.nodePort }}
+      nodePort: {{ .Values.postService.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "post-service.selectorLabels" . | nindent 4 }}

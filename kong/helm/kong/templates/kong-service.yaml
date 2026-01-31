@@ -1,0 +1,42 @@
+---
+# Kong Proxy Service - Entry point for all API traffic
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.kong.name }}-proxy
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.kong.name }}
+spec:
+  type: {{ .Values.kong.proxy.type }}
+  ports:
+    - name: http
+      port: {{ .Values.kong.proxy.servicePort }}
+      targetPort: {{ .Values.kong.proxy.httpPort }}
+      protocol: TCP
+      {{- if and (eq .Values.kong.proxy.type "NodePort") .Values.kong.proxy.nodePort }}
+      nodePort: {{ .Values.kong.proxy.nodePort }}
+      {{- end }}
+  selector:
+    app: {{ .Values.kong.name }}
+---
+# Kong Admin Service - Internal configuration API
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.kong.name }}-admin
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.kong.name }}
+spec:
+  type: {{ .Values.kong.admin.type }}
+  ports:
+    - name: admin
+      port: {{ .Values.kong.admin.servicePort }}
+      targetPort: {{ .Values.kong.admin.httpPort }}
+      protocol: TCP
+      {{- if and (eq .Values.kong.admin.type "NodePort") .Values.kong.admin.nodePort }}
+      nodePort: {{ .Values.kong.admin.nodePort }}
+      {{- end }}
+  selector:
+    app: {{ .Values.kong.name }}

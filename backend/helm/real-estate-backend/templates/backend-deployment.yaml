@@ -7,7 +7,9 @@ metadata:
     {{- include "real-estate-backend.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
+  {{- if not (and .Values.backend.autoscaling .Values.backend.autoscaling.enabled) }}
   replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "real-estate-backend.selectorLabels" . | nindent 6 }}
@@ -15,7 +17,28 @@ spec:
     metadata:
       labels:
         {{- include "real-estate-backend.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.backend.service.targetPort }}"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
+      {{- if .Values.backend.serviceAccount }}
+      {{- if .Values.backend.serviceAccount.create }}
+      serviceAccountName: {{ include "real-estate-backend.fullname" . }}-sa
+      {{- end }}
+      {{- end }}
+      {{- if .Values.backend.securityContext }}
+      securityContext:
+        {{- toYaml .Values.backend.securityContext | nindent 8 }}
+      {{- end }}
+      {{- if .Values.backend.affinity }}
+      affinity:
+        {{- toYaml .Values.backend.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.backend.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.backend.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
       containers:
         - name: backend
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"

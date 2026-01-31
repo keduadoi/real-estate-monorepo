@@ -1,0 +1,64 @@
+namespace:
+  name: kong
+  create: true
+
+kong:
+  name: kong
+  replicaCount: 1
+
+  image:
+    repository: kong
+    tag: "3.5"
+    pullPolicy: IfNotPresent
+
+  proxy:
+    type: NodePort
+    httpPort: 8000
+    servicePort: 80
+    nodePort: 30000
+
+  admin:
+    type: NodePort
+    httpPort: 8001
+    servicePort: 8001
+    nodePort: 30001
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+postgresql:
+  enabled: true
+  name: kong-postgres
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 1Gi
+
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Redis for distributed rate limiting
+redis:
+  enabled: true
+  name: kong-redis
+  maxmemory: "128mb"
+
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

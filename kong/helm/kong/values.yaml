@@ -1,0 +1,116 @@
+namespace:
+  name: kong
+  create: true
+
+kong:
+  name: kong
+  replicaCount: 2
+
+  image:
+    repository: kong
+    tag: "3.5"
+    pullPolicy: IfNotPresent
+
+  env:
+    database: postgres
+    pgHost: kong-postgres
+    pgPort: "5432"
+    pgDatabase: kong
+    pgUser: kong
+    pgPassword: kong
+    proxyAccessLog: /dev/stdout
+    adminAccessLog: /dev/stdout
+    proxyErrorLog: /dev/stderr
+    adminErrorLog: /dev/stderr
+    plugins: bundled
+
+  proxy:
+    type: LoadBalancer
+    httpPort: 8000
+    servicePort: 80
+    tlsPort: 8443
+    tlsServicePort: 443
+
+  admin:
+    type: ClusterIP
+    httpPort: 8001
+    servicePort: 8001
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  livenessProbe:
+    httpGet:
+      path: /status
+      port: 8001
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /status
+      port: 8001
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+postgresql:
+  enabled: true
+  name: kong-postgres
+
+  image:
+    repository: postgres
+    tag: "18-alpine"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  auth:
+    database: kong
+    username: kong
+    password: kong
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 2Gi
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Redis for distributed rate limiting
+redis:
+  enabled: true
+  name: kong-redis
+
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+  maxmemory: "256mb"
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi

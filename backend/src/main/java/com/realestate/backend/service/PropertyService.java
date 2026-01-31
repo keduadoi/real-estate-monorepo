@@ -2,8 +2,12 @@ package com.realestate.backend.service;
 
 import com.realestate.backend.dto.*;
 import com.realestate.backend.entity.Property;
+import com.realestate.backend.exception.ForbiddenException;
+import com.realestate.backend.exception.UnauthorizedException;
 import com.realestate.backend.mapper.PropertyMapper;
 import com.realestate.backend.repository.PropertyRepository;
+import com.realestate.backend.security.UserContext;
+import com.realestate.backend.security.UserInfo;
 import com.realestate.backend.specification.PropertySpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -88,6 +92,16 @@ public class PropertyService {
     }
 
     /**
+     * Get properties for the current authenticated user
+     */
+    public PageResponse<PropertyDTO> getCurrentUserProperties(int page, int size) {
+        UserInfo user = requireAuthentication();
+        log.debug("Getting properties for current user: {}", user.getId());
+
+        return getPropertiesByUserId(user.getId(), page, size);
+    }
+
+    /**
      * Get distinct cities
      */
     public List<String> getDistinctCities() {
@@ -96,21 +110,31 @@ public class PropertyService {
     }
 
     /**
-     * Create a new property
+     * Create a new property.
+     * If userId is not provided in request, uses the current authenticated user.
      */
     @Transactional
     public PropertyDTO createProperty(CreatePropertyRequest request) {
         log.debug("Creating new property: {}", request.getTitle());
 
+        // If userId not provided, use current authenticated user
+        if (request.getUserId() == null || request.getUserId().isBlank()) {
+            UserInfo user = requireAuthentication();
+            request.setUserId(user.getId());
+            log.debug("Set userId from authenticated user: {}", user.getId());
+        }
+
         Property property = propertyMapper.toEntity(request);
         Property savedProperty = propertyRepository.save(property);
 
-        log.info("Property created successfully with ID: {}", savedProperty.getId());
+        log.info("Property created successfully with ID: {} by user: {}",
+                savedProperty.getId(), savedProperty.getUserId());
         return propertyMapper.toDTO(savedProperty);
     }
 
     /**
-     * Update an existing property
+     * Update an existing property.
+     * Validates ownership - only property owner or admin can update.
      */
     @Transactional
     public PropertyDTO updateProperty(Long id, UpdatePropertyRequest request) {
@@ -119,15 +143,20 @@ public class PropertyService {
         Property property = propertyRepository.findById(id)
                 .orElseThrow(() -> new PropertyNotFoundException("Property not found with ID: " + id));
 
+        // Validate ownership
+        validateOwnership(property);
+
         propertyMapper.updateEntity(property, request);
         Property updatedProperty = propertyRepository.save(property);
 
-        log.info("Property updated successfully with ID: {}", id);
+        log.info("Property updated successfully with ID: {} by user: {}",
+                id, UserContext.getCurrentUserId().orElse("unknown"));
         return propertyMapper.toDTO(updatedProperty);
     }
 
     /**
-     * Delete a property by ID
+     * Delete a property by ID.
+     * Validates ownership - only property owner or admin can delete.
      */
     @Transactional
     public void deleteProperty(Long id) {
@@ -136,6 +165,9 @@ public class PropertyService {
         Property property = propertyRepository.findById(id)
                 .orElseThrow(() -> new PropertyNotFoundException("Property not found with ID: " + id));
 
+        // Validate ownership
+        validateOwnership(property);
+
         // Delete associated images
         if (property.getImages() != null && !property.getImages().isEmpty()) {
             log.debug("Deleting {} image(s) for property {}", property.getImages().size(), id);
@@ -143,7 +175,8 @@ public class PropertyService {
         }
 
         propertyRepository.deleteById(id);
-        log.info("Property deleted successfully with ID: {}", id);
+        log.info("Property deleted successfully with ID: {} by user: {}",
+                id, UserContext.getCurrentUserId().orElse("unknown"));
     }
 
     /**
@@ -215,6 +248,40 @@ public class PropertyService {
                 .perPage(propertyPage.getSize())
                 .totalPages(propertyPage.getTotalPages())
                 .build();
+    }
+
+    // ========================================
+    // Security Helper Methods
+    // ========================================
+
+    /**
+     * Require authentication - throws UnauthorizedException if not authenticated
+     */
+    private UserInfo requireAuthentication() {
+        return UserContext.getCurrentUser()
+                .filter(UserInfo::isAuthenticated)
+                .orElseThrow(() -> new UnauthorizedException("Authentication required"));
+    }
+
+    /**
+     * Validate that the current user owns the property or is an admin.
+     * Throws ForbiddenException if validation fails.
+     */
+    private void validateOwnership(Property property) {
+        UserInfo user = requireAuthentication();
+
+        // Admins can modify any property
+        if (user.isAdmin()) {
+            log.debug("Admin user {} accessing property {}", user.getId(), property.getId());
+            return;
+        }
+
+        // Check if current user owns the property
+        if (!user.getId().equals(property.getUserId())) {
+            log.warn("User {} attempted to access property {} owned by {}",
+                    user.getId(), property.getId(), property.getUserId());
+            throw new ForbiddenException("You do not have permission to modify this property");
+        }
     }
 
     /**

@@ -1,18 +1,22 @@
 'use client';
 
-import { PostWithMetadata } from '@/types';
+import { Post } from '@/types';
 import LikeButton from './LikeButton';
 
 interface PostCardProps {
-  post: PostWithMetadata;
-  onLikeToggle?: (postId: string) => void;
+  post: Post;
+  onLikeToggle?: (postId: string) => Promise<void>;
   isAuthenticated: boolean;
 }
 
 // Format timestamp to Vietnamese
 function formatTimestamp(timestamp: string): string {
   const now = new Date();
-  const postDate = new Date(timestamp);
+  // Append 'Z' if timestamp lacks timezone indicator (server returns UTC without Z)
+  const normalizedTimestamp = timestamp && !timestamp.endsWith('Z') && !timestamp.includes('+')
+    ? timestamp + 'Z'
+    : timestamp;
+  const postDate = new Date(normalizedTimestamp);
   const diffInMs = now.getTime() - postDate.getTime();
   const diffInMinutes = Math.floor(diffInMs / 60000);
   const diffInHours = Math.floor(diffInMs / 3600000);
@@ -32,11 +36,14 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCardProps) {
-  const handleLikeToggle = () => {
+  const handleLikeToggle = async () => {
     if (onLikeToggle) {
-      onLikeToggle(post.id);
+      await onLikeToggle(post.id);
     }
   };
+
+  // Get author name (fallback to email if name is null)
+  const authorName = post.author.name || post.author.email || 'Người dùng ẩn danh';
 
   // Get initials from name for avatar
   const getInitials = (name: string): string => {
@@ -54,14 +61,14 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
         {/* Avatar */}
         <div className="flex-shrink-0">
           <div className="w-12 h-12 rounded-full bg-primary-500 text-white flex items-center justify-center font-semibold text-lg">
-            {getInitials(post.user.name)}
+            {getInitials(authorName)}
           </div>
         </div>
 
         {/* User Name & Timestamp */}
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 truncate">
-            {post.user.name}
+            {authorName}
           </h3>
           <p className="text-sm text-gray-500">
             {formatTimestamp(post.createdAt)}

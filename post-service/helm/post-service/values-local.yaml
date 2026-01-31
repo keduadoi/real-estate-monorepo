@@ -1,0 +1,52 @@
+# Local development values for post-service
+# PostgreSQL runs in Docker container, post-service runs in K8s
+
+namespace:
+  name: real-estate
+  create: false
+
+postService:
+  replicaCount: 1
+
+  image:
+    repository: post-service
+    pullPolicy: Never  # Use local image
+    tag: "latest"
+
+  service:
+    type: NodePort
+    port: 8082
+    targetPort: 8082
+    nodePort: 30082
+
+  env:
+    springProfile: dev
+    # External database connection (Docker PostgreSQL)
+    dbHost: host.docker.internal
+    dbPort: 5434
+    dbName: postdb
+    dbUser: postgres
+    dbPassword: postgres
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  livenessProbe:
+    initialDelaySeconds: 120
+    periodSeconds: 10
+
+  readinessProbe:
+    initialDelaySeconds: 90
+    periodSeconds: 10
+
+  autoscaling:
+    enabled: false
+
+# DISABLE bundled PostgreSQL - using external Docker PostgreSQL instead
+postgresql:
+  enabled: false

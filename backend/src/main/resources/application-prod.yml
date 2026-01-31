@@ -69,21 +69,32 @@ management:
       show-details: never
       probes:
         enabled: true
+    prometheus:
+      enabled: true
   health:
     livenessstate:
       enabled: true
     readinessstate:
       enabled: true
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
+  metrics:
     tags:
       environment: production
       application: ${spring.application.name}
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      hikaricp: true
     distribution:
       percentiles-histogram:
         http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.75, 0.95, 0.99
 
 # Logging Configuration for Production
 logging:
@@ -108,7 +119,9 @@ logging:
     file: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
 
 # CORS Configuration for Production
+# When behind Kong Gateway, disable CORS as Kong handles it
 cors:
+  enabled: ${CORS_ENABLED:false}
   allowed-origins: ${FRONTEND_URL:https://realestate.example.com},${FRONTEND_URL_WWW:https://www.realestate.example.com}
 
 # Storage Configuration for Production

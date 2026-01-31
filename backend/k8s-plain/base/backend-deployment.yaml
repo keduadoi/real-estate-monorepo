@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: real-estate-backend-backend
+  namespace: real-estate
+  labels:
+    app: real-estate-backend
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: real-estate-backend
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: real-estate-backend
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: real-estate-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: real-estate-backend-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: real-estate-backend-config
+                  key: SERVER_PORT
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: real-estate-backend-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: real-estate-backend-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: real-estate-backend-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: real-estate-backend-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: real-estate-backend-secret
+                  key: DB_PASSWORD
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: real-estate-backend-config
+                  key: CORS_ALLOWED_ORIGINS
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: uploads-storage
+              mountPath: /app/uploads
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: uploads-storage
+          persistentVolumeClaim:
+            claimName: real-estate-backend-backend-pvc

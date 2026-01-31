@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Property } from '@/types';
-import { formatPrice, formatArea } from '@/lib/utils';
+import { formatPrice, formatArea, fixImageUrl } from '@/lib/utils';
 
 interface PropertyCardProps {
   property: Property;
@@ -27,7 +27,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
       <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer h-full flex flex-col">
         <div className="relative h-48 w-full">
           <Image
-            src={property.images[0]}
+            src={fixImageUrl(property.images?.[0])}
             alt={property.title}
             fill
             className="object-cover"

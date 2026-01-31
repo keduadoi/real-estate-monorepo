@@ -1,0 +1,339 @@
+// Continuous Integration Pipeline
+// Runs on every commit - builds, tests, scans, publishes artifact
+// Does NOT deploy to production
+
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ECR_REPOSITORY = 'real-estate-backend'
+        APP_NAME = 'real-estate-backend'
+        DOCKER_BUILDKIT = '1'
+        IMAGE_TAG = "${env.GIT_COMMIT.take(8)}"
+        FULL_IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+        AWS_CREDENTIALS = credentials('aws-credentials')
+        SONAR_TOKEN = credentials('sonarqube-token')
+        SLACK_WEBHOOK = credentials('slack-webhook-url')
+    }
+
+    // Automatic triggers
+    triggers {
+        githubPush()
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timeout(time: 20, unit: 'MINUTES')
+        timestamps()
+        ansiColor('xterm')
+    }
+
+    stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "CI Pipeline - Build, Test, Publish"
+                    echo "=========================================="
+                    echo "Branch: ${env.GIT_BRANCH}"
+                    echo "Commit: ${env.GIT_COMMIT}"
+                    echo "Image Tag: ${IMAGE_TAG}"
+                    echo "=========================================="
+
+                    // Determine environment based on branch
+                    env.TARGET_ENV = 'none'
+                    if (env.GIT_BRANCH == 'develop') {
+                        env.TARGET_ENV = 'dev'
+                    } else if (env.GIT_BRANCH == 'staging') {
+                        env.TARGET_ENV = 'staging'
+                    } else if (env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'master') {
+                        env.TARGET_ENV = 'prod-ready'  // Don't auto-deploy!
+                    }
+
+                    echo "Target Environment: ${env.TARGET_ENV}"
+
+                    slackSend(
+                        color: '#0099CC',
+                        message: """
+                            *CI Pipeline Started* 🔨
+                            Branch: ${env.GIT_BRANCH}
+                            Commit: ${env.GIT_COMMIT.take(8)}
+                            Author: ${env.CHANGE_AUTHOR}
+                            Build: ${env.BUILD_URL}
+                        """.stripIndent()
+                    )
+                }
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh '''
+                    echo "Current commit:"
+                    git log -1 --pretty=format:"%h - %an, %ar : %s"
+                '''
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('backend') {
+                    echo "Building Spring Boot application..."
+                    sh './mvnw clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                dir('backend') {
+                    echo "Running unit tests..."
+                    sh './mvnw test'
+                }
+            }
+            post {
+                always {
+                    junit 'backend/target/surefire-reports/*.xml'
+                    publishHTML(target: [
+                        reportDir: 'backend/target/surefire-reports',
+                        reportFiles: 'index.html',
+                        reportName: 'Unit Test Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            steps {
+                dir('backend') {
+                    echo "Running integration tests..."
+                    sh './mvnw verify -DskipUnitTests=true'
+                }
+            }
+            post {
+                always {
+                    junit 'backend/target/failsafe-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Code Quality') {
+            steps {
+                dir('backend') {
+                    echo "Running SonarQube analysis..."
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            ./mvnw sonar:sonar \
+                                -Dsonar.projectKey=real-estate-backend \
+                                -Dsonar.projectName="Real Estate Backend" \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.login=$SONAR_TOKEN
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            parallel {
+                stage('OWASP Check') {
+                    steps {
+                        dir('backend') {
+                            sh './mvnw org.owasp:dependency-check-maven:check'
+                        }
+                    }
+                    post {
+                        always {
+                            publishHTML(target: [
+                                reportDir: 'backend/target',
+                                reportFiles: 'dependency-check-report.html',
+                                reportName: 'OWASP Dependency Check'
+                            ])
+                        }
+                    }
+                }
+                stage('Trivy Scan') {
+                    steps {
+                        sh '''
+                            trivy fs --severity HIGH,CRITICAL \
+                                --format json \
+                                --output trivy-report.json \
+                                ./backend
+                        '''
+                    }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'trivy-report.json'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('backend') {
+                    script {
+                        echo "Building Docker image..."
+                        sh """
+                            docker build \
+                                --build-arg BUILD_DATE=\$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+                                --build-arg VCS_REF=${env.GIT_COMMIT} \
+                                --build-arg VERSION=${IMAGE_TAG} \
+                                -t ${FULL_IMAGE_NAME} \
+                                -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${env.GIT_BRANCH} \
+                                .
+                        """
+
+                        // Add 'latest' tag only for main/master
+                        if (env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'master') {
+                            sh "docker tag ${FULL_IMAGE_NAME} ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Scan Docker Image') {
+            steps {
+                echo "Scanning Docker image..."
+                sh """
+                    trivy image --severity HIGH,CRITICAL \
+                        --format json \
+                        --output trivy-image-report.json \
+                        ${FULL_IMAGE_NAME}
+                """
+
+                // Fail on CRITICAL vulnerabilities
+                sh """
+                    trivy image --severity CRITICAL \
+                        --exit-code 1 \
+                        ${FULL_IMAGE_NAME}
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-image-report.json'
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                script {
+                    echo "Pushing to ECR..."
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    """
+
+                    sh "docker push ${FULL_IMAGE_NAME}"
+                    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${env.GIT_BRANCH}"
+
+                    if (env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'master') {
+                        sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+                    }
+
+                    echo "✓ Image pushed successfully"
+                    echo "Image: ${FULL_IMAGE_NAME}"
+                }
+            }
+        }
+
+        stage('Create Deployment Artifact') {
+            steps {
+                script {
+                    echo "=========================================="
+                    echo "✓ BUILD COMPLETED SUCCESSFULLY"
+                    echo "=========================================="
+                    echo ""
+                    echo "Image: ${FULL_IMAGE_NAME}"
+                    echo "Tag: ${IMAGE_TAG}"
+                    echo "Branch: ${env.GIT_BRANCH}"
+                    echo ""
+                    echo "To deploy, run the CD pipeline:"
+                    echo "  1. Go to Jenkins → real-estate-backend-cd"
+                    echo "  2. Click 'Build with Parameters'"
+                    echo "  3. Select environment and image tag: ${IMAGE_TAG}"
+                    echo "  4. Approve and deploy"
+                    echo ""
+                    echo "=========================================="
+
+                    // Create deployment manifest
+                    sh """
+                        cat > deployment-manifest.json <<EOF
+{
+    "image": "${FULL_IMAGE_NAME}",
+    "tag": "${IMAGE_TAG}",
+    "commit": "${env.GIT_COMMIT}",
+    "branch": "${env.GIT_BRANCH}",
+    "build_number": "${env.BUILD_NUMBER}",
+    "timestamp": "\$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "tests_passed": true,
+    "security_scan_passed": true,
+    "quality_gate_passed": true
+}
+EOF
+                    """
+
+                    archiveArtifacts artifacts: 'deployment-manifest.json', fingerprint: true
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                slackSend(
+                    color: 'good',
+                    message: """
+                        *CI Pipeline Succeeded* ✅
+                        Branch: ${env.GIT_BRANCH}
+                        Commit: ${env.GIT_COMMIT.take(8)}
+                        Image Tag: ${IMAGE_TAG}
+                        Duration: ${currentBuild.durationString}
+
+                        🚀 *Ready for Deployment*
+                        Run CD pipeline to deploy this image
+                    """.stripIndent()
+                )
+            }
+        }
+
+        failure {
+            slackSend(
+                color: 'danger',
+                message: """
+                    *CI Pipeline Failed* ❌
+                    Branch: ${env.GIT_BRANCH}
+                    Commit: ${env.GIT_COMMIT.take(8)}
+                    Stage: ${env.STAGE_NAME}
+                    Build: ${env.BUILD_URL}
+                """.stripIndent()
+            )
+        }
+
+        always {
+            sh "docker system prune -f || true"
+            cleanWs()
+        }
+    }
+}

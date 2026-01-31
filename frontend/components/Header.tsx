@@ -62,12 +62,20 @@ export default function Header() {
                 </div>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Đăng nhập
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link
+                  href="/register"
+                  className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Đăng ký
+                </Link>
+                <Link
+                  href="/login"
+                  className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Đăng nhập
+                </Link>
+              </div>
             )}
           </div>
 
@@ -151,13 +159,22 @@ export default function Header() {
                 </button>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="block text-primary-600 hover:bg-primary-50 px-3 py-2 rounded-md text-base font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Đăng nhập
-              </Link>
+              <>
+                <Link
+                  href="/register"
+                  className="block text-gray-700 hover:text-primary-600 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Đăng ký
+                </Link>
+                <Link
+                  href="/login"
+                  className="block text-primary-600 hover:bg-primary-50 px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Đăng nhập
+                </Link>
+              </>
             )}
           </div>
         )}

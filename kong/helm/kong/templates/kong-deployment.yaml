@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.kong.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.kong.name }}
+spec:
+  {{- if not (and .Values.kong.autoscaling .Values.kong.autoscaling.enabled) }}
+  replicas: {{ .Values.kong.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ .Values.kong.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.kong.name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.kong.admin.httpPort }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- if .Values.kong.securityContext }}
+      securityContext:
+        {{- toYaml .Values.kong.securityContext | nindent 8 }}
+      {{- end }}
+      {{- if .Values.kong.affinity }}
+      affinity:
+        {{- toYaml .Values.kong.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.kong.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.kong.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until nc -z {{ .Values.kong.env.pgHost }} {{ .Values.kong.env.pgPort }}; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready"
+      containers:
+        - name: kong
+          image: "{{ .Values.kong.image.repository }}:{{ .Values.kong.image.tag }}"
+          imagePullPolicy: {{ .Values.kong.image.pullPolicy }}
+          ports:
+            - name: proxy
+              containerPort: {{ .Values.kong.proxy.httpPort }}
+              protocol: TCP
+            - name: admin
+              containerPort: {{ .Values.kong.admin.httpPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.kong.name }}-config
+            - secretRef:
+                name: {{ .Values.kong.name }}-secret
+          resources:
+            {{- toYaml .Values.kong.resources | nindent 12 }}
+          {{- with .Values.kong.livenessProbe }}
+          livenessProbe:
+            httpGet:
+              path: {{ .httpGet.path }}
+              port: {{ .httpGet.port }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          {{- with .Values.kong.readinessProbe }}
+          readinessProbe:
+            httpGet:
+              path: {{ .httpGet.path }}
+              port: {{ .httpGet.port }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}

@@ -1,4 +1,13 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+// Use local API routes for upload (with backend fallback)
+const getApiUrl = () => {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  }
+  return '';
+};
+
+// For property-specific endpoints that need to go through Kong
+const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 export interface ImageUploadResponse {
   imageUrls: string[];
@@ -11,6 +20,7 @@ export interface ImageDeleteRequest {
 
 /**
  * Upload temporary images before property creation
+ * Uses local API route which proxies to backend or falls back to local storage
  */
 export async function uploadTempImages(files: File[]): Promise<string[]> {
   const formData = new FormData();
@@ -18,7 +28,7 @@ export async function uploadTempImages(files: File[]): Promise<string[]> {
     formData.append('files', file);
   });
 
-  const response = await fetch(`${API_URL}/upload/temp`, {
+  const response = await fetch(`${getApiUrl()}/api/upload/temp`, {
     method: 'POST',
     body: formData,
   });

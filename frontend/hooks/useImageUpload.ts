@@ -100,10 +100,12 @@ export function useImageUpload(): UseImageUploadReturn {
           formData.append('files', img.file);
         });
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+        // Use local API route for temp uploads (with backend fallback)
+        // For property-specific uploads, use the backend API directly
+        const backendApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
         const endpoint = propertyId
-          ? `${apiUrl}/properties/${propertyId}/images`
-          : `${apiUrl}/upload/temp`;
+          ? `${backendApiUrl}/properties/${propertyId}/images`
+          : '/api/upload/temp';
 
         const response = await fetch(endpoint, {
           method: 'POST',

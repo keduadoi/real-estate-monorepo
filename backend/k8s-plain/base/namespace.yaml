@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: real-estate
+  labels:
+    name: real-estate
+    app: real-estate-backend

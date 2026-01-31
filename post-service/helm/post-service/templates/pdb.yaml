@@ -1,0 +1,14 @@
+{{- if .Values.postService.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "post-service.fullname" . }}-pdb
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "post-service.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.postService.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "post-service.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -14,12 +14,13 @@ import java.util.List;
 /**
  * REST Controller for Property CRUD operations.
  * Base path: /api/properties
+ *
+ * CORS is handled by Kong Gateway - no @CrossOrigin needed.
  */
 @RestController
 @RequestMapping("/api/properties")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"${cors.allowed-origins:http://localhost:3000}"})
 public class PropertyController {
 
     private final PropertyService propertyService;
@@ -72,7 +73,23 @@ public class PropertyController {
     }
 
     /**
-     * Get properties by user ID
+     * Get properties for the current authenticated user.
+     * Uses user ID from Kong JWT headers (X-User-Id).
+     * GET /api/properties/user?page=0&size=20
+     */
+    @GetMapping("/user")
+    public ResponseEntity<PageResponse<PropertyDTO>> getCurrentUserProperties(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.info("GET /api/properties/user (current user) - page: {}, size: {}", page, size);
+
+        PageResponse<PropertyDTO> response = propertyService.getCurrentUserProperties(page, size);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get properties by user ID (for admin or public profile viewing)
      * GET /api/properties/user/{userId}?page=0&size=20
      */
     @GetMapping("/user/{userId}")

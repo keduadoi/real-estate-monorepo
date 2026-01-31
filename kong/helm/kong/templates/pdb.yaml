@@ -1,0 +1,16 @@
+{{- if .Values.kong.podDisruptionBudget }}
+{{- if .Values.kong.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.kong.name }}-pdb
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.kong.name }}
+spec:
+  minAvailable: {{ .Values.kong.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ .Values.kong.name }}
+{{- end }}
+{{- end }}

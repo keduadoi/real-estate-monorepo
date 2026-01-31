@@ -1,0 +1,915 @@
+{
+  "info": {
+    "_postman_id": "real-estate-kong-api-v2",
+    "name": "Real Estate API (Kong Gateway)",
+    "description": "Real Estate Application API collection for Kong Gateway integration.\n\n## Setup\n1. Import this collection into Postman\n2. Import the environment file (Real_Estate_Kong_Environment.postman_environment.json)\n3. Select the environment before running requests\n\n## Authentication Flow\n1. Register a new user or login with existing credentials\n2. The access token will be automatically saved to the environment\n3. Protected endpoints will use the saved token\n\n## Rate Limits\n- Auth endpoints: 10 requests/minute\n- API endpoints: 100 requests/minute",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "variable": [
+    {
+      "key": "kong_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Kong Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/actuator/health",
+              "host": ["{{kong_url}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Check Kong Gateway health status"
+          }
+        },
+        {
+          "name": "Auth Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/auth/actuator/health",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "actuator", "health"]
+            },
+            "description": "Check Auth Service health via Kong"
+          }
+        },
+        {
+          "name": "JWKS Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/.well-known/jwks.json",
+              "host": ["{{kong_url}}"],
+              "path": [".well-known", "jwks.json"]
+            },
+            "description": "Get JSON Web Key Set for JWT validation"
+          }
+        }
+      ],
+      "description": "Health check endpoints for monitoring service status"
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                  "        console.log('Access token saved');",
+                  "    }",
+                  "    if (jsonData.refreshToken) {",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                  "        console.log('Refresh token saved');",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Registration successful or user exists', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 400, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"TestPassword123\",\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/auth/register",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user account.\n\nPassword requirements:\n- Minimum 8 characters (12 in production)\n- At least one uppercase letter\n- At least one lowercase letter\n- At least one digit"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                  "        console.log('Access token saved');",
+                  "    }",
+                  "    if (jsonData.refreshToken) {",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                  "        console.log('Refresh token saved');",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Login successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has tokens', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('accessToken');",
+                  "    pm.expect(jsonData).to.have.property('refreshToken');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"TestPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/auth/login",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user and receive JWT tokens.\n\nRate limit: 10 requests/minute"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                  "        console.log('New access token saved');",
+                  "    }",
+                  "    if (jsonData.refreshToken) {",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                  "        console.log('New refresh token saved');",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Token refresh successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/auth/refresh",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token.\n\nRefresh tokens are rotated on each use for security."
+          }
+        },
+        {
+          "name": "Get Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get user successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has user data', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/auth/me",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current authenticated user information.\n\nRequires valid JWT token."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"currentPassword\": \"TestPassword123\",\n    \"newPassword\": \"NewPassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/auth/change-password",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "change-password"]
+            },
+            "description": "Change password for authenticated user.\n\nRequires valid JWT token and current password."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"testuser@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/auth/forgot-password",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Request password reset email.\n\nA reset token will be sent to the provided email address."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"reset-token-from-email\",\n    \"newPassword\": \"NewPassword789\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/auth/reset-password",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Reset password using token from email.\n\nToken expires after 1 hour."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/auth/logout",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout and invalidate refresh token.\n\nRequires valid JWT token."
+          }
+        }
+      ],
+      "description": "Authentication endpoints for user registration, login, and token management.\n\nAll auth endpoints have a rate limit of 10 requests/minute."
+    },
+    {
+      "name": "Properties",
+      "item": [
+        {
+          "name": "List Properties (Public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get properties successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is array or paginated', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.satisfy(function(data) {",
+                  "        return Array.isArray(data) || data.hasOwnProperty('content');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/properties?page=0&size=10",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get list of all properties with pagination.\n\nPublic endpoint - no authentication required."
+          }
+        },
+        {
+          "name": "Get Property by ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/1",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "1"]
+            },
+            "description": "Get a specific property by ID.\n\nPublic endpoint - no authentication required."
+          }
+        },
+        {
+          "name": "Search Properties (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/search?city=Ho Chi Minh&minPrice=100000&maxPrice=500000&propertyType=APARTMENT",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "search"],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Ho Chi Minh"
+                },
+                {
+                  "key": "minPrice",
+                  "value": "100000"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "500000"
+                },
+                {
+                  "key": "propertyType",
+                  "value": "APARTMENT",
+                  "description": "APARTMENT, HOUSE, VILLA, LAND, OFFICE"
+                }
+              ]
+            },
+            "description": "Search properties with filters.\n\nAvailable filters:\n- city: City name\n- minPrice, maxPrice: Price range\n- propertyType: APARTMENT, HOUSE, VILLA, LAND, OFFICE\n- minArea, maxArea: Area range in m2\n- bedrooms, bathrooms: Number of rooms"
+          }
+        },
+        {
+          "name": "Get Cities (Public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get cities successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is array', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/cities",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "cities"]
+            },
+            "description": "Get list of all cities with properties.\n\nPublic endpoint - no authentication required."
+          }
+        },
+        {
+          "name": "Get My Properties",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get user properties successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/user",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "user"]
+            },
+            "description": "Get properties owned by the authenticated user.\n\nRequires valid JWT token."
+          }
+        },
+        {
+          "name": "Create Property",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.id) {",
+                  "        pm.collectionVariables.set('property_id', jsonData.id);",
+                  "        console.log('Property ID saved: ' + jsonData.id);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Property created', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Beautiful Apartment in District 1\",\n    \"description\": \"Modern 2-bedroom apartment with city view\",\n    \"price\": 250000,\n    \"area\": 75.5,\n    \"bedrooms\": 2,\n    \"bathrooms\": 2,\n    \"propertyType\": \"APARTMENT\",\n    \"listingType\": \"SALE\",\n    \"address\": \"123 Nguyen Hue Street\",\n    \"city\": \"Ho Chi Minh\",\n    \"district\": \"District 1\",\n    \"ward\": \"Ben Nghe\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/api/properties",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties"]
+            },
+            "description": "Create a new property listing.\n\nRequires valid JWT token.\n\nProperty types: APARTMENT, HOUSE, VILLA, LAND, OFFICE\nListing types: SALE, RENT"
+          }
+        },
+        {
+          "name": "Update Property",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Updated: Beautiful Apartment in District 1\",\n    \"description\": \"Modern 2-bedroom apartment with stunning city view - UPDATED\",\n    \"price\": 275000,\n    \"area\": 75.5,\n    \"bedrooms\": 2,\n    \"bathrooms\": 2,\n    \"propertyType\": \"APARTMENT\",\n    \"listingType\": \"SALE\",\n    \"address\": \"123 Nguyen Hue Street\",\n    \"city\": \"Ho Chi Minh\",\n    \"district\": \"District 1\",\n    \"ward\": \"Ben Nghe\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/api/properties/{{property_id}}",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "{{property_id}}"]
+            },
+            "description": "Update an existing property.\n\nRequires valid JWT token.\nOnly the property owner can update."
+          }
+        },
+        {
+          "name": "Delete Property",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/{{property_id}}",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "{{property_id}}"]
+            },
+            "description": "Delete a property listing.\n\nRequires valid JWT token.\nOnly the property owner can delete."
+          }
+        }
+      ],
+      "description": "Property management endpoints.\n\nPublic endpoints (GET) have no authentication.\nProtected endpoints (POST, PUT, DELETE) require JWT token."
+    },
+    {
+      "name": "File Upload",
+      "item": [
+        {
+          "name": "Upload Property Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "propertyId",
+                  "value": "{{property_id}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{kong_url}}/api/upload/property-image",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "upload", "property-image"]
+            },
+            "description": "Upload image for a property.\n\nRequires valid JWT token.\nMax file size: 10MB\nSupported formats: JPG, PNG, WebP"
+          }
+        },
+        {
+          "name": "Delete Property Image",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/upload/property-image/{{image_id}}",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "upload", "property-image", "{{image_id}}"]
+            },
+            "description": "Delete a property image.\n\nRequires valid JWT token.\nOnly the property owner can delete images."
+          }
+        }
+      ],
+      "description": "File upload endpoints for property images.\n\nAll upload endpoints require JWT authentication.\nRate limit: 10 uploads/minute"
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get Key Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/admin/keys/stats",
+              "host": ["{{kong_url}}"],
+              "path": ["admin", "keys", "stats"]
+            },
+            "description": "Get JWT key rotation statistics.\n\nRequires admin role."
+          }
+        },
+        {
+          "name": "Trigger Key Rotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/admin/keys/rotate",
+              "host": ["{{kong_url}}"],
+              "path": ["admin", "keys", "rotate"]
+            },
+            "description": "Manually trigger JWT key rotation.\n\nRequires admin role.\nUse with caution - existing tokens signed with old key remain valid during grace period."
+          }
+        },
+        {
+          "name": "Get All Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/users?page=0&size=20",
+              "host": ["{{kong_url}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all users (admin only).\n\nRequires admin role."
+          }
+        },
+        {
+          "name": "Get All Properties (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/admin/properties?page=0&size=20",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "admin", "properties"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all properties with admin view.\n\nRequires admin role."
+          }
+        }
+      ],
+      "description": "Admin-only endpoints.\n\nAll admin endpoints require JWT token with admin role."
+    },
+    {
+      "name": "Testing",
+      "item": [
+        {
+          "name": "Test Rate Limiting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Check rate limit headers",
+                  "pm.test('Rate limit headers present', function() {",
+                  "    pm.expect(pm.response.headers.has('X-RateLimit-Limit-Minute')).to.be.true;",
+                  "    pm.expect(pm.response.headers.has('X-RateLimit-Remaining-Minute')).to.be.true;",
+                  "});",
+                  "",
+                  "var remaining = pm.response.headers.get('X-RateLimit-Remaining-Minute');",
+                  "console.log('Rate limit remaining: ' + remaining);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/cities",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "cities"]
+            },
+            "description": "Test rate limiting headers.\n\nCheck X-RateLimit-Limit-Minute and X-RateLimit-Remaining-Minute headers."
+          }
+        },
+        {
+          "name": "Test CORS (Preflight)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('CORS headers present', function() {",
+                  "    pm.expect(pm.response.headers.has('Access-Control-Allow-Origin')).to.be.true;",
+                  "    pm.expect(pm.response.headers.has('Access-Control-Allow-Methods')).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "Authorization, Content-Type"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/auth/login",
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Test CORS preflight request.\n\nVerifies that CORS headers are correctly configured."
+          }
+        },
+        {
+          "name": "Test Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invalid token rejected', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid.token.here"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/user",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "user"]
+            },
+            "description": "Test that invalid JWT tokens are rejected.\n\nExpected: 401 Unauthorized"
+          }
+        },
+        {
+          "name": "Test Missing Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Missing token rejected', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/user",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "user"]
+            },
+            "description": "Test that protected endpoints require token.\n\nExpected: 401 Unauthorized"
+          }
+        },
+        {
+          "name": "Test Request ID Header",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Request ID header present', function() {",
+                  "    pm.expect(pm.response.headers.has('X-Request-ID')).to.be.true;",
+                  "});",
+                  "",
+                  "var requestId = pm.response.headers.get('X-Request-ID');",
+                  "console.log('Request ID: ' + requestId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/properties/cities",
+              "host": ["{{kong_url}}"],
+              "path": ["api", "properties", "cities"]
+            },
+            "description": "Test X-Request-ID correlation header.\n\nUseful for request tracing across services."
+          }
+        }
+      ],
+      "description": "Testing endpoints to verify Kong Gateway features."
+    }
+  ]
+}

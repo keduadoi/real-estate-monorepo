@@ -1,0 +1,23 @@
+services:
+  # PostgreSQL Database for Post Service (Simulates RDS for local development)
+  post-db:
+    image: postgres:16-alpine
+    container_name: post-db
+    environment:
+      POSTGRES_DB: postdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"  # Expose on 5434 to avoid conflict with other postgres instances
+    volumes:
+      - post-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  post-db-data:
+    driver: local

@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:authdb}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8081
+
+jwt:
+  access-token:
+    expiration: 900000      # 15 minutes
+  refresh-token:
+    expiration: 604800000   # 7 days
+  issuer: auth-service
+  audience: real-estate-api
+  key-rotation:
+    enabled: true
+    max-key-age-days: 30    # Rotate keys older than 30 days
+    grace-period-days: 7    # Keep old keys valid for 7 days after rotation
+    cron: "0 0 2 * * ?"     # Run at 2 AM daily
+
+security:
+  password:
+    min-length: 8
+  account:
+    max-failed-attempts: 5
+    lock-duration-minutes: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

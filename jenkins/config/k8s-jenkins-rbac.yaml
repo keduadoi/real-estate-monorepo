@@ -1,0 +1,122 @@
+# Kubernetes RBAC for Jenkins Service Account
+# This allows Jenkins to deploy to EKS cluster
+
+---
+# Namespace for each environment
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: staging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod
+---
+# Service Account for Jenkins
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins-deployer
+  namespace: default
+---
+# ClusterRole with deployment permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jenkins-deployer-role
+rules:
+  # Deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Services
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ConfigMaps and Secrets
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Pods (for logs and status)
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+
+  # PersistentVolumeClaims
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Ingress
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Namespaces
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create"]
+
+  # Jobs (for migrations)
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Service Accounts
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+  # RBAC
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins-deployer-binding
+subjects:
+  - kind: ServiceAccount
+    name: jenkins-deployer
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: jenkins-deployer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Role for managing Helm releases (in each namespace)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: helm-deployer-role
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: helm-deployer-binding
+subjects:
+  - kind: ServiceAccount
+    name: jenkins-deployer
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: helm-deployer-role
+  apiGroup: rbac.authorization.k8s.io

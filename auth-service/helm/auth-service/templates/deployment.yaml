@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.authService.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.authService.name }}
+spec:
+  {{- if not .Values.authService.autoscaling.enabled }}
+  replicas: {{ .Values.authService.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ .Values.authService.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.authService.name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.authService.service.targetPort }}"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      {{- if .Values.authService.serviceAccount }}
+      {{- if .Values.authService.serviceAccount.create }}
+      serviceAccountName: {{ .Values.authService.name }}-sa
+      {{- end }}
+      {{- end }}
+      {{- if .Values.authService.securityContext }}
+      securityContext:
+        {{- toYaml .Values.authService.securityContext | nindent 8 }}
+      {{- end }}
+      {{- if .Values.authService.affinity }}
+      affinity:
+        {{- toYaml .Values.authService.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.authService.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.authService.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.authService.name }}
+          image: "{{ .Values.authService.image.repository }}:{{ .Values.authService.image.tag }}"
+          imagePullPolicy: {{ .Values.authService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.authService.service.targetPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.authService.name }}-config
+            - secretRef:
+                name: {{ .Values.authService.name }}-secret
+          resources:
+            {{- toYaml .Values.authService.resources | nindent 12 }}
+          {{- if .Values.authService.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.authService.livenessProbe.httpGet.path }}
+              port: {{ .Values.authService.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.authService.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.authService.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.authService.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.authService.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.authService.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.authService.readinessProbe.httpGet.path }}
+              port: {{ .Values.authService.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.authService.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.authService.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.authService.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.authService.readinessProbe.failureThreshold }}
+          {{- end }}

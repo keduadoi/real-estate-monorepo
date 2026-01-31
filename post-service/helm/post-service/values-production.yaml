@@ -1,0 +1,85 @@
+# Production values for post-service
+
+namespace:
+  name: real-estate
+  create: false
+
+postService:
+  replicaCount: 2
+
+  image:
+    repository: your-registry.com/post-service
+    pullPolicy: Always
+    tag: "1.0.0"
+
+  service:
+    type: ClusterIP
+    port: 8082
+    targetPort: 8082
+
+  env:
+    springProfile: prod
+    dbHost: postgres-primary
+    dbPort: 5432
+    dbName: postdb
+    # Credentials should be provided via secrets
+    dbUser: ""
+    dbPassword: ""
+    authServiceUrl: http://auth-service:8081
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  livenessProbe:
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # Pod anti-affinity for high availability
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: post-service
+            topologyKey: kubernetes.io/hostname
+
+  # Topology spread for better distribution
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: post-service

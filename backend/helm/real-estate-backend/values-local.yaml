@@ -1,0 +1,87 @@
+# Local development values - PostgreSQL in Docker, Backend in K8s
+# This matches production architecture where DB is external (RDS) and app runs in EKS
+
+namespace:
+  name: real-estate
+  create: false  # Namespace already exists
+
+# Backend Application Configuration
+backend:
+  name: real-estate-backend
+  replicaCount: 1
+
+  image:
+    repository: real-estate-backend
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  service:
+    type: NodePort
+    port: 8080
+    targetPort: 8080
+    nodePort: 30080
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  # Persistent storage for uploads
+  persistence:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 5Gi
+    path: /app/uploads
+
+  # Environment variables - pointing to external Docker PostgreSQL
+  env:
+    springProfile: dev
+    serverPort: 8080
+    corsAllowedOrigins: "http://localhost:3000,http://localhost:3001"
+
+    # External database connection (Docker PostgreSQL)
+    # For Mac/Windows Docker Desktop
+    dbHost: host.docker.internal
+    # For Linux with Kind, use: 172.17.0.1
+    # For K3d, use: host.k3d.internal
+    dbPort: 5432
+    dbName: realestatedb
+    dbUser: postgres
+    dbPassword: postgres
+
+  # Health check probes
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# DISABLE bundled PostgreSQL - using external Docker PostgreSQL instead
+postgresql:
+  enabled: false
+
+# ConfigMap for application properties
+configmap:
+  data:
+    application.yml: |
+      spring:
+        application:
+          name: real-estate-backend
