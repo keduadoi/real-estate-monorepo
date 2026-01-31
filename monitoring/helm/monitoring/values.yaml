@@ -1,0 +1,84 @@
+namespace:
+  name: monitoring
+  create: true
+
+prometheus:
+  name: prometheus
+
+  image:
+    repository: prom/prometheus
+    tag: "v2.48.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: NodePort
+    port: 9090
+    nodePort: 30090
+
+  storage:
+    enabled: true
+    size: 5Gi
+    storageClass: standard
+
+  retention: 15d
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Scrape configs for Kong, Auth Service, Backend
+  scrapeInterval: 15s
+
+grafana:
+  name: grafana
+
+  image:
+    repository: grafana/grafana
+    tag: "10.2.2"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: NodePort
+    port: 3000
+    nodePort: 30030
+
+  adminUser: admin
+  adminPassword: admin123
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+alertmanager:
+  enabled: false  # Set to true for production
+  name: alertmanager
+
+  image:
+    repository: prom/alertmanager
+    tag: "v0.26.0"
+    pullPolicy: IfNotPresent
+
+  # Slack notification configuration
+  slack:
+    enabled: false
+    webhookUrl: ""  # Set via --set or external secret
+    channel: "#alerts"
+    criticalChannel: "#critical-alerts"
+
+  # Email notification configuration
+  smtp:
+    enabled: false
+    host: "smtp.example.com"
+    port: 587
+    from: "alertmanager@example.com"
+    username: ""
+    password: ""
+    criticalRecipient: "oncall@example.com"

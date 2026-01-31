@@ -1,0 +1,97 @@
+namespace:
+  name: real-estate
+  create: true
+
+authService:
+  name: auth-service
+  replicaCount: 1
+
+  image:
+    repository: auth-service
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  service:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  env:
+    serverPort: 8081
+    dbHost: auth-postgres
+    dbPort: 5432
+    dbName: authdb
+    dbUser: postgres
+    dbPassword: postgres
+
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health
+      port: 8081
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health
+      port: 8081
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
+postgresql:
+  enabled: true
+  name: auth-postgres
+
+  image:
+    repository: postgres
+    tag: "18-alpine"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+
+  auth:
+    database: authdb
+    username: postgres
+    password: postgres
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 2Gi
+    path: /var/lib/postgresql/data
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi

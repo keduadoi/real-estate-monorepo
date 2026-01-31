@@ -1,0 +1,124 @@
+# Production profile configuration for Auth Service
+# Overrides default application.yml settings
+
+spring:
+  application:
+    name: auth-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME:authdb}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      # Connection pool optimization for production
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 60000
+      # Performance optimizations
+      auto-commit: true
+      pool-name: AuthServiceHikariPool
+      # Connection validation
+      connection-test-query: SELECT 1
+      validation-timeout: 5000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Performance optimizations
+        jdbc:
+          batch_size: 50
+          fetch_size: 100
+        order_inserts: true
+        order_updates: true
+        # Second-level cache (disabled for auth service - no need)
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+        # Statistics
+        generate_statistics: false
+    open-in-view: false  # Disable OSIV for better performance
+
+server:
+  port: ${SERVER_PORT:8081}
+  # Tomcat optimization
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 10000
+    accept-count: 200
+    connection-timeout: 20000
+    # Keep-alive
+    keep-alive-timeout: 30000
+    max-keep-alive-requests: 100
+  # Compression
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+
+# JWT configuration
+jwt:
+  access-token:
+    expiration: 900000      # 15 minutes
+  refresh-token:
+    expiration: 604800000   # 7 days
+  issuer: auth-service
+  audience: real-estate-api
+  key-rotation:
+    enabled: true
+    max-key-age-days: 30
+    grace-period-days: 7
+    cron: "0 0 2 * * ?"
+
+# Security settings (stricter for production)
+security:
+  password:
+    min-length: 12  # Stronger password requirement in production
+  account:
+    max-failed-attempts: 5
+    lock-duration-minutes: 30
+
+# Actuator configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true  # Enable Kubernetes probes
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      hikaricp: true
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.realestate.auth: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    com.zaxxer.hikari: INFO
+  pattern:
+    console: '{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger{36}","message":"%msg","thread":"%thread"}%n'

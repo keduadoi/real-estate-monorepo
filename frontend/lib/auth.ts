@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { mockUsers } from './mockData';
+
+const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:8081';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -15,22 +16,33 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Find user in mock data
-        const user = mockUsers.find(
-          (u) =>
-            u.email === credentials.email &&
-            u.password === credentials.password
-        );
+        try {
+          const res = await fetch(`${AUTH_API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          });
 
-        if (user) {
+          if (!res.ok) {
+            return null;
+          }
+
+          const data = await res.json();
+          const user = data.user;
+
           return {
             id: user.id,
-            name: user.name,
+            name: [user.lastName, user.firstName].filter(Boolean).join(' ') || user.email,
             email: user.email,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
           };
+        } catch {
+          return null;
         }
-
-        return null;
       },
     }),
   ],
@@ -44,12 +56,15 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.accessToken = (user as any).accessToken;
+        token.refreshToken = (user as any).refreshToken;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        (session as any).accessToken = token.accessToken;
       }
       return session;
     },

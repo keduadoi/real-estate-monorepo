@@ -1,0 +1,161 @@
+# Production values for Real Estate Backend
+# High availability, security hardening, and performance tuning
+
+namespace:
+  name: real-estate
+  create: true
+
+backend:
+  name: real-estate-backend
+  replicaCount: 3  # Minimum 3 for HA
+
+  image:
+    repository: real-estate-backend
+    pullPolicy: Always  # Always pull in production
+    tag: ""  # Set via CI/CD pipeline
+
+  service:
+    type: ClusterIP  # Use ClusterIP behind Kong
+    port: 8080
+    targetPort: 8080
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  # Pod Disruption Budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+  # Anti-affinity to spread pods across nodes
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - real-estate-backend
+          topologyKey: kubernetes.io/hostname
+
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Topology spread for zone redundancy
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app: real-estate-backend
+
+  # Persistent storage for uploads (use S3 in production instead)
+  persistence:
+    enabled: false  # Use S3 for file storage in production
+
+  env:
+    springProfile: prod
+    serverPort: 8080
+    corsEnabled: "false"  # Kong handles CORS
+    # JVM tuning
+    javaOpts: "-XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+UseStringDeduplication -Xms1g -Xmx1536m"
+    # Database pool tuning
+    dbPoolSize: 20
+    dbPoolMinIdle: 10
+
+  # External secrets for sensitive data
+  externalSecrets:
+    enabled: true
+    secretStore: aws-secrets-manager
+    secrets:
+      - name: DB_PASSWORD
+        remoteRef: /prod/backend/db-password
+      - name: AWS_ACCESS_KEY_ID
+        remoteRef: /prod/backend/aws-access-key
+      - name: AWS_SECRET_ACCESS_KEY
+        remoteRef: /prod/backend/aws-secret-key
+
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health/liveness
+      port: 8080
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /actuator/health/readiness
+      port: 8080
+    initialDelaySeconds: 45
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    readOnlyRootFilesystem: true
+
+  # Service account
+  serviceAccount:
+    create: true
+    annotations: {}
+    # For AWS: eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/backend-service-role
+
+postgresql:
+  enabled: false  # Use managed database in production (RDS, Cloud SQL, etc.)
+
+# Network Policy
+networkPolicy:
+  enabled: true
+
+# Pod Security Standards
+podSecurityPolicy:
+  enabled: true
+  spec:
+    privileged: false
+    allowPrivilegeEscalation: false
+    requiredDropCapabilities:
+      - ALL
+    volumes:
+      - 'configMap'
+      - 'emptyDir'
+      - 'projected'
+      - 'secret'
+      - 'downwardAPI'
+    hostNetwork: false
+    hostIPC: false
+    hostPID: false
+    runAsUser:
+      rule: 'MustRunAsNonRoot'
+    seLinux:
+      rule: 'RunAsAny'
+    fsGroup:
+      rule: 'RunAsAny'
+    readOnlyRootFilesystem: true
+
+# ConfigMap for application properties
+configmap:
+  data:
+    application.yml: |
+      spring:
+        application:
+          name: real-estate-backend

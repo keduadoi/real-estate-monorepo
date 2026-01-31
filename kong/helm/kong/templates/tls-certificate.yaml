@@ -1,0 +1,30 @@
+{{- if .Values.tls }}
+{{- if .Values.tls.enabled }}
+{{- if .Values.tls.certManager }}
+{{- if .Values.tls.certManager.enabled }}
+---
+# Certificate resource for cert-manager
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.kong.name }}-tls
+  namespace: {{ .Values.namespace.name }}
+spec:
+  secretName: {{ .Values.kong.name }}-tls-secret
+  issuerRef:
+    name: {{ .Values.tls.certManager.issuerName }}
+    kind: {{ .Values.tls.certManager.issuerKind | default "ClusterIssuer" }}
+  commonName: {{ .Values.tls.domain | default "api.example.com" }}
+  dnsNames:
+    - {{ .Values.tls.domain | default "api.example.com" }}
+    {{- if .Values.tls.additionalDomains }}
+    {{- range .Values.tls.additionalDomains }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+  duration: 2160h  # 90 days
+  renewBefore: 360h  # 15 days
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { fixImageUrl } from '@/lib/utils';
 
 interface ImageGalleryProps {
   images: string[];
@@ -24,7 +25,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
       {/* Main Image */}
       <div className="relative w-full h-96 md:h-[500px] bg-gray-200 rounded-lg overflow-hidden group">
         <Image
-          src={images[selectedIndex]}
+          src={fixImageUrl(images[selectedIndex])}
           alt={`${title} - Image ${selectedIndex + 1}`}
           fill
           className="object-cover"
@@ -92,7 +93,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             }`}
           >
             <Image
-              src={image}
+              src={fixImageUrl(image)}
               alt={`${title} - Thumbnail ${index + 1}`}
               fill
               className="object-cover"

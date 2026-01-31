@@ -1,0 +1,16 @@
+apiVersion: v2
+name: post-service
+description: A Helm chart for Post Service - Social Feed Microservice
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - real-estate
+  - social-feed
+  - spring-boot
+  - postgresql
+maintainers:
+  - name: Real Estate Team
+home: https://github.com/yourusername/real-estate-ui
+sources:
+  - https://github.com/yourusername/real-estate-ui

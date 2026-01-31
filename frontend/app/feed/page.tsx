@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getPostsWithMetadata } from '@/lib/mockData';
+import { postApi } from '@/lib/api/postApi';
 import FeedPageClient from './FeedPageClient';
 
 export const metadata = {
@@ -8,14 +8,28 @@ export const metadata = {
   description: 'Chia sẻ và thảo luận về bất động sản cùng cộng đồng',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function FeedPage() {
   // Get session
   const session = await getServerSession(authOptions);
   const isAuthenticated = !!session?.user;
-  const currentUserId = session?.user?.id;
+  const accessToken = session?.accessToken as string | undefined;
 
-  // Fetch initial posts
-  const posts = getPostsWithMetadata(currentUserId);
+  // Fetch initial posts from the real API
+  let initialPosts: Awaited<ReturnType<typeof postApi.getFeed>>['data'] = [];
+  let totalPosts = 0;
+  let hasMore = false;
+
+  try {
+    const response = await postApi.getFeed(0, 20, { accessToken });
+    initialPosts = response.data;
+    totalPosts = response.total;
+    hasMore = response.page < response.totalPages - 1;
+  } catch (error) {
+    console.error('Error fetching initial posts:', error);
+    // Continue with empty posts - the client will show an error state
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -30,9 +44,12 @@ export default async function FeedPage() {
           </p>
         </div>
 
-        {/* Client-side components */}
+        {/* Client-side components - key forces remount on server re-render */}
         <FeedPageClient
-          initialPosts={posts}
+          key={Date.now()}
+          initialPosts={initialPosts}
+          initialTotal={totalPosts}
+          initialHasMore={hasMore}
           isAuthenticated={isAuthenticated}
         />
       </div>

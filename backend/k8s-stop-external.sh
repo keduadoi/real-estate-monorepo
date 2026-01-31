@@ -70,7 +70,11 @@ case $REPLY in
 
             # Uninstall Helm release
             echo "   Uninstalling Helm release..."
-            helm uninstall real-estate -n real-estate 2>/dev/null
+            helm uninstall real-estate-backend -n real-estate 2>/dev/null
+
+            # Delete PVCs first (they may block namespace deletion)
+            echo "   Deleting PVCs..."
+            kubectl delete pvc --all -n real-estate 2>/dev/null
 
             # Delete namespace
             echo "   Deleting namespace..."

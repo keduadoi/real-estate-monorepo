@@ -1,0 +1,71 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgresql.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.postgresql.name }}
+spec:
+  serviceName: {{ .Values.postgresql.name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.postgresql.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgresql.name }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "{{ .Values.postgresql.auth.database }}"
+            - name: POSTGRES_USER
+              value: "{{ .Values.postgresql.auth.username }}"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kong.name }}-secret
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.postgresql.auth.username }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.postgresql.auth.username }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+      volumes:
+        - name: postgres-data
+          {{- if .Values.postgresql.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.postgresql.name }}-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

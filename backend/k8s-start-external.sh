@@ -69,14 +69,20 @@ echo ""
 
 # Deploy to Kubernetes
 echo "☸️  Deploying Backend to Kubernetes..."
-if helm list -n real-estate 2>/dev/null | grep -q "real-estate"; then
+
+# Create namespace if it doesn't exist
+kubectl create namespace real-estate 2>/dev/null || true
+
+if helm list -n real-estate 2>/dev/null | grep -q "real-estate-backend"; then
     echo -e "${YELLOW}ℹ️  Helm release already exists. Upgrading...${NC}"
-    helm upgrade real-estate ./helm/real-estate-backend \
-      -f ./helm/real-estate-backend/values-minikube.yaml
+    helm upgrade real-estate-backend ./helm/real-estate-backend \
+      -f ./helm/real-estate-backend/values-local.yaml \
+      -n real-estate
 else
     echo "   Installing Helm release..."
-    helm install real-estate ./helm/real-estate-backend \
-      -f ./helm/real-estate-backend/values-minikube.yaml
+    helm install real-estate-backend ./helm/real-estate-backend \
+      -f ./helm/real-estate-backend/values-local.yaml \
+      -n real-estate
 fi
 echo ""
 
@@ -95,18 +101,24 @@ else
 fi
 echo ""
 
-# Get Minikube IP and NodePort
-MINIKUBE_IP=$(minikube ip)
-BACKEND_URL="http://${MINIKUBE_IP}:30080"
-
 # Display pod status
 echo "📊 Pod Status:"
 kubectl get pods -n real-estate
 echo ""
 
-# Test the connection
+# Test the connection via port-forward (works on all platforms)
 echo "🔍 Testing connection..."
-sleep 3  # Give it a moment
+
+# Kill any existing port-forward on 8080
+pkill -f "port-forward.*8080:8080" 2>/dev/null
+sleep 1
+
+# Start port-forward in background
+kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate > /dev/null 2>&1 &
+PF_PID=$!
+sleep 3  # Give it a moment to establish connection
+
+BACKEND_URL="http://localhost:8080"
 
 if curl -s ${BACKEND_URL}/actuator/health > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Backend is accessible${NC}"
@@ -114,10 +126,14 @@ if curl -s ${BACKEND_URL}/actuator/health > /dev/null 2>&1; then
     echo "🎉 Backend services are ready!"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📍 Access URLs:"
+    echo "📍 Access URLs (via port-forward):"
     echo "   Backend:       ${BACKEND_URL}"
     echo "   Health Check:  ${BACKEND_URL}/actuator/health"
     echo "   API Docs:      ${BACKEND_URL}/swagger-ui.html"
+    echo ""
+    echo "🔌 Port-forward is running (PID: ${PF_PID})"
+    echo "   To stop: kill ${PF_PID}"
+    echo "   To restart: kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate &"
     echo ""
     echo "🐘 PostgreSQL Connection (Docker):"
     echo "   Host:     localhost"
@@ -141,6 +157,9 @@ if curl -s ${BACKEND_URL}/actuator/health > /dev/null 2>&1; then
     echo "   kubectl rollout restart deployment/real-estate-backend-backend -n real-estate"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 else
+    # Kill the failed port-forward
+    kill $PF_PID 2>/dev/null
+
     echo -e "${RED}❌ Failed to connect to backend${NC}"
     echo ""
     echo "🔍 Troubleshooting:"
@@ -149,7 +168,11 @@ else
     echo "   3. Check events:     kubectl get events -n real-estate --sort-by='.lastTimestamp'"
     echo "   4. Check PostgreSQL: docker logs real-estate-postgres-local"
     echo "   5. Test DB from pod: kubectl exec -it deployment/real-estate-backend-backend -n real-estate -- sh"
-    echo "                        Then: ping host.minikube.internal"
-    echo "                              nc -zv host.minikube.internal 5432"
+    echo "                        Then: ping host.docker.internal"
+    echo "                              nc -zv host.docker.internal 5432"
+    echo ""
+    echo "   6. Manual port-forward:"
+    echo "      kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate &"
+    echo "      curl http://localhost:8080/actuator/health"
 fi
 echo ""

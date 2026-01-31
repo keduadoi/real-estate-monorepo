@@ -1,0 +1,16 @@
+{{- if .Values.backend.podDisruptionBudget }}
+{{- if .Values.backend.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "real-estate-backend.fullname" . }}-pdb
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "real-estate-backend.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.backend.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "real-estate-backend.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.authService.name }}-config
+  namespace: {{ .Values.namespace.name }}
+data:
+  SERVER_PORT: "{{ .Values.authService.env.serverPort }}"
+  DB_HOST: "{{ .Values.authService.env.dbHost }}"
+  DB_PORT: "{{ .Values.authService.env.dbPort }}"
+  DB_NAME: "{{ .Values.authService.env.dbName }}"

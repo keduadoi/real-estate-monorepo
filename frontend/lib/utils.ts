@@ -146,3 +146,14 @@ export function sortProperties(
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
+
+/**
+ * Fix image URL to use Kong gateway instead of direct backend access
+ * Converts http://localhost:8080/uploads/... to http://localhost:8000/uploads/...
+ */
+export function fixImageUrl(url: string | undefined): string {
+  if (!url) return '/placeholder-property.jpg';
+
+  // Replace localhost:8080 with Kong gateway port 8000
+  return url.replace('http://localhost:8080', 'http://localhost:8000');
+}

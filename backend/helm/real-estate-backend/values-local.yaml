@@ -3,7 +3,7 @@
 
 namespace:
   name: real-estate
-  create: true
+  create: false  # Namespace already exists
 
 # Backend Application Configuration
 backend:

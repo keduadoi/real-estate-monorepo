@@ -1,7 +1,7 @@
 # Product Requirements Proposal (PRP)
-# Kong API Gateway Integration for Real Estate Application
+# Kong API Gateway & Auth Service Integration for Real Estate Application
 
-**Version**: 1.0
+**Version**: 2.0
 **Date**: 2026-01-26
 **Author**: Engineering Team
 **Status**: Draft - Pending Review
@@ -14,18 +14,20 @@
 2. [Problem Statement](#2-problem-statement)
 3. [Goals and Objectives](#3-goals-and-objectives)
 4. [Proposed Solution](#4-proposed-solution)
-5. [Technical Architecture](#5-technical-architecture)
-6. [Feature Requirements](#6-feature-requirements)
-7. [Implementation Plan](#7-implementation-plan)
-8. [Configuration Specifications](#8-configuration-specifications)
-9. [Security Considerations](#9-security-considerations)
-10. [Monitoring and Observability](#10-monitoring-and-observability)
-11. [Performance Requirements](#11-performance-requirements)
-12. [Deployment Strategy](#12-deployment-strategy)
-13. [Risk Assessment](#13-risk-assessment)
-14. [Success Metrics](#14-success-metrics)
-15. [Dependencies and Prerequisites](#15-dependencies-and-prerequisites)
-16. [Future Considerations](#16-future-considerations)
+5. [Authentication Architecture](#5-authentication-architecture)
+6. [Technical Architecture](#6-technical-architecture)
+7. [Auth Service Specification](#7-auth-service-specification)
+8. [Feature Requirements](#8-feature-requirements)
+9. [Implementation Plan](#9-implementation-plan)
+10. [Configuration Specifications](#10-configuration-specifications)
+11. [Security Considerations](#11-security-considerations)
+12. [Monitoring and Observability](#12-monitoring-and-observability)
+13. [Performance Requirements](#13-performance-requirements)
+14. [Deployment Strategy](#14-deployment-strategy)
+15. [Risk Assessment](#15-risk-assessment)
+16. [Success Metrics](#16-success-metrics)
+17. [Dependencies and Prerequisites](#17-dependencies-and-prerequisites)
+18. [Future Considerations](#18-future-considerations)
 
 ---
 
@@ -33,7 +35,9 @@
 
 ### 1.1 Overview
 
-This PRP outlines the integration of Kong API Gateway into the Real Estate application infrastructure. Kong will serve as the centralized entry point for all API traffic, providing authentication, rate limiting, request routing, and observability capabilities.
+This PRP outlines the integration of **Kong API Gateway** and a dedicated **Auth Service** (Spring Security) into the Real Estate application infrastructure. This hybrid approach provides:
+- **Kong Gateway**: Centralized entry point with stateless JWT validation, rate limiting, and observability
+- **Auth Service**: User management, token issuance, and authentication flows
 
 ### 1.2 Current State
 
@@ -44,40 +48,89 @@ This PRP outlines the integration of Kong API Gateway into the Real Estate appli
 │    Vercel       │         │    Port 8080    │         │                 │
 └─────────────────┘         └─────────────────┘         └─────────────────┘
                                     │
-                            No Authentication
-                            No Rate Limiting
-                            No Centralized Logging
+                        ┌───────────┴───────────┐
+                        │     CRITICAL GAPS     │
+                        ├───────────────────────┤
+                        │ ✗ No Authentication   │
+                        │ ✗ No User Management  │
+                        │ ✗ No Rate Limiting    │
+                        │ ✗ No Centralized Logs │
+                        │ ✗ Admin Unprotected   │
+                        └───────────────────────┘
 ```
 
-### 1.3 Proposed State
+### 1.3 Proposed State (Hybrid Architecture)
 
 ```
-┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│    Frontend     │  HTTPS  │   Kong Gateway  │  HTTP   │    Backend      │
-│   (Next.js)     │────────▶│   Port 443/80   │────────▶│  (Spring Boot)  │
-│    Vercel       │         │                 │         │    Port 8080    │
-└─────────────────┘         │  - Auth/JWT     │         └────────┬────────┘
-                            │  - Rate Limit   │                  │
-                            │  - Logging      │                  │
-                            │  - Metrics      │                  ▼
-                            └─────────────────┘         ┌─────────────────┐
-                                    │                   │   PostgreSQL    │
-                                    ▼                   │    Database     │
-                            ┌─────────────────┐         └─────────────────┘
-                            │   PostgreSQL    │
-                            │  (Kong Config)  │
-                            └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         HYBRID AUTHENTICATION ARCHITECTURE                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌──────────────┐                                                              │
+│  │   Frontend   │                                                              │
+│  │  (Next.js)   │                                                              │
+│  │   Vercel     │                                                              │
+│  └──────┬───────┘                                                              │
+│         │                                                                       │
+│         │ 1. Login/Register ─────────────────────┐                             │
+│         │                                        │                             │
+│         │ 2. API Calls + JWT Token               ▼                             │
+│         │                               ┌─────────────────┐                    │
+│         ▼                               │  Auth Service   │                    │
+│  ┌─────────────────┐                    │ (Spring Security)│                   │
+│  │  Kong Gateway   │                    │                 │                    │
+│  │                 │   JWKS Endpoint    │ • User CRUD     │                    │
+│  │ • JWT Validate  │◄───────────────────│ • Login/Register│                    │
+│  │   (stateless)   │   (public keys)    │ • Token Issue   │                    │
+│  │ • Rate Limit    │                    │ • Password Reset│                    │
+│  │ • CORS          │                    └────────┬────────┘                    │
+│  │ • Logging       │                             │                             │
+│  └────────┬────────┘                             │                             │
+│           │                                      ▼                             │
+│           │                             ┌─────────────────┐                    │
+│           │                             │    User DB      │                    │
+│           │                             │  (PostgreSQL)   │                    │
+│           │                             └─────────────────┘                    │
+│           │                                                                    │
+│           │  3. Forward + User Headers                                         │
+│           │     X-User-Id, X-User-Roles                                        │
+│           ▼                                                                    │
+│  ┌─────────────────┐         ┌─────────────────┐                              │
+│  │ Backend Service │  JDBC   │  Application DB │                              │
+│  │  (Spring Boot)  │────────▶│  (PostgreSQL)   │                              │
+│  │                 │         │                 │                              │
+│  │ • Business Logic│         │ • Properties    │                              │
+│  │ • Trust Headers │         │ • Images        │                              │
+│  └─────────────────┘         └─────────────────┘                              │
+│                                                                                │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+KEY POINTS:
+• Auth Service issues JWT tokens (login/register)
+• Kong validates tokens using Auth Service's public keys (NO call to Auth Service per request)
+• Kong forwards user claims as headers to Backend
+• Backend trusts Kong's headers (no JWT validation needed)
 ```
 
 ### 1.4 Key Benefits
 
 | Benefit | Description |
 |---------|-------------|
-| **Security** | Centralized authentication, authorization, and threat protection |
-| **Scalability** | Horizontal scaling of API layer independent of backend |
+| **Security** | Centralized authentication with dedicated Auth Service |
+| **Scalability** | Stateless JWT validation - no auth bottleneck |
+| **User Management** | Full control over user database and authentication flows |
+| **Performance** | Kong validates tokens locally using public keys |
+| **Flexibility** | Easy to add OAuth2/OIDC providers in future |
 | **Observability** | Unified logging, metrics, and distributed tracing |
-| **Rate Limiting** | Protection against abuse and DDoS attacks |
-| **Flexibility** | Easy addition of new services without backend changes |
+
+### 1.5 Component Responsibilities
+
+| Component | Responsibility |
+|-----------|---------------|
+| **Auth Service** | User registration, login, JWT issuance, password reset, user management |
+| **Kong Gateway** | JWT validation (stateless), rate limiting, CORS, logging, routing |
+| **Backend API** | Business logic only, trusts Kong headers, no auth logic |
+| **Frontend** | Calls Auth Service for login, includes JWT in API requests |
 
 ---
 
@@ -87,9 +140,10 @@ This PRP outlines the integration of Kong API Gateway into the Real Estate appli
 
 #### 2.1.1 Security Gaps
 - **No Backend Authentication**: All API endpoints (`/api/*`) are publicly accessible without authentication
+- **No User Management**: No user database, registration, or login functionality
 - **Unprotected Admin Endpoints**: Critical endpoints like `/api/admin/clear-database` are exposed
 - **No Rate Limiting**: APIs vulnerable to abuse, scraping, and DDoS attacks
-- **Inconsistent CORS**: CORS handled at application level, not at edge
+- **Mock Authentication**: NextAuth frontend uses mock user validation (NOT production-ready)
 
 #### 2.1.2 Operational Challenges
 - **Lack of Centralized Logging**: No unified view of API traffic and errors
@@ -107,6 +161,7 @@ This PRP outlines the integration of Kong API Gateway into the Real Estate appli
 | Impact Area | Current Risk Level | Description |
 |-------------|-------------------|-------------|
 | Security | **CRITICAL** | Data breach possible via unprotected endpoints |
+| User Management | **CRITICAL** | No real user accounts or authentication |
 | Availability | HIGH | No protection against traffic spikes or attacks |
 | Compliance | HIGH | Missing audit trails and access controls |
 | Operations | MEDIUM | Limited visibility into system behavior |
@@ -117,459 +172,1065 @@ This PRP outlines the integration of Kong API Gateway into the Real Estate appli
 
 ### 3.1 Primary Goals
 
-1. **Implement Centralized Security**
-   - JWT-based authentication for all protected endpoints
+1. **Implement User Management System**
+   - User registration and login
+   - Password management (reset, change)
+   - Role-based user accounts (user, admin)
+   - Secure token-based authentication
+
+2. **Implement Centralized API Gateway**
+   - JWT-based authentication validation
    - Role-based access control (RBAC)
    - API key management for service-to-service communication
 
-2. **Enable Traffic Management**
+3. **Enable Traffic Management**
    - Rate limiting per user, IP, and API endpoint
    - Request/response transformation
    - Load balancing across backend instances
 
-3. **Establish Observability**
+4. **Establish Observability**
    - Centralized request logging
    - Prometheus metrics export
    - Distributed tracing support
-
-4. **Improve Operational Efficiency**
-   - Zero-downtime deployments
-   - Declarative configuration management
-   - Self-service API management
 
 ### 3.2 Success Criteria
 
 | Objective | Metric | Target |
 |-----------|--------|--------|
+| User Management | Registration/Login available | Fully functional |
 | Security | Authentication coverage | 100% of protected endpoints |
-| Performance | P99 latency overhead | < 10ms added latency |
-| Availability | Gateway uptime | 99.9% |
+| Performance | P99 latency overhead | < 10ms added latency (gateway) |
+| Availability | Gateway + Auth Service uptime | 99.9% |
 | Observability | Log coverage | 100% of requests logged |
 
 ---
 
 ## 4. Proposed Solution
 
-### 4.1 Why Kong Gateway?
+### 4.1 Solution Overview: Hybrid Authentication
 
-#### 4.1.1 Comparison Matrix
+We will implement a **Hybrid Authentication Architecture** that combines:
+
+1. **Auth Service** (Spring Security) - Handles user management and token issuance
+2. **Kong Gateway** (OSS) - Handles stateless JWT validation and API management
+
+This approach provides the best balance of:
+- Full control over user management
+- High performance (no auth service call per request)
+- Scalability (stateless token validation)
+- Security (dedicated authentication service)
+
+### 4.2 Why Hybrid Over Alternatives?
+
+#### Comparison of Authentication Approaches
+
+| Aspect | Kong Only | Auth Service Only | Hybrid (Selected) |
+|--------|-----------|-------------------|-------------------|
+| **Latency** | ✅ Lowest | ❌ High (call/request) | ✅ Low (stateless) |
+| **User Management** | ❌ External only | ✅ Full control | ✅ Full control |
+| **Scalability** | ✅ Excellent | ⚠️ Bottleneck | ✅ Excellent |
+| **Token Refresh** | ❌ Limited | ✅ Full control | ✅ Full control |
+| **Custom Auth Flows** | ❌ Limited | ✅ Full flexibility | ✅ Full flexibility |
+| **Offline Validation** | ✅ Yes | ❌ No | ✅ Yes |
+| **Complexity** | ✅ Simple | ⚠️ Medium | ⚠️ Medium |
+
+### 4.3 Why Kong Gateway?
 
 | Feature | Kong OSS | Kong Enterprise | NGINX | Traefik | AWS API Gateway |
 |---------|----------|-----------------|-------|---------|-----------------|
 | Open Source | ✅ | Partial | ✅ | ✅ | ❌ |
 | Kubernetes Native | ✅ | ✅ | Partial | ✅ | ❌ |
 | Plugin Ecosystem | 100+ | 150+ | Limited | Limited | AWS Native |
-| DB-less Mode | ✅ | ✅ | N/A | ✅ | N/A |
-| Admin API | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Declarative Config | ✅ | ✅ | ✅ | ✅ | Partial |
+| JWT Validation | ✅ | ✅ | Lua | Plugin | ✅ |
+| JWKS Support | ✅ | ✅ | Manual | Plugin | ✅ |
 | Rate Limiting | ✅ | ✅ | ✅ | ✅ | ✅ |
-| JWT/OAuth | ✅ | ✅ | Lua | Plugin | ✅ |
-| Prometheus Metrics | ✅ | ✅ | ✅ | ✅ | CloudWatch |
 | Cost | Free | $$ | Free | Free | Pay-per-request |
 
-#### 4.1.2 Selected Option: Kong OSS (Open Source)
-
-**Rationale:**
-- Rich plugin ecosystem covers all our requirements
-- Native Kubernetes support via Kong Ingress Controller
-- Declarative configuration via YAML (GitOps friendly)
-- Large community and extensive documentation
-- Zero licensing cost
-- Easy upgrade path to Enterprise if needed
-
-### 4.2 Kong Deployment Mode
-
-#### Option A: Traditional Mode (with PostgreSQL) - **RECOMMENDED for Production**
-```
-Pros:
-- Persistent configuration
-- Multi-node clustering
-- Full Admin API support
-- Configuration backup/restore
-
-Cons:
-- Additional database dependency
-- Slightly more complex setup
-```
-
-#### Option B: DB-less Mode (Declarative)
-```
-Pros:
-- Simpler architecture
-- GitOps native
-- No database dependency
-- Immutable configuration
-
-Cons:
-- No dynamic configuration via Admin API
-- Configuration changes require restart
-- No clustering state sync
-```
-
-**Decision**: Use **Traditional Mode with PostgreSQL** for production environments and **DB-less Mode** for local development.
+**Decision**: Use **Kong OSS** with **Traditional Mode (PostgreSQL)** for production.
 
 ---
 
-## 5. Technical Architecture
+## 5. Authentication Architecture
 
-### 5.1 High-Level Architecture
-
-```
-                                    ┌──────────────────────────────────────────────┐
-                                    │              Kubernetes Cluster              │
-                                    │                                              │
-┌──────────────┐                    │  ┌────────────────────────────────────────┐ │
-│              │                    │  │           Kong Namespace               │ │
-│   Frontend   │                    │  │                                        │ │
-│  (Next.js)   │    HTTPS/443       │  │  ┌──────────────────────────────────┐ │ │
-│   Vercel     │───────────────────▶│  │  │        Kong Gateway              │ │ │
-│              │                    │  │  │     (2+ replicas, HA)            │ │ │
-└──────────────┘                    │  │  │                                  │ │ │
-                                    │  │  │  Plugins:                        │ │ │
-                                    │  │  │  ├─ JWT Authentication           │ │ │
-                                    │  │  │  ├─ Rate Limiting               │ │ │
-                                    │  │  │  ├─ Request Transformer         │ │ │
-┌──────────────┐                    │  │  │  ├─ Prometheus Metrics          │ │ │
-│   External   │                    │  │  │  ├─ File Log                    │ │ │
-│   Clients    │───────────────────▶│  │  │  ├─ CORS                        │ │ │
-│  (Mobile/3P) │    HTTPS/443       │  │  │  └─ IP Restriction (optional)  │ │ │
-└──────────────┘                    │  │  └──────────────┬───────────────────┘ │ │
-                                    │  │                 │                      │ │
-                                    │  │                 ▼                      │ │
-                                    │  │  ┌──────────────────────────────────┐ │ │
-                                    │  │  │      Kong PostgreSQL             │ │ │
-                                    │  │  │      (Configuration Store)       │ │ │
-                                    │  │  └──────────────────────────────────┘ │ │
-                                    │  └────────────────────────────────────────┘ │
-                                    │                    │                        │
-                                    │                    │ Internal Network       │
-                                    │                    ▼                        │
-                                    │  ┌────────────────────────────────────────┐ │
-                                    │  │        Real Estate Namespace          │ │
-                                    │  │                                        │ │
-                                    │  │  ┌──────────────────────────────────┐ │ │
-                                    │  │  │    Backend Service               │ │ │
-                                    │  │  │    (Spring Boot - Port 8080)     │ │ │
-                                    │  │  │                                  │ │ │
-                                    │  │  │    /api/properties/*             │ │ │
-                                    │  │  │    /api/upload/*                 │ │ │
-                                    │  │  │    /api/admin/* (protected)      │ │ │
-                                    │  │  │    /actuator/*                   │ │ │
-                                    │  │  └──────────────┬───────────────────┘ │ │
-                                    │  │                 │                      │ │
-                                    │  │                 ▼                      │ │
-                                    │  │  ┌──────────────────────────────────┐ │ │
-                                    │  │  │      Application PostgreSQL      │ │ │
-                                    │  │  │      (Application Data)          │ │ │
-                                    │  │  └──────────────────────────────────┘ │ │
-                                    │  └────────────────────────────────────────┘ │
-                                    └──────────────────────────────────────────────┘
-```
-
-### 5.2 Network Flow
+### 5.1 Authentication Flow Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              REQUEST FLOW                                       │
+│                         AUTHENTICATION FLOW                                     │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
-│  1. Client Request                                                              │
-│     │                                                                           │
-│     ▼                                                                           │
-│  2. Kong Ingress (LoadBalancer/NodePort)                                        │
-│     │                                                                           │
-│     ▼                                                                           │
-│  3. Kong Gateway                                                                │
-│     ├─── Route Matching (path, host, headers)                                   │
-│     ├─── Plugin Execution Chain:                                                │
-│     │    ├─── CORS Plugin (preflight handling)                                  │
-│     │    ├─── IP Restriction (if configured)                                    │
-│     │    ├─── Rate Limiting (check limits)                                      │
-│     │    ├─── JWT Plugin (validate token)                                       │
-│     │    ├─── ACL Plugin (check permissions)                                    │
-│     │    ├─── Request Transformer (add headers)                                 │
-│     │    └─── Prometheus Plugin (record metrics)                                │
-│     │                                                                           │
-│     ▼                                                                           │
-│  4. Upstream Service (Backend)                                                  │
-│     │                                                                           │
-│     ▼                                                                           │
-│  5. Response                                                                    │
-│     ├─── Response Transformer (if configured)                                   │
-│     ├─── Prometheus Plugin (response metrics)                                   │
-│     └─── File Log Plugin (access log)                                           │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                      1. USER LOGIN/REGISTRATION                         │   │
+│  │                                                                         │   │
+│  │   Frontend                        Auth Service                          │   │
+│  │      │                                │                                 │   │
+│  │      │  POST /auth/login              │                                 │   │
+│  │      │  {email, password}             │                                 │   │
+│  │      │───────────────────────────────▶│                                 │   │
+│  │      │                                │  • Validate credentials         │   │
+│  │      │                                │  • Generate JWT (RS256)         │   │
+│  │      │                                │  • Generate Refresh Token       │   │
+│  │      │◀───────────────────────────────│                                 │   │
+│  │      │  {accessToken, refreshToken,   │                                 │   │
+│  │      │   expiresIn, user}             │                                 │   │
+│  │      │                                │                                 │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                      2. API REQUEST WITH JWT                            │   │
+│  │                                                                         │   │
+│  │   Frontend              Kong Gateway              Backend               │   │
+│  │      │                      │                        │                  │   │
+│  │      │  GET /api/properties │                        │                  │   │
+│  │      │  Authorization:      │                        │                  │   │
+│  │      │  Bearer <JWT>        │                        │                  │   │
+│  │      │─────────────────────▶│                        │                  │   │
+│  │      │                      │                        │                  │   │
+│  │      │                      │  JWT Validation:       │                  │   │
+│  │      │                      │  • Verify signature    │                  │   │
+│  │      │                      │    (using JWKS)        │                  │   │
+│  │      │                      │  • Check expiration    │                  │   │
+│  │      │                      │  • Extract claims      │                  │   │
+│  │      │                      │                        │                  │   │
+│  │      │                      │  Forward with headers: │                  │   │
+│  │      │                      │  X-User-Id: 123        │                  │   │
+│  │      │                      │  X-User-Email: a@b.com │                  │   │
+│  │      │                      │  X-User-Roles: user    │                  │   │
+│  │      │                      │───────────────────────▶│                  │   │
+│  │      │                      │                        │  Process         │   │
+│  │      │                      │                        │  request         │   │
+│  │      │                      │◀───────────────────────│                  │   │
+│  │      │◀─────────────────────│                        │                  │   │
+│  │      │  Response            │                        │                  │   │
+│  │                                                                         │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                      3. TOKEN REFRESH                                   │   │
+│  │                                                                         │   │
+│  │   Frontend                        Auth Service                          │   │
+│  │      │                                │                                 │   │
+│  │      │  POST /auth/refresh            │                                 │   │
+│  │      │  {refreshToken}                │                                 │   │
+│  │      │───────────────────────────────▶│                                 │   │
+│  │      │                                │  • Validate refresh token       │   │
+│  │      │                                │  • Generate new access token    │   │
+│  │      │◀───────────────────────────────│                                 │   │
+│  │      │  {accessToken, expiresIn}      │                                 │   │
+│  │                                                                         │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.3 Kong Resource Model
+### 5.2 Token Strategy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              TOKEN STRATEGY                                     │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ACCESS TOKEN (JWT)                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  Algorithm:     RS256 (asymmetric - public/private key pair)            │   │
+│  │  Expiration:    15 minutes                                              │   │
+│  │  Issuer:        auth-service                                            │   │
+│  │  Audience:      real-estate-api                                         │   │
+│  │                                                                         │   │
+│  │  Claims:                                                                │   │
+│  │  {                                                                      │   │
+│  │    "sub": "user-uuid-123",           // Subject (user ID)              │   │
+│  │    "email": "user@example.com",      // User email                     │   │
+│  │    "roles": ["user", "admin"],       // User roles                     │   │
+│  │    "iss": "auth-service",            // Issuer                         │   │
+│  │    "aud": "real-estate-api",         // Audience                       │   │
+│  │    "iat": 1706270400,                // Issued at                      │   │
+│  │    "exp": 1706271300                 // Expiration (15 min)            │   │
+│  │  }                                                                      │   │
+│  │                                                                         │   │
+│  │  Validated by:  Kong Gateway (using JWKS public keys)                   │   │
+│  │  Storage:       Frontend memory (NOT localStorage for XSS protection)   │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  REFRESH TOKEN                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  Type:          Opaque token (random UUID)                              │   │
+│  │  Expiration:    7 days                                                  │   │
+│  │  Storage:       Database (can be revoked)                               │   │
+│  │  Purpose:       Obtain new access tokens without re-login               │   │
+│  │                                                                         │   │
+│  │  Validated by:  Auth Service only (database lookup)                     │   │
+│  │  Client Storage: HttpOnly cookie (secure, sameSite=strict)              │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  KEY ROTATION                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  • RSA key pairs rotated every 30 days                                  │   │
+│  │  • JWKS endpoint always serves current + previous key (overlap period)  │   │
+│  │  • Kong caches JWKS with configurable TTL (default: 1 hour)            │   │
+│  │  • Old tokens remain valid until expiration during rotation             │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.3 JWKS (JSON Web Key Set) Integration
+
+Kong validates JWTs using the Auth Service's JWKS endpoint, enabling stateless validation:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         JWKS INTEGRATION                                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   Auth Service                                    Kong Gateway                  │
+│       │                                               │                         │
+│       │                                               │                         │
+│       │  GET /.well-known/jwks.json                   │                         │
+│       │◀──────────────────────────────────────────────│  (on startup +          │
+│       │                                               │   periodic refresh)     │
+│       │  {                                            │                         │
+│       │    "keys": [                                  │                         │
+│       │      {                                        │                         │
+│       │        "kty": "RSA",                          │                         │
+│       │        "kid": "key-2026-01",     ◄────────────│  Key ID for matching    │
+│       │        "use": "sig",                          │                         │
+│       │        "alg": "RS256",                        │                         │
+│       │        "n": "public-key-modulus...",          │                         │
+│       │        "e": "AQAB"                            │                         │
+│       │      },                                       │                         │
+│       │      {                                        │                         │
+│       │        "kty": "RSA",                          │                         │
+│       │        "kid": "key-2025-12",     ◄────────────│  Previous key           │
+│       │        "use": "sig",                          │   (rotation overlap)    │
+│       │        "alg": "RS256",                        │                         │
+│       │        "n": "old-public-key...",              │                         │
+│       │        "e": "AQAB"                            │                         │
+│       │      }                                        │                         │
+│       │    ]                                          │                         │
+│       │  }                                            │                         │
+│       │──────────────────────────────────────────────▶│                         │
+│       │                                               │  Cache keys locally     │
+│       │                                               │  (TTL: 1 hour)          │
+│                                                                                 │
+│   VALIDATION PROCESS:                                                          │
+│   1. Kong receives request with JWT                                            │
+│   2. Kong extracts 'kid' from JWT header                                       │
+│   3. Kong looks up matching public key from cached JWKS                        │
+│   4. Kong verifies JWT signature using public key                              │
+│   5. Kong checks exp, iss, aud claims                                          │
+│   6. If valid, Kong extracts claims and forwards to backend                    │
+│                                                                                 │
+│   NO CALL TO AUTH SERVICE FOR EACH REQUEST!                                    │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.4 Token Revocation Strategy
+
+Since JWTs are stateless, immediate revocation requires additional measures:
+
+| Strategy | Implementation | Use Case |
+|----------|---------------|----------|
+| **Short Expiration** | 15-minute access tokens | Primary defense |
+| **Refresh Token Revocation** | Delete from database | Logout, password change |
+| **Token Blacklist (Optional)** | Redis-based blacklist | Immediate revocation needs |
+| **Key Rotation** | Rotate signing keys | Compromise recovery |
 
 ```yaml
-# Kong Entity Hierarchy
-Kong:
-  Services:                          # Backend services to proxy to
-    - name: real-estate-backend
-      url: http://backend-service.real-estate.svc:8080
+# Token Revocation Scenarios
+scenarios:
+  user_logout:
+    action: Delete refresh token from database
+    effect: User must re-login after access token expires (max 15 min)
 
-  Routes:                            # How requests reach services
-    - name: api-properties
-      paths: ["/api/properties"]
-      service: real-estate-backend
+  password_change:
+    action: Delete all user's refresh tokens
+    effect: All sessions invalidated after access token expires
 
-    - name: api-upload
-      paths: ["/api/upload"]
-      service: real-estate-backend
+  account_compromise:
+    action: Add access token to Redis blacklist + delete refresh tokens
+    effect: Immediate invalidation (requires Kong to check blacklist)
 
-    - name: api-admin
-      paths: ["/api/admin"]
-      service: real-estate-backend
-
-    - name: health-check
-      paths: ["/actuator/health"]
-      service: real-estate-backend
-
-  Consumers:                         # API clients
-    - username: frontend-app
-      credentials:
-        - type: jwt
-          key: frontend-jwt-key
-
-    - username: admin-user
-      credentials:
-        - type: jwt
-          key: admin-jwt-key
-      groups: [admin]
-
-  Plugins:                           # Cross-cutting concerns
-    - name: jwt                      # Authentication
-    - name: acl                      # Authorization
-    - name: rate-limiting            # Traffic control
-    - name: prometheus               # Metrics
-    - name: cors                     # CORS handling
-    - name: file-log                 # Logging
+  security_incident:
+    action: Rotate RSA signing keys
+    effect: All tokens invalid after JWKS cache refresh
 ```
 
 ---
 
-## 6. Feature Requirements
+## 6. Technical Architecture
 
-### 6.1 Authentication & Authorization
+### 6.1 High-Level Architecture
 
-#### 6.1.1 JWT Authentication
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              KUBERNETES CLUSTER                                 │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                           KONG NAMESPACE                                │   │
+│  │                                                                         │   │
+│  │  ┌───────────────────────────────────────────────────────────────────┐ │   │
+│  │  │                      Kong Gateway                                 │ │   │
+│  │  │                   (2+ replicas, HA)                               │ │   │
+│  │  │                                                                   │ │   │
+│  │  │  Routes:                         Plugins:                         │ │   │
+│  │  │  ├─ /auth/* → Auth Service       ├─ JWT (JWKS validation)        │ │   │
+│  │  │  ├─ /api/*  → Backend Service    ├─ ACL (role-based access)      │ │   │
+│  │  │  └─ /actuator/* → Backend        ├─ Rate Limiting                │ │   │
+│  │  │                                  ├─ CORS                         │ │   │
+│  │  │                                  ├─ Request Transformer          │ │   │
+│  │  │                                  ├─ Prometheus                   │ │   │
+│  │  │                                  └─ File Log                     │ │   │
+│  │  └───────────────────────────────────────────────────────────────────┘ │   │
+│  │                              │                                         │   │
+│  │                              ▼                                         │   │
+│  │  ┌───────────────────────────────────────────────────────────────────┐ │   │
+│  │  │                    Kong PostgreSQL                                │ │   │
+│  │  │                  (Configuration Store)                            │ │   │
+│  │  └───────────────────────────────────────────────────────────────────┘ │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                              │                                                  │
+│          ┌───────────────────┼───────────────────┐                             │
+│          │                   │                   │                             │
+│          ▼                   ▼                   ▼                             │
+│  ┌───────────────┐   ┌───────────────┐   ┌───────────────┐                    │
+│  │ AUTH NAMESPACE │   │BACKEND NAMESPACE│   │REDIS NAMESPACE│                   │
+│  │               │   │               │   │               │                    │
+│  │┌─────────────┐│   │┌─────────────┐│   │┌─────────────┐│                    │
+│  ││Auth Service ││   ││Backend API  ││   ││   Redis     ││                    │
+│  ││(Spring Sec) ││   ││(Spring Boot)││   ││(Rate Limit) ││                    │
+│  ││             ││   ││             ││   │└─────────────┘│                    │
+│  ││• Login      ││   ││• Properties ││   └───────────────┘                    │
+│  ││• Register   ││   ││• Upload     ││                                        │
+│  ││• Refresh    ││   ││• Admin      ││                                        │
+│  ││• JWKS       ││   │└──────┬──────┘│                                        │
+│  │└──────┬──────┘│   │       │       │                                        │
+│  │       │       │   │       ▼       │                                        │
+│  │       ▼       │   │┌─────────────┐│                                        │
+│  │┌─────────────┐│   ││ App DB      ││                                        │
+│  ││  User DB    ││   ││(PostgreSQL) ││                                        │
+│  ││(PostgreSQL) ││   │└─────────────┘│                                        │
+│  │└─────────────┘│   └───────────────┘                                        │
+│  └───────────────┘                                                             │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
-| Requirement | Description | Priority |
-|-------------|-------------|----------|
-| JWT Validation | Validate JWT tokens on protected routes | P0 |
-| Multiple Issuers | Support tokens from NextAuth and future issuers | P1 |
-| Token Claims | Extract and forward user claims to backend | P0 |
-| Anonymous Access | Allow unauthenticated access to public endpoints | P0 |
+### 6.2 Network Flow
 
-**JWT Configuration:**
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              REQUEST FLOWS                                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  FLOW 1: AUTHENTICATION (Login/Register)                                       │
+│  ════════════════════════════════════════                                       │
+│                                                                                 │
+│  Client ──▶ Kong ──▶ Auth Service ──▶ User DB                                  │
+│     │         │           │              │                                     │
+│     │  POST   │  Forward  │   Validate   │                                     │
+│     │ /auth/  │  (no JWT  │   & Issue    │                                     │
+│     │ login   │  check)   │   Tokens     │                                     │
+│     │         │           │              │                                     │
+│     │◀────────│◀──────────│◀─────────────│                                     │
+│           {accessToken, refreshToken}                                          │
+│                                                                                 │
+│  FLOW 2: PROTECTED API REQUEST                                                 │
+│  ═══════════════════════════════                                               │
+│                                                                                 │
+│  Client ──▶ Kong ──▶ Backend ──▶ App DB                                        │
+│     │         │         │          │                                           │
+│     │  GET    │ Validate │ Process  │                                          │
+│     │ /api/   │ JWT via  │ with     │                                          │
+│     │         │ JWKS     │ user     │                                          │
+│     │         │          │ context  │                                          │
+│     │         │ Forward  │          │                                          │
+│     │         │ + Headers│          │                                          │
+│     │◀────────│◀─────────│◀─────────│                                          │
+│           Response                                                              │
+│                                                                                 │
+│  FLOW 3: TOKEN REFRESH                                                         │
+│  ══════════════════════                                                        │
+│                                                                                 │
+│  Client ──▶ Kong ──▶ Auth Service ──▶ User DB                                  │
+│     │         │           │              │                                     │
+│     │  POST   │  Forward  │  Validate    │                                     │
+│     │ /auth/  │  (no JWT  │  Refresh     │                                     │
+│     │ refresh │  check)   │  Token       │                                     │
+│     │         │           │              │                                     │
+│     │◀────────│◀──────────│◀─────────────│                                     │
+│           {accessToken}                                                         │
+│                                                                                 │
+│  FLOW 4: PUBLIC ENDPOINT                                                       │
+│  ════════════════════════                                                      │
+│                                                                                 │
+│  Client ──▶ Kong ──▶ Backend ──▶ App DB                                        │
+│     │         │         │          │                                           │
+│     │  GET    │ Rate     │ Process  │                                          │
+│     │ /api/   │ Limit    │          │                                          │
+│     │ props   │ Only     │          │                                          │
+│     │         │ (no JWT) │          │                                          │
+│     │◀────────│◀─────────│◀─────────│                                          │
+│           Response                                                              │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.3 Service Communication Matrix
+
+| Source | Destination | Protocol | Port | Auth | Purpose |
+|--------|-------------|----------|------|------|---------|
+| Frontend | Kong | HTTPS | 443 | JWT Header | API calls |
+| Kong | Auth Service | HTTP | 8081 | None (internal) | Auth routes, JWKS |
+| Kong | Backend | HTTP | 8080 | Headers | API routes |
+| Kong | Redis | TCP | 6379 | Password | Rate limiting |
+| Auth Service | User DB | TCP | 5432 | Password | User data |
+| Backend | App DB | TCP | 5432 | Password | Business data |
+
+---
+
+## 7. Auth Service Specification
+
+### 7.1 Service Overview
+
+| Attribute | Value |
+|-----------|-------|
+| **Name** | auth-service |
+| **Type** | Spring Boot 3.x with Spring Security |
+| **Port** | 8081 |
+| **Database** | PostgreSQL (dedicated) |
+| **Language** | Java 17 |
+
+### 7.2 API Endpoints
+
+#### 7.2.1 Authentication Endpoints
+
+| Endpoint | Method | Auth | Request Body | Response | Description |
+|----------|--------|------|--------------|----------|-------------|
+| `/auth/register` | POST | No | RegisterRequest | AuthResponse | User registration |
+| `/auth/login` | POST | No | LoginRequest | AuthResponse | User login |
+| `/auth/refresh` | POST | No | RefreshRequest | TokenResponse | Refresh access token |
+| `/auth/logout` | POST | JWT | - | 200 OK | Invalidate refresh token |
+| `/auth/forgot-password` | POST | No | ForgotPasswordRequest | 200 OK | Request password reset |
+| `/auth/reset-password` | POST | No | ResetPasswordRequest | 200 OK | Reset password with token |
+| `/auth/change-password` | POST | JWT | ChangePasswordRequest | 200 OK | Change password |
+| `/auth/me` | GET | JWT | - | UserResponse | Get current user profile |
+
+#### 7.2.2 JWKS Endpoint (Public)
+
+| Endpoint | Method | Auth | Response | Description |
+|----------|--------|------|----------|-------------|
+| `/.well-known/jwks.json` | GET | No | JWKS | Public keys for JWT verification |
+
+#### 7.2.3 User Management Endpoints (Admin Only)
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/users` | GET | JWT + Admin | List all users (paginated) |
+| `/users/{id}` | GET | JWT + Admin | Get user by ID |
+| `/users/{id}` | PUT | JWT + Admin | Update user |
+| `/users/{id}` | DELETE | JWT + Admin | Delete user |
+| `/users/{id}/roles` | PUT | JWT + Admin | Update user roles |
+| `/users/{id}/status` | PUT | JWT + Admin | Enable/disable user |
+
+#### 7.2.4 Health Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/actuator/health` | GET | No | Health check |
+| `/actuator/health/liveness` | GET | No | Kubernetes liveness probe |
+| `/actuator/health/readiness` | GET | No | Kubernetes readiness probe |
+
+### 7.3 Data Transfer Objects (DTOs)
+
+```java
+// Request DTOs
+public record RegisterRequest(
+    @NotBlank @Email String email,
+    @NotBlank @Size(min = 8) String password,
+    @NotBlank String firstName,
+    @NotBlank String lastName,
+    String phone
+) {}
+
+public record LoginRequest(
+    @NotBlank @Email String email,
+    @NotBlank String password
+) {}
+
+public record RefreshRequest(
+    @NotBlank String refreshToken
+) {}
+
+public record ForgotPasswordRequest(
+    @NotBlank @Email String email
+) {}
+
+public record ResetPasswordRequest(
+    @NotBlank String token,
+    @NotBlank @Size(min = 8) String newPassword
+) {}
+
+public record ChangePasswordRequest(
+    @NotBlank String currentPassword,
+    @NotBlank @Size(min = 8) String newPassword
+) {}
+
+// Response DTOs
+public record AuthResponse(
+    String accessToken,
+    String refreshToken,
+    long expiresIn,
+    String tokenType,
+    UserResponse user
+) {}
+
+public record TokenResponse(
+    String accessToken,
+    long expiresIn,
+    String tokenType
+) {}
+
+public record UserResponse(
+    UUID id,
+    String email,
+    String firstName,
+    String lastName,
+    String phone,
+    List<String> roles,
+    LocalDateTime createdAt
+) {}
+```
+
+### 7.4 Database Schema
+
+```sql
+-- Users Table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    email_verified BOOLEAN DEFAULT FALSE,
+    enabled BOOLEAN DEFAULT TRUE,
+    account_locked BOOLEAN DEFAULT FALSE,
+    failed_login_attempts INT DEFAULT 0,
+    lock_time TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP
+);
+
+-- Roles Table
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255)
+);
+
+-- User Roles (Many-to-Many)
+CREATE TABLE user_roles (
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    role_id INT REFERENCES roles(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
+);
+
+-- Refresh Tokens Table
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked BOOLEAN DEFAULT FALSE,
+    revoked_at TIMESTAMP,
+    device_info VARCHAR(255),
+    ip_address VARCHAR(45)
+);
+
+-- Password Reset Tokens
+CREATE TABLE password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- RSA Keys for JWT Signing
+CREATE TABLE rsa_keys (
+    id VARCHAR(50) PRIMARY KEY,  -- Key ID (kid)
+    public_key TEXT NOT NULL,
+    private_key TEXT NOT NULL,   -- Encrypted
+    algorithm VARCHAR(10) DEFAULT 'RS256',
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP
+);
+
+-- Indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+CREATE INDEX idx_password_reset_tokens_token ON password_reset_tokens(token);
+
+-- Initial Data
+INSERT INTO roles (name, description) VALUES
+    ('ROLE_USER', 'Standard user role'),
+    ('ROLE_ADMIN', 'Administrator role');
+```
+
+### 7.5 Project Structure
+
+```
+auth-service/
+├── src/main/java/com/realestate/auth/
+│   ├── AuthServiceApplication.java
+│   ├── controller/
+│   │   ├── AuthController.java          # Login, register, refresh
+│   │   ├── UserController.java          # User management (admin)
+│   │   └── JwksController.java          # JWKS endpoint
+│   ├── service/
+│   │   ├── AuthService.java             # Authentication logic
+│   │   ├── JwtService.java              # JWT generation/validation
+│   │   ├── UserService.java             # User CRUD operations
+│   │   ├── RefreshTokenService.java     # Refresh token management
+│   │   └── PasswordResetService.java    # Password reset logic
+│   ├── repository/
+│   │   ├── UserRepository.java
+│   │   ├── RoleRepository.java
+│   │   ├── RefreshTokenRepository.java
+│   │   ├── PasswordResetTokenRepository.java
+│   │   └── RsaKeyRepository.java
+│   ├── model/
+│   │   ├── User.java
+│   │   ├── Role.java
+│   │   ├── RefreshToken.java
+│   │   ├── PasswordResetToken.java
+│   │   └── RsaKey.java
+│   ├── dto/
+│   │   ├── request/
+│   │   │   ├── LoginRequest.java
+│   │   │   ├── RegisterRequest.java
+│   │   │   ├── RefreshRequest.java
+│   │   │   └── ...
+│   │   └── response/
+│   │       ├── AuthResponse.java
+│   │       ├── TokenResponse.java
+│   │       ├── UserResponse.java
+│   │       └── JwksResponse.java
+│   ├── config/
+│   │   ├── SecurityConfig.java          # Spring Security config
+│   │   ├── JwtConfig.java               # JWT properties
+│   │   └── CorsConfig.java              # CORS settings
+│   ├── security/
+│   │   ├── JwtAuthenticationFilter.java
+│   │   ├── CustomUserDetailsService.java
+│   │   └── JwtTokenProvider.java
+│   ├── exception/
+│   │   ├── AuthException.java
+│   │   ├── UserNotFoundException.java
+│   │   ├── TokenExpiredException.java
+│   │   └── GlobalExceptionHandler.java
+│   └── util/
+│       ├── KeyGeneratorUtil.java        # RSA key generation
+│       └── PasswordEncoderUtil.java
+├── src/main/resources/
+│   ├── application.yml
+│   ├── application-dev.yml
+│   ├── application-prod.yml
+│   └── db/migration/
+│       ├── V1__create_users_table.sql
+│       ├── V2__create_roles_table.sql
+│       ├── V3__create_refresh_tokens_table.sql
+│       └── V4__create_rsa_keys_table.sql
+├── src/test/java/
+│   └── ...
+├── Dockerfile
+├── pom.xml
+└── helm/
+    └── auth-service/
+        ├── Chart.yaml
+        ├── values.yaml
+        └── templates/
+```
+
+### 7.6 Configuration
+
+```yaml
+# application.yml
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:authdb}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8081
+
+jwt:
+  access-token:
+    expiration: 900000          # 15 minutes in milliseconds
+  refresh-token:
+    expiration: 604800000       # 7 days in milliseconds
+  issuer: auth-service
+  audience: real-estate-api
+
+security:
+  password:
+    min-length: 8
+    require-uppercase: true
+    require-lowercase: true
+    require-digit: true
+    require-special: false
+  account:
+    max-failed-attempts: 5
+    lock-duration-minutes: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+```
+
+### 7.7 Security Configuration
+
+```java
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                // Public endpoints
+                .requestMatchers("/auth/register", "/auth/login", "/auth/refresh").permitAll()
+                .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
+                .requestMatchers("/.well-known/jwks.json").permitAll()
+                .requestMatchers("/actuator/health/**").permitAll()
+                // Admin endpoints
+                .requestMatchers("/users/**").hasRole("ADMIN")
+                // Authenticated endpoints
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtAuthenticationFilter(),
+                UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+}
+```
+
+---
+
+## 8. Feature Requirements
+
+### 8.1 Authentication & Authorization
+
+#### 8.1.1 Kong JWT Plugin Configuration
+
 ```yaml
 plugins:
   - name: jwt
     config:
+      # JWKS URL for key fetching
+      key_claim_name: kid
       claims_to_verify:
         - exp                        # Token expiration
-      key_claim_name: iss            # Issuer claim
-      secret_is_base64: false
+        - iss                        # Issuer claim
+      anonymous: null                # Reject if no valid JWT
       run_on_preflight: false        # Skip for OPTIONS requests
+
+      # JWKS Configuration
+      # Kong will fetch keys from: http://auth-service:8081/.well-known/jwks.json
 ```
 
-#### 6.1.2 Access Control Lists (ACL)
+#### 8.1.2 Access Control Lists (ACL)
 
 | Consumer Group | Allowed Routes | Description |
 |----------------|----------------|-------------|
 | `public` | `/api/properties` (GET), `/api/properties/search`, `/api/properties/cities` | Public property browsing |
 | `authenticated` | All `/api/properties/*`, `/api/upload/*` | Logged-in users |
-| `admin` | `/api/admin/*` | Administrative functions |
+| `admin` | `/api/admin/*`, `/users/*` | Administrative functions |
 
-#### 6.1.3 API Key Authentication (Service-to-Service)
+#### 8.1.3 Request Header Transformation
 
-| Requirement | Description | Priority |
-|-------------|-------------|----------|
-| API Key Header | Accept `X-API-Key` header for service auth | P1 |
-| Key Rotation | Support multiple active keys per consumer | P2 |
-| Key Scoping | Limit keys to specific routes | P2 |
+Kong extracts JWT claims and forwards them as headers:
 
-### 6.2 Rate Limiting
+```yaml
+plugins:
+  - name: request-transformer
+    config:
+      add:
+        headers:
+          - "X-User-Id:$(jwt.claims.sub)"
+          - "X-User-Email:$(jwt.claims.email)"
+          - "X-User-Roles:$(jwt.claims.roles)"
+```
 
-#### 6.2.1 Rate Limit Tiers
+### 8.2 Rate Limiting
+
+#### 8.2.1 Rate Limit Tiers
 
 | Tier | Requests/Minute | Requests/Hour | Applied To |
 |------|-----------------|---------------|------------|
 | Anonymous | 30 | 500 | Unauthenticated requests |
 | Authenticated | 100 | 3000 | Regular users |
-| Premium | 500 | 15000 | Premium accounts (future) |
 | Admin | 1000 | 30000 | Admin users |
-| Service | 10000 | 300000 | Service-to-service |
+| Auth Endpoints | 10 | 100 | /auth/login, /auth/register |
 
-#### 6.2.2 Rate Limit Configuration
-
-```yaml
-plugins:
-  - name: rate-limiting
-    config:
-      minute: 100
-      hour: 3000
-      policy: redis                  # Use Redis for distributed limiting
-      fault_tolerant: true           # Continue if Redis unavailable
-      hide_client_headers: false     # Include X-RateLimit-* headers
-      redis_host: redis-service
-      redis_port: 6379
-```
-
-#### 6.2.3 Endpoint-Specific Limits
+#### 8.2.2 Endpoint-Specific Limits
 
 | Endpoint | Limit | Rationale |
 |----------|-------|-----------|
+| `POST /auth/login` | 10/minute | Prevent brute force |
+| `POST /auth/register` | 5/minute | Prevent spam accounts |
+| `POST /auth/forgot-password` | 3/minute | Prevent email spam |
 | `POST /api/upload/*` | 10/minute | Prevent upload abuse |
 | `POST /api/properties` | 20/hour | Prevent spam listings |
-| `DELETE /api/admin/*` | 5/minute | Protect destructive operations |
 
-### 6.3 Request/Response Transformation
+### 8.3 Route Configuration
 
-#### 6.3.1 Request Headers
-
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `X-Request-ID` | `$(uuid)` | Distributed tracing |
-| `X-Forwarded-For` | `$(client_ip)` | Original client IP |
-| `X-Consumer-Username` | `$(consumer.username)` | User identification |
-| `X-Consumer-Groups` | `$(consumer.groups)` | User roles |
-
-#### 6.3.2 Response Headers
-
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `X-Kong-Request-Id` | Request ID | Tracing |
-| `X-Response-Time` | Latency in ms | Performance monitoring |
-| `X-RateLimit-Remaining` | Remaining quota | Client awareness |
-
-### 6.4 CORS Configuration
+#### 8.3.1 Kong Routes
 
 ```yaml
-plugins:
-  - name: cors
-    config:
-      origins:
-        - https://your-frontend.vercel.app
-        - http://localhost:3000
-        - http://localhost:3001
-      methods:
-        - GET
-        - POST
-        - PUT
-        - DELETE
-        - PATCH
-        - OPTIONS
-      headers:
-        - Authorization
-        - Content-Type
-        - X-Requested-With
-        - X-API-Key
-      exposed_headers:
-        - X-RateLimit-Remaining
-        - X-RateLimit-Limit
-        - X-Kong-Request-Id
-      credentials: true
-      max_age: 3600
-      preflight_continue: false
+services:
+  - name: auth-service
+    url: http://auth-service.auth.svc.cluster.local:8081
+
+  - name: backend-service
+    url: http://backend-service.real-estate.svc.cluster.local:8080
+
+routes:
+  # Auth routes (no JWT validation)
+  - name: auth-public
+    service: auth-service
+    paths:
+      - /auth/login
+      - /auth/register
+      - /auth/refresh
+      - /auth/forgot-password
+      - /auth/reset-password
+    methods:
+      - POST
+    strip_path: false
+
+  - name: auth-jwks
+    service: auth-service
+    paths:
+      - /.well-known/jwks.json
+    methods:
+      - GET
+    strip_path: false
+
+  # Auth routes (JWT required)
+  - name: auth-protected
+    service: auth-service
+    paths:
+      - /auth/logout
+      - /auth/change-password
+      - /auth/me
+    strip_path: false
+
+  # User management (Admin only)
+  - name: users-admin
+    service: auth-service
+    paths:
+      - /users
+    strip_path: false
+
+  # Backend public routes
+  - name: properties-public
+    service: backend-service
+    paths:
+      - /api/properties
+    methods:
+      - GET
+    strip_path: false
+
+  # Backend protected routes
+  - name: properties-protected
+    service: backend-service
+    paths:
+      - /api/properties
+    methods:
+      - POST
+      - PUT
+      - DELETE
+    strip_path: false
+
+  # Admin routes
+  - name: admin-routes
+    service: backend-service
+    paths:
+      - /api/admin
+    strip_path: false
 ```
 
-### 6.5 Health Checks
+### 8.4 Complete Route Access Matrix
 
-#### 6.5.1 Active Health Checks
-
-```yaml
-upstreams:
-  - name: backend-upstream
-    healthchecks:
-      active:
-        healthy:
-          interval: 5              # Check every 5 seconds
-          successes: 2             # 2 successes = healthy
-          http_statuses: [200, 302]
-        unhealthy:
-          interval: 5
-          http_failures: 3         # 3 failures = unhealthy
-          http_statuses: [500, 502, 503]
-        http_path: /actuator/health
-        timeout: 3
-```
-
-#### 6.5.2 Passive Health Checks (Circuit Breaker)
-
-```yaml
-upstreams:
-  - name: backend-upstream
-    healthchecks:
-      passive:
-        healthy:
-          successes: 5
-          http_statuses: [200, 201, 204, 302]
-        unhealthy:
-          http_failures: 5
-          http_statuses: [500, 502, 503]
-          timeouts: 3
-```
+| Route | Methods | Auth | ACL Group | Rate Limit | JWT Claims Forwarded |
+|-------|---------|------|-----------|------------|---------------------|
+| `/auth/register` | POST | No | - | 5/min | - |
+| `/auth/login` | POST | No | - | 10/min | - |
+| `/auth/refresh` | POST | No | - | 30/min | - |
+| `/auth/logout` | POST | JWT | authenticated | 100/min | sub, email |
+| `/auth/me` | GET | JWT | authenticated | 100/min | sub, email |
+| `/.well-known/jwks.json` | GET | No | - | 120/min | - |
+| `/users/*` | ALL | JWT | admin | 100/min | sub, email, roles |
+| `/api/properties` | GET | No | - | 60/min | - |
+| `/api/properties/search` | POST | No | - | 60/min | - |
+| `/api/properties` | POST, PUT, DELETE | JWT | authenticated | 100/min | sub, email, roles |
+| `/api/properties/user/{userId}` | GET | JWT | authenticated | 100/min | sub, email |
+| `/api/upload/*` | POST | JWT | authenticated | 10/min | sub, email |
+| `/api/admin/*` | ALL | JWT | admin | 30/min | sub, email, roles |
+| `/actuator/health` | GET | No | - | 120/min | - |
 
 ---
 
-## 7. Implementation Plan
+## 9. Implementation Plan
 
-### 7.1 Phase Overview
+### 9.1 Phase Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                         IMPLEMENTATION PHASES                                   │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
-│  Phase 1: Foundation                                                            │
-│  ├─── Kong Helm chart setup                                                     │
-│  ├─── Basic routing configuration                                               │
-│  ├─── Health check endpoints                                                    │
-│  └─── Local development environment                                             │
+│  PHASE 1: Auth Service Development                                             │
+│  ├─── Project setup (Spring Boot + Security)                                   │
+│  ├─── User entity and repository                                               │
+│  ├─── Registration and login endpoints                                         │
+│  ├─── JWT generation with RS256                                                │
+│  ├─── JWKS endpoint                                                            │
+│  ├─── Refresh token mechanism                                                  │
+│  ├─── Database migrations                                                      │
+│  └─── Unit and integration tests                                               │
 │                                                                                 │
-│  Phase 2: Security                                                              │
-│  ├─── JWT authentication plugin                                                 │
-│  ├─── ACL plugin configuration                                                  │
-│  ├─── CORS plugin setup                                                         │
-│  └─── Admin endpoint protection                                                 │
+│  PHASE 2: Kong Gateway Foundation                                              │
+│  ├─── Kong Helm chart setup                                                    │
+│  ├─── Basic routing configuration                                              │
+│  ├─── Auth service and backend service definitions                             │
+│  ├─── Health check endpoints                                                   │
+│  └─── Local development environment                                            │
 │                                                                                 │
-│  Phase 3: Traffic Management                                                    │
-│  ├─── Rate limiting plugin                                                      │
-│  ├─── Redis deployment for rate limiting                                        │
-│  ├─── Request/response transformation                                           │
-│  └─── Upstream health checks                                                    │
+│  PHASE 3: Kong-Auth Integration                                                │
+│  ├─── JWT plugin with JWKS                                                     │
+│  ├─── ACL plugin configuration                                                 │
+│  ├─── Request transformer (header forwarding)                                  │
+│  ├─── CORS plugin setup                                                        │
+│  └─── Route-level plugin configuration                                         │
 │                                                                                 │
-│  Phase 4: Observability                                                         │
-│  ├─── Prometheus metrics plugin                                                 │
-│  ├─── File/HTTP logging plugin                                                  │
-│  ├─── Grafana dashboard setup                                                   │
-│  └─── AlertManager rules                                                        │
+│  PHASE 4: Backend Integration                                                  │
+│  ├─── Update backend to trust Kong headers                                     │
+│  ├─── Remove backend authentication logic (if any)                             │
+│  ├─── Add user context from headers                                            │
+│  ├─── Ownership validation using X-User-Id                                     │
+│  └─── Update frontend API client                                               │
 │                                                                                 │
-│  Phase 5: Production Hardening                                                  │
-│  ├─── High availability setup (multi-replica)                                   │
-│  ├─── SSL/TLS termination                                                       │
-│  ├─── Performance tuning                                                        │
-│  └─── Disaster recovery procedures                                              │
+│  PHASE 5: Traffic Management                                                   │
+│  ├─── Rate limiting plugin                                                     │
+│  ├─── Redis deployment                                                         │
+│  ├─── Upstream health checks                                                   │
+│  └─── Circuit breaker configuration                                            │
+│                                                                                 │
+│  PHASE 6: Observability                                                        │
+│  ├─── Prometheus metrics plugin                                                │
+│  ├─── Logging plugin                                                           │
+│  ├─── Auth service metrics                                                     │
+│  ├─── Grafana dashboards                                                       │
+│  └─── AlertManager rules                                                       │
+│                                                                                 │
+│  PHASE 7: Production Hardening                                                 │
+│  ├─── High availability (multi-replica)                                        │
+│  ├─── SSL/TLS termination                                                      │
+│  ├─── Key rotation automation                                                  │
+│  ├─── Performance tuning                                                       │
+│  └─── Security audit                                                           │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 7.2 Detailed Phase Breakdown
+### 9.2 Detailed Phase Breakdown
 
-#### Phase 1: Foundation
+#### Phase 1: Auth Service Development
+
+**Deliverables:**
+1. Spring Boot project with Spring Security
+2. User registration and login functionality
+3. JWT token generation (RS256)
+4. JWKS endpoint for public key distribution
+5. Refresh token mechanism
+6. Password reset functionality
+7. Database schema and migrations
+8. API documentation (OpenAPI/Swagger)
+9. Unit and integration tests
+
+**Project Structure:**
+```
+auth-service/
+├── src/main/java/com/realestate/auth/
+│   ├── controller/
+│   ├── service/
+│   ├── repository/
+│   ├── model/
+│   ├── dto/
+│   ├── config/
+│   ├── security/
+│   └── exception/
+├── src/main/resources/
+│   ├── application.yml
+│   └── db/migration/
+├── src/test/
+├── Dockerfile
+├── pom.xml
+└── helm/auth-service/
+```
+
+#### Phase 2: Kong Gateway Foundation
 
 **Deliverables:**
 1. Kong Helm chart with custom values
 2. Kong namespace and RBAC
-3. PostgreSQL database for Kong
-4. Service and route definitions for backend
-5. Basic proxy functionality working
+3. PostgreSQL for Kong configuration
+4. Service definitions (auth-service, backend-service)
+5. Basic route definitions
+6. Local development environment with minikube
 
-**Files to Create:**
+**Files Structure:**
 ```
 kong/
 ├── helm/
@@ -577,11 +1238,8 @@ kong/
 │       ├── Chart.yaml
 │       ├── values.yaml
 │       ├── values-local.yaml
-│       ├── values-minikube.yaml
-│       ├── values-staging.yaml
 │       └── values-production.yaml
 ├── config/
-│   ├── kong.yaml              # Declarative config
 │   ├── services.yaml
 │   └── routes.yaml
 └── scripts/
@@ -589,14 +1247,14 @@ kong/
     └── configure-kong.sh
 ```
 
-#### Phase 2: Security
+#### Phase 3: Kong-Auth Integration
 
 **Deliverables:**
-1. JWT plugin configuration
-2. ACL groups and permissions
-3. Consumer definitions
-4. CORS plugin configuration
-5. Protected admin endpoints
+1. JWT plugin configuration with JWKS URL
+2. ACL groups and consumer mapping
+3. Request transformer for header forwarding
+4. CORS plugin (remove from backend)
+5. Route-specific plugin assignments
 
 **Configuration Files:**
 ```
@@ -604,69 +1262,112 @@ kong/config/
 ├── plugins/
 │   ├── jwt.yaml
 │   ├── acl.yaml
-│   └── cors.yaml
-├── consumers/
-│   ├── frontend-app.yaml
-│   └── admin-user.yaml
-└── credentials/
-    └── jwt-secrets.yaml
-```
-
-#### Phase 3: Traffic Management
-
-**Deliverables:**
-1. Rate limiting plugin
-2. Redis deployment for distributed rate limiting
-3. Request transformer plugin
-4. Upstream definitions with health checks
-5. Circuit breaker configuration
-
-**Configuration Files:**
-```
-kong/config/
-├── plugins/
-│   ├── rate-limiting.yaml
+│   ├── cors.yaml
 │   └── request-transformer.yaml
-├── upstreams/
-│   └── backend-upstream.yaml
-└── redis/
-    └── deployment.yaml
+├── consumers/
+│   └── acl-groups.yaml
+└── routes/
+    ├── auth-routes.yaml
+    ├── api-routes.yaml
+    └── admin-routes.yaml
 ```
 
-#### Phase 4: Observability
+#### Phase 4: Backend Integration
 
 **Deliverables:**
-1. Prometheus plugin configuration
-2. File logging plugin
-3. Grafana dashboards for Kong
-4. AlertManager rules
-5. Log aggregation setup
+1. Backend filter to extract user from headers
+2. UserContext class for request-scoped user info
+3. Ownership validation in services
+4. Remove CORS configuration from backend
+5. Updated frontend authentication flow
 
-**Configuration Files:**
+**Backend Changes:**
+```java
+// UserContextFilter.java - Extract user from Kong headers
+@Component
+public class UserContextFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response,
+                        FilterChain chain) throws IOException, ServletException {
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+
+        String userId = httpRequest.getHeader("X-User-Id");
+        String userEmail = httpRequest.getHeader("X-User-Email");
+        String userRoles = httpRequest.getHeader("X-User-Roles");
+
+        if (userId != null) {
+            UserContext.setCurrentUser(new UserInfo(userId, userEmail, userRoles));
+        }
+
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            UserContext.clear();
+        }
+    }
+}
 ```
-kong/config/
-├── plugins/
-│   ├── prometheus.yaml
-│   └── file-log.yaml
-└── monitoring/
-    ├── grafana-dashboard.json
-    └── alertmanager-rules.yaml
+
+#### Phase 5-7: Traffic Management, Observability, Production Hardening
+
+(Detailed in subsequent sections)
+
+### 9.3 File Structure Overview
+
 ```
-
-#### Phase 5: Production Hardening
-
-**Deliverables:**
-1. Multi-replica Kong deployment
-2. SSL/TLS certificates configuration
-3. Performance tuning (worker processes, connections)
-4. Backup and restore procedures
-5. Runbook documentation
+real-estate-ui/
+├── auth-service/                    # NEW: Authentication microservice
+│   ├── src/
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── helm/
+│       └── auth-service/
+│           ├── Chart.yaml
+│           ├── values.yaml
+│           └── templates/
+│
+├── kong/                            # NEW: Kong Gateway configuration
+│   ├── helm/
+│   │   └── kong/
+│   │       ├── Chart.yaml
+│   │       ├── values.yaml
+│   │       ├── values-local.yaml
+│   │       └── values-production.yaml
+│   ├── config/
+│   │   ├── kong.yaml               # Declarative config
+│   │   ├── services.yaml
+│   │   ├── routes.yaml
+│   │   └── plugins/
+│   └── scripts/
+│
+├── backend/                         # EXISTING: Updated
+│   ├── src/                        # Add UserContext filter
+│   ├── helm/
+│   └── ...
+│
+├── frontend/                        # EXISTING: Updated
+│   ├── lib/
+│   │   ├── auth/                   # Updated auth client
+│   │   └── api/                    # Updated API client
+│   └── ...
+│
+├── terraform/
+│   ├── modules/
+│   │   ├── rds/
+│   │   ├── eks/
+│   │   └── redis/                  # NEW: For rate limiting
+│   └── ...
+│
+└── docs/
+    ├── KONG_GATEWAY_PRP.md         # This document
+    └── AUTH_SERVICE_GUIDE.md       # NEW: Auth service documentation
+```
 
 ---
 
-## 8. Configuration Specifications
+## 10. Configuration Specifications
 
-### 8.1 Kong Helm Values (Production)
+### 10.1 Kong Helm Values (Production)
 
 ```yaml
 # kong/helm/kong/values-production.yaml
@@ -692,7 +1393,6 @@ env:
   pg_port: 5432
   pg_database: kong
   pg_user: kong
-  # pg_password from secret
 
   nginx_worker_processes: auto
   nginx_proxy_read_timeout: 60s
@@ -731,10 +1431,6 @@ postgresql:
       enabled: true
       size: 10Gi
 
-ingressController:
-  enabled: true
-  installCRDs: true
-
 autoscaling:
   enabled: true
   minReplicas: 2
@@ -742,7 +1438,7 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
 ```
 
-### 8.2 Kong Declarative Configuration
+### 10.2 Kong Declarative Configuration
 
 ```yaml
 # kong/config/kong.yaml
@@ -750,18 +1446,68 @@ autoscaling:
 _format_version: "3.0"
 _transform: true
 
+# ============================================================================
+# SERVICES
+# ============================================================================
 services:
-  - name: real-estate-backend
+  - name: auth-service
+    url: http://auth-service.auth.svc.cluster.local:8081
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
+  - name: backend-service
     url: http://backend-service.real-estate.svc.cluster.local:8080
     connect_timeout: 10000
     write_timeout: 60000
     read_timeout: 60000
     retries: 3
 
+# ============================================================================
+# ROUTES
+# ============================================================================
 routes:
-  # Public property endpoints
-  - name: properties-public
-    service: real-estate-backend
+  # --- Auth Service Routes (Public - No JWT) ---
+  - name: auth-public
+    service: auth-service
+    paths:
+      - /auth/login
+      - /auth/register
+      - /auth/refresh
+      - /auth/forgot-password
+      - /auth/reset-password
+    methods:
+      - POST
+    strip_path: false
+
+  - name: auth-jwks
+    service: auth-service
+    paths:
+      - /.well-known/jwks.json
+    methods:
+      - GET
+    strip_path: false
+
+  # --- Auth Service Routes (Protected - JWT Required) ---
+  - name: auth-protected
+    service: auth-service
+    paths:
+      - /auth/logout
+      - /auth/change-password
+      - /auth/me
+    strip_path: false
+
+  # --- User Management (Admin Only) ---
+  - name: users-admin
+    service: auth-service
+    paths:
+      - /users
+    strip_path: false
+
+  # --- Backend Public Routes ---
+  - name: properties-public-get
+    service: backend-service
     paths:
       - /api/properties
     methods:
@@ -769,7 +1515,7 @@ routes:
     strip_path: false
 
   - name: properties-search
-    service: real-estate-backend
+    service: backend-service
     paths:
       - /api/properties/search
     methods:
@@ -777,16 +1523,16 @@ routes:
     strip_path: false
 
   - name: properties-cities
-    service: real-estate-backend
+    service: backend-service
     paths:
       - /api/properties/cities
     methods:
       - GET
     strip_path: false
 
-  # Authenticated property endpoints
-  - name: properties-authenticated
-    service: real-estate-backend
+  # --- Backend Protected Routes ---
+  - name: properties-protected
+    service: backend-service
     paths:
       - /api/properties
     methods:
@@ -795,43 +1541,53 @@ routes:
       - DELETE
     strip_path: false
 
-  # Upload endpoints
-  - name: upload
-    service: real-estate-backend
+  - name: properties-user
+    service: backend-service
+    paths:
+      - /api/properties/user
+    strip_path: false
+
+  - name: upload-routes
+    service: backend-service
     paths:
       - /api/upload
     strip_path: false
 
-  # Admin endpoints
-  - name: admin
-    service: real-estate-backend
+  # --- Admin Routes ---
+  - name: admin-routes
+    service: backend-service
     paths:
       - /api/admin
     strip_path: false
 
-  # Health check
-  - name: health
-    service: real-estate-backend
+  # --- Health Check ---
+  - name: health-backend
+    service: backend-service
     paths:
       - /actuator/health
     methods:
       - GET
     strip_path: false
 
-consumers:
-  - username: frontend-app
-    custom_id: frontend-nextjs
+  - name: health-auth
+    service: auth-service
+    paths:
+      - /auth/actuator/health
+    methods:
+      - GET
+    strip_path: false
 
-  - username: admin-user
-    custom_id: admin-001
-
+# ============================================================================
+# PLUGINS - GLOBAL
+# ============================================================================
 plugins:
-  # Global CORS
+  # --- CORS (Global) ---
   - name: cors
     config:
       origins:
         - https://your-frontend.vercel.app
         - http://localhost:3000
+        - http://localhost:3001
       methods:
         - GET
         - POST
@@ -842,97 +1598,228 @@ plugins:
       headers:
         - Authorization
         - Content-Type
+        - X-Requested-With
+      exposed_headers:
+        - X-RateLimit-Remaining
+        - X-RateLimit-Limit
+        - X-Request-ID
       credentials: true
       max_age: 3600
 
-  # Global Prometheus metrics
+  # --- Prometheus Metrics (Global) ---
   - name: prometheus
     config:
       per_consumer: true
       status_code_metrics: true
       latency_metrics: true
       bandwidth_metrics: true
-      upstream_health_metrics: true
 
-  # Global request ID
+  # --- Request ID (Global) ---
   - name: correlation-id
     config:
       header_name: X-Request-ID
       generator: uuid
       echo_downstream: true
 
-  # JWT on authenticated routes
-  - name: jwt
-    route: properties-authenticated
-    config:
-      claims_to_verify:
-        - exp
-      key_claim_name: iss
+# ============================================================================
+# PLUGINS - ROUTE SPECIFIC
+# ============================================================================
 
+  # --- JWT Plugin for Protected Routes ---
   - name: jwt
-    route: upload
+    route: auth-protected
     config:
+      key_claim_name: kid
       claims_to_verify:
         - exp
 
   - name: jwt
-    route: admin
+    route: users-admin
     config:
+      key_claim_name: kid
       claims_to_verify:
         - exp
 
-  # ACL for admin routes
+  - name: jwt
+    route: properties-protected
+    config:
+      key_claim_name: kid
+      claims_to_verify:
+        - exp
+
+  - name: jwt
+    route: properties-user
+    config:
+      key_claim_name: kid
+      claims_to_verify:
+        - exp
+
+  - name: jwt
+    route: upload-routes
+    config:
+      key_claim_name: kid
+      claims_to_verify:
+        - exp
+
+  - name: jwt
+    route: admin-routes
+    config:
+      key_claim_name: kid
+      claims_to_verify:
+        - exp
+
+  # --- ACL for Admin Routes ---
   - name: acl
-    route: admin
+    route: admin-routes
     config:
       allow:
         - admin
 
-  # Rate limiting
+  - name: acl
+    route: users-admin
+    config:
+      allow:
+        - admin
+
+  # --- Rate Limiting ---
   - name: rate-limiting
-    route: properties-public
+    route: auth-public
+    config:
+      minute: 10
+      hour: 100
+      policy: redis
+      redis_host: redis.redis.svc.cluster.local
+      redis_port: 6379
+
+  - name: rate-limiting
+    route: properties-public-get
     config:
       minute: 60
       policy: local
 
   - name: rate-limiting
-    route: properties-authenticated
+    route: properties-protected
     config:
       minute: 100
       policy: local
 
   - name: rate-limiting
-    route: upload
+    route: upload-routes
     config:
       minute: 10
       policy: local
 
   - name: rate-limiting
-    route: admin
+    route: admin-routes
     config:
       minute: 30
       policy: local
+
+# ============================================================================
+# UPSTREAMS (for load balancing)
+# ============================================================================
+upstreams:
+  - name: auth-service-upstream
+    targets:
+      - target: auth-service.auth.svc.cluster.local:8081
+        weight: 100
+    healthchecks:
+      active:
+        healthy:
+          interval: 5
+          successes: 2
+        unhealthy:
+          interval: 5
+          http_failures: 3
+        http_path: /actuator/health
+
+  - name: backend-service-upstream
+    targets:
+      - target: backend-service.real-estate.svc.cluster.local:8080
+        weight: 100
+    healthchecks:
+      active:
+        healthy:
+          interval: 5
+          successes: 2
+        unhealthy:
+          interval: 5
+          http_failures: 3
+        http_path: /actuator/health
 ```
 
-### 8.3 Route Access Matrix
+### 10.3 Auth Service Helm Values
 
-| Route | Methods | Auth Required | ACL Groups | Rate Limit |
-|-------|---------|---------------|------------|------------|
-| `/api/properties` | GET | No | - | 60/min |
-| `/api/properties/search` | POST | No | - | 60/min |
-| `/api/properties/cities` | GET | No | - | 60/min |
-| `/api/properties` | POST, PUT, DELETE | Yes (JWT) | authenticated | 100/min |
-| `/api/properties/{id}` | GET | No | - | 60/min |
-| `/api/properties/user/{userId}` | GET | Yes (JWT) | authenticated | 100/min |
-| `/api/upload/*` | POST | Yes (JWT) | authenticated | 10/min |
-| `/api/admin/*` | ALL | Yes (JWT) | admin | 30/min |
-| `/actuator/health` | GET | No | - | 120/min |
+```yaml
+# auth-service/helm/auth-service/values.yaml
+
+replicaCount: 2
+
+image:
+  repository: your-registry/auth-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8081
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  DB_HOST: auth-postgresql
+  DB_PORT: "5432"
+  DB_NAME: authdb
+  DB_USER: authuser
+  JWT_ACCESS_TOKEN_EXPIRATION: "900000"
+  JWT_REFRESH_TOKEN_EXPIRATION: "604800000"
+
+secrets:
+  - name: DB_PASSWORD
+    secretName: auth-db-secret
+    secretKey: password
+  - name: JWT_PRIVATE_KEY
+    secretName: auth-jwt-secret
+    secretKey: private-key
+
+postgresql:
+  enabled: true
+  auth:
+    username: authuser
+    database: authdb
+    existingSecret: auth-db-secret
+  primary:
+    persistence:
+      enabled: true
+      size: 5Gi
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8081
+  initialDelaySeconds: 20
+  periodSeconds: 5
+```
 
 ---
 
-## 9. Security Considerations
+## 11. Security Considerations
 
-### 9.1 Security Architecture
+### 11.1 Security Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -942,455 +1829,392 @@ plugins:
 │  Layer 1: Network Security                                                      │
 │  ├─── Kubernetes Network Policies                                               │
 │  ├─── Namespace isolation                                                       │
-│  └─── Service mesh (future: Istio/Linkerd)                                      │
+│  ├─── Internal services not exposed externally                                  │
+│  └─── TLS for all external traffic                                             │
 │                                                                                 │
 │  Layer 2: Edge Security (Kong)                                                  │
 │  ├─── TLS termination                                                           │
+│  ├─── Rate limiting (DDoS protection)                                           │
 │  ├─── IP restriction (optional)                                                 │
-│  ├─── Rate limiting                                                             │
-│  └─── Request validation                                                        │
+│  └─── Request size limits                                                       │
 │                                                                                 │
-│  Layer 3: Authentication (Kong)                                                 │
-│  ├─── JWT validation                                                            │
-│  ├─── API key validation                                                        │
-│  └─── Token claim extraction                                                    │
+│  Layer 3: Authentication (Auth Service + Kong)                                  │
+│  ├─── Password hashing (BCrypt, cost factor 12)                                │
+│  ├─── JWT with RS256 (asymmetric signing)                                      │
+│  ├─── Short-lived access tokens (15 min)                                       │
+│  ├─── Secure refresh token storage                                             │
+│  └─── Account lockout after failed attempts                                    │
 │                                                                                 │
 │  Layer 4: Authorization (Kong + Backend)                                        │
-│  ├─── ACL groups at Kong                                                        │
-│  └─── Fine-grained RBAC at backend (future)                                     │
+│  ├─── ACL groups at Kong level                                                 │
+│  ├─── Role-based access control                                                │
+│  ├─── Resource ownership validation                                            │
+│  └─── Admin endpoint protection                                                │
 │                                                                                 │
-│  Layer 5: Application Security (Backend)                                        │
+│  Layer 5: Application Security                                                  │
 │  ├─── Input validation                                                          │
-│  ├─── SQL injection prevention (JPA)                                            │
-│  └─── Output encoding                                                           │
+│  ├─── SQL injection prevention (JPA/Hibernate)                                 │
+│  ├─── XSS prevention                                                           │
+│  └─── CSRF protection (for web forms)                                          │
+│                                                                                 │
+│  Layer 6: Data Security                                                         │
+│  ├─── Encryption at rest (database)                                            │
+│  ├─── Encryption in transit (TLS)                                              │
+│  ├─── Sensitive data masking in logs                                           │
+│  └─── PII handling compliance                                                  │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 9.2 Secret Management
+### 11.2 Secret Management
 
-| Secret | Storage | Rotation |
-|--------|---------|----------|
-| Kong DB Password | Kubernetes Secret + External Secrets | 90 days |
-| JWT Signing Keys | Kubernetes Secret + External Secrets | 30 days |
-| API Keys | Kong Database (encrypted) | On-demand |
-| TLS Certificates | cert-manager / AWS ACM | Auto-renewal |
+| Secret | Storage | Rotation | Access |
+|--------|---------|----------|--------|
+| Kong DB Password | K8s Secret + External Secrets | 90 days | Kong pods only |
+| Auth Service DB Password | K8s Secret + External Secrets | 90 days | Auth pods only |
+| JWT Private Key | K8s Secret + External Secrets | 30 days | Auth pods only |
+| Redis Password | K8s Secret | 90 days | Kong pods only |
+| TLS Certificates | cert-manager / AWS ACM | Auto-renewal | Kong pods only |
 
-### 9.3 Security Checklist
+### 11.3 Security Checklist
 
+#### Infrastructure
 - [ ] Enable TLS 1.2+ only
 - [ ] Configure HSTS headers
-- [ ] Disable Kong Admin API external access in production
+- [ ] Disable Kong Admin API external access
 - [ ] Enable request body size limits
-- [ ] Configure IP allowlisting for admin routes
-- [ ] Set up audit logging for security events
-- [ ] Implement JWT key rotation strategy
-- [ ] Configure network policies to restrict pod communication
-- [ ] Enable PodSecurityPolicy/PodSecurityStandards
-- [ ] Regular security scanning of Kong image
+- [ ] Configure network policies
+- [ ] Enable pod security standards
 
-### 9.4 Threat Model
+#### Authentication
+- [ ] Implement password complexity requirements
+- [ ] Enable account lockout after 5 failed attempts
+- [ ] Implement JWT key rotation (30 days)
+- [ ] Use secure cookie settings for refresh tokens
+- [ ] Implement rate limiting on auth endpoints
 
-| Threat | Mitigation | Kong Plugin |
-|--------|------------|-------------|
-| DDoS | Rate limiting, IP restriction | rate-limiting, ip-restriction |
-| Unauthorized Access | JWT validation, ACL | jwt, acl |
-| API Abuse | Rate limiting per consumer | rate-limiting |
-| Injection Attacks | Request validation, WAF (future) | request-validator |
-| Data Leakage | Response transformation | response-transformer |
-| Replay Attacks | JWT expiration, nonce (future) | jwt |
+#### Authorization
+- [ ] Protect all admin endpoints with ACL
+- [ ] Validate resource ownership in backend
+- [ ] Implement role hierarchy
+- [ ] Audit all authorization decisions
+
+#### Monitoring
+- [ ] Log all authentication events
+- [ ] Alert on suspicious patterns (multiple failed logins)
+- [ ] Monitor token revocation events
+- [ ] Track API abuse patterns
+
+### 11.4 Threat Model
+
+| Threat | Mitigation | Component |
+|--------|------------|-----------|
+| Brute Force | Account lockout, rate limiting | Auth Service, Kong |
+| Token Theft | Short expiration, secure storage | Auth Service, Frontend |
+| Session Hijacking | Refresh token rotation, secure cookies | Auth Service |
+| DDoS | Rate limiting, IP restriction | Kong |
+| SQL Injection | Parameterized queries, JPA | Auth Service, Backend |
+| XSS | Content Security Policy, output encoding | Frontend |
+| CSRF | SameSite cookies, CSRF tokens | Auth Service |
+| Key Compromise | Key rotation, HSM (future) | Auth Service |
 
 ---
 
-## 10. Monitoring and Observability
+## 12. Monitoring and Observability
 
-### 10.1 Metrics
+### 12.1 Metrics
 
-#### 10.1.1 Kong Prometheus Metrics
+#### 12.1.1 Auth Service Metrics
+
+| Metric | Description | Alert Threshold |
+|--------|-------------|-----------------|
+| `auth_login_total` | Total login attempts | - |
+| `auth_login_success` | Successful logins | - |
+| `auth_login_failure` | Failed logins | > 100/min |
+| `auth_registration_total` | Registration attempts | - |
+| `auth_token_refresh_total` | Token refreshes | - |
+| `auth_token_validation_latency` | JWT validation time | P99 > 10ms |
+| `auth_active_sessions` | Active refresh tokens | - |
+
+#### 12.1.2 Kong Metrics
 
 | Metric | Description | Alert Threshold |
 |--------|-------------|-----------------|
 | `kong_http_requests_total` | Total requests | - |
 | `kong_request_latency_ms` | Request latency | P99 > 500ms |
-| `kong_upstream_latency_ms` | Backend latency | P99 > 300ms |
-| `kong_bandwidth_bytes` | Bandwidth usage | - |
 | `kong_http_status` | Status code counts | 5xx > 1% |
-| `kong_nginx_connections_active` | Active connections | > 80% capacity |
+| `kong_jwt_auth_success` | JWT validations | - |
+| `kong_jwt_auth_failure` | JWT failures | > 5% |
+| `kong_rate_limiting_exceeded` | Rate limit hits | > 10/min |
 
-#### 10.1.2 Business Metrics
+### 12.2 Logging
 
-| Metric | Description | Dashboard |
-|--------|-------------|-----------|
-| Requests per route | Traffic distribution | Kong Overview |
-| Auth failures | Security monitoring | Security Dashboard |
-| Rate limit hits | Abuse detection | Traffic Dashboard |
-| Consumer usage | API usage per client | Consumer Dashboard |
-
-### 10.2 Logging
-
-#### 10.2.1 Log Format (JSON)
+#### 12.2.1 Auth Service Log Events
 
 ```json
 {
   "timestamp": "2026-01-26T10:30:00.000Z",
-  "request_id": "uuid-here",
-  "client_ip": "192.168.1.100",
-  "method": "POST",
-  "path": "/api/properties",
-  "status": 201,
-  "latency_ms": 45,
-  "upstream_latency_ms": 30,
-  "consumer": "frontend-app",
-  "route": "properties-authenticated",
-  "service": "real-estate-backend",
-  "request_size": 1024,
-  "response_size": 512
+  "level": "INFO",
+  "service": "auth-service",
+  "event": "USER_LOGIN",
+  "user_id": "uuid",
+  "email": "user@example.com",
+  "ip_address": "192.168.1.100",
+  "user_agent": "Mozilla/5.0...",
+  "success": true,
+  "request_id": "kong-request-id"
 }
 ```
 
-#### 10.2.2 Log Destinations
+#### 12.2.2 Security Events to Log
 
-| Environment | Destination | Retention |
-|-------------|-------------|-----------|
-| Local | stdout/file | Session |
-| Development | CloudWatch Logs | 7 days |
-| Staging | CloudWatch Logs | 14 days |
-| Production | CloudWatch Logs + S3 | 90 days (S3: 1 year) |
+| Event | Log Level | Details |
+|-------|-----------|---------|
+| Login Success | INFO | user_id, ip, timestamp |
+| Login Failure | WARN | email (masked), ip, reason |
+| Account Locked | WARN | user_id, ip, failed_attempts |
+| Password Changed | INFO | user_id, ip |
+| Token Revoked | INFO | user_id, reason |
+| Admin Action | INFO | admin_id, action, target_user |
 
-### 10.3 Alerting Rules
+### 12.3 Grafana Dashboards
 
-```yaml
-# AlertManager rules
-groups:
-  - name: kong-alerts
-    rules:
-      - alert: KongHighErrorRate
-        expr: sum(rate(kong_http_status{code=~"5.."}[5m])) / sum(rate(kong_http_requests_total[5m])) > 0.01
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Kong error rate is above 1%"
-
-      - alert: KongHighLatency
-        expr: histogram_quantile(0.99, sum(rate(kong_request_latency_ms_bucket[5m])) by (le)) > 500
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Kong P99 latency is above 500ms"
-
-      - alert: KongRateLimitHits
-        expr: sum(rate(kong_rate_limiting_exceeded_total[5m])) > 10
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High rate of rate limit hits detected"
-```
-
-### 10.4 Grafana Dashboards
-
-1. **Kong Overview Dashboard**
-   - Request rate, latency, error rate
-   - Upstream health status
-   - Active connections
+1. **Auth Service Dashboard**
+   - Login success/failure rates
+   - Registration trends
+   - Token refresh patterns
+   - Active sessions
 
 2. **Kong Security Dashboard**
-   - Auth success/failure rate
-   - Rate limit hits per consumer
-   - Blocked requests by IP/route
+   - JWT validation success/failure
+   - Rate limit hits
+   - Blocked requests
+   - Auth endpoint latency
 
-3. **Kong Consumer Dashboard**
-   - Per-consumer request rates
-   - Per-consumer error rates
-   - Top consumers by request volume
-
----
-
-## 11. Performance Requirements
-
-### 11.1 Performance Targets
-
-| Metric | Target | Maximum |
-|--------|--------|---------|
-| Added Latency (P50) | < 2ms | 5ms |
-| Added Latency (P99) | < 10ms | 20ms |
-| Throughput | 10,000 RPS | - |
-| Connection Overhead | < 1ms | 2ms |
-| Memory per Request | < 10KB | 50KB |
-
-### 11.2 Performance Tuning
-
-```yaml
-# Kong environment variables for performance
-env:
-  # Worker processes
-  nginx_worker_processes: auto
-
-  # Connections
-  nginx_worker_connections: 16384
-
-  # Keep-alive
-  nginx_http_keepalive_timeout: 65
-  nginx_upstream_keepalive: 100
-  nginx_upstream_keepalive_requests: 1000
-
-  # Buffers
-  nginx_proxy_buffer_size: 16k
-  nginx_proxy_buffers: 4 32k
-  nginx_proxy_busy_buffers_size: 64k
-
-  # Timeouts
-  nginx_proxy_connect_timeout: 10s
-  nginx_proxy_send_timeout: 60s
-  nginx_proxy_read_timeout: 60s
-
-  # Caching
-  db_cache_ttl: 3600
-  db_resurrect_ttl: 30
-```
-
-### 11.3 Load Testing Plan
-
-| Test Type | Target | Duration | Tool |
-|-----------|--------|----------|------|
-| Smoke Test | 100 RPS | 5 min | k6 |
-| Load Test | 1000 RPS | 30 min | k6 |
-| Stress Test | Ramp to 5000 RPS | 1 hour | k6 |
-| Soak Test | 500 RPS | 24 hours | k6 |
+3. **User Activity Dashboard**
+   - Daily active users
+   - New registrations
+   - Failed login patterns
+   - Session duration
 
 ---
 
-## 12. Deployment Strategy
+## 13. Performance Requirements
 
-### 12.1 Environment Configuration
+### 13.1 Performance Targets
 
-| Environment | Replicas | Resources | Database |
-|-------------|----------|-----------|----------|
-| Local | 1 | 256Mi/250m | In-memory (DB-less) |
-| Development | 1 | 512Mi/500m | PostgreSQL (shared) |
-| Staging | 2 | 1Gi/1000m | PostgreSQL (dedicated) |
-| Production | 3+ | 2Gi/2000m | PostgreSQL (HA) |
+| Component | Metric | Target | Maximum |
+|-----------|--------|--------|---------|
+| Kong (gateway latency) | P50 | < 2ms | 5ms |
+| Kong (gateway latency) | P99 | < 10ms | 20ms |
+| Auth Service (login) | P50 | < 100ms | 200ms |
+| Auth Service (login) | P99 | < 300ms | 500ms |
+| Auth Service (JWT validation) | P99 | < 5ms | 10ms |
+| JWKS endpoint | Response time | < 50ms | 100ms |
 
-### 12.2 Deployment Process
+### 13.2 Scalability
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                         KONG DEPLOYMENT PROCESS                                 │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                 │
-│  1. Pre-Deployment                                                              │
-│     ├─── Run configuration validation (deck validate)                           │
-│     ├─── Backup current configuration (deck dump)                               │
-│     └─── Review changes (deck diff)                                             │
-│                                                                                 │
-│  2. Database Migration (if Traditional mode)                                    │
-│     ├─── Run kong migrations up                                                 │
-│     └─── Verify migration status                                                │
-│                                                                                 │
-│  3. Rolling Deployment                                                          │
-│     ├─── Update one replica at a time                                           │
-│     ├─── Wait for health checks to pass                                         │
-│     └─── Monitor error rates during rollout                                     │
-│                                                                                 │
-│  4. Configuration Sync                                                          │
-│     ├─── Apply new configuration (deck sync)                                    │
-│     └─── Verify routes and plugins                                              │
-│                                                                                 │
-│  5. Post-Deployment                                                             │
-│     ├─── Run smoke tests                                                        │
-│     ├─── Monitor metrics for anomalies                                          │
-│     └─── Verify all routes accessible                                           │
-│                                                                                 │
-│  6. Rollback (if needed)                                                        │
-│     ├─── Restore previous configuration                                         │
-│     ├─── Rollback Helm release                                                  │
-│     └─── Rollback migrations (if applicable)                                    │
-│                                                                                 │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+| Component | Min Replicas | Max Replicas | Scaling Trigger |
+|-----------|--------------|--------------|-----------------|
+| Kong Gateway | 2 | 10 | CPU > 70% |
+| Auth Service | 2 | 5 | CPU > 70% |
+| Backend Service | 2 | 10 | CPU > 70% |
 
-### 12.3 Blue-Green Deployment (Optional)
+### 13.3 Load Testing Scenarios
 
-For zero-downtime updates with configuration changes:
-
-```
-                    ┌──────────────────┐
-                    │  Load Balancer   │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-              ▼                             ▼
-     ┌────────────────┐           ┌────────────────┐
-     │   Kong Blue    │           │   Kong Green   │
-     │  (Current)     │           │  (New Version) │
-     │    100%        │           │    0%          │
-     └────────────────┘           └────────────────┘
-              │                             │
-              └──────────────┬──────────────┘
-                             │
-                             ▼
-                    ┌────────────────┐
-                    │    Backend     │
-                    └────────────────┘
-```
+| Scenario | Target | Duration |
+|----------|--------|----------|
+| Auth endpoint load | 100 logins/sec | 30 min |
+| JWT validation load | 10,000 requests/sec | 30 min |
+| Mixed traffic | 5,000 requests/sec | 1 hour |
+| Stress test (auth) | Ramp to 500 logins/sec | 1 hour |
 
 ---
 
-## 13. Risk Assessment
+## 14. Deployment Strategy
 
-### 13.1 Risk Matrix
+### 14.1 Environment Configuration
+
+| Environment | Kong | Auth Service | Backend | Database |
+|-------------|------|--------------|---------|----------|
+| Local | 1 replica, DB-less | 1 replica | 1 replica | Docker |
+| Development | 1 replica | 1 replica | 1 replica | RDS (shared) |
+| Staging | 2 replicas | 2 replicas | 2 replicas | RDS (dedicated) |
+| Production | 3+ replicas | 2+ replicas | 3+ replicas | RDS (HA) |
+
+### 14.2 Deployment Order
+
+```
+1. Deploy Auth Service Database
+   └── Run migrations
+   └── Create initial admin user
+
+2. Deploy Auth Service
+   └── Generate RSA keys
+   └── Verify JWKS endpoint
+
+3. Deploy Kong Gateway
+   └── Configure services and routes
+   └── Configure JWT plugin with JWKS URL
+   └── Verify JWT validation working
+
+4. Update Backend Service
+   └── Deploy with header extraction
+   └── Verify user context propagation
+
+5. Update Frontend
+   └── Point to Kong endpoint
+   └── Implement new auth flow
+```
+
+### 14.3 Rollback Procedures
+
+| Component | Rollback Strategy |
+|-----------|-------------------|
+| Kong | Helm rollback, restore previous config |
+| Auth Service | Helm rollback, database compatible |
+| Backend | Helm rollback |
+| Database | Point-in-time recovery |
+
+---
+
+## 15. Risk Assessment
+
+### 15.1 Risk Matrix
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Kong becomes SPOF | Medium | High | Multi-replica, health checks, failover |
-| Performance degradation | Low | Medium | Performance testing, monitoring, auto-scaling |
-| Configuration errors | Medium | High | Validation, staging testing, rollback procedures |
-| JWT key compromise | Low | Critical | Key rotation, short expiration, revocation |
-| Database corruption | Low | High | Regular backups, replication |
-| Plugin compatibility | Medium | Medium | Version pinning, testing in staging |
+| Auth Service becomes SPOF | Medium | Critical | Multi-replica, health checks |
+| JWT key compromise | Low | Critical | Key rotation, monitoring |
+| JWKS endpoint unavailable | Low | High | Kong caches keys, multiple replicas |
+| Database corruption | Low | Critical | Regular backups, replication |
+| Migration breaks auth | Medium | High | Staged rollout, feature flags |
+| Performance degradation | Medium | Medium | Load testing, auto-scaling |
 
-### 13.2 Mitigation Strategies
+### 15.2 Mitigation Strategies
 
-#### Single Point of Failure (SPOF)
-- Deploy minimum 2 replicas in production
-- Configure pod anti-affinity for spread across nodes
-- Use health checks for automatic recovery
-- Consider multi-zone/multi-region deployment
+#### Auth Service Availability
+- Deploy minimum 2 replicas
+- Implement health checks and readiness probes
+- Configure pod disruption budgets
+- Kong caches JWKS (continues working if auth service briefly unavailable)
 
-#### Performance
-- Pre-production load testing
-- Auto-scaling based on CPU/memory
-- Caching configuration
-- Regular performance benchmarking
-
-#### Configuration
-- GitOps workflow with PR reviews
-- Automated validation in CI pipeline
-- Staging environment for testing
-- Automated rollback on failures
+#### Security Incidents
+- Implement key rotation automation
+- Enable audit logging
+- Set up security alerts
+- Document incident response procedures
 
 ---
 
-## 14. Success Metrics
+## 16. Success Metrics
 
-### 14.1 Technical Metrics
+### 16.1 Technical Metrics
 
-| Metric | Baseline | Target | Measurement |
-|--------|----------|--------|-------------|
-| API Gateway Uptime | N/A (new) | 99.9% | Prometheus/CloudWatch |
-| Auth Success Rate | N/A | > 99% | Kong metrics |
-| P99 Latency (gateway) | N/A | < 10ms | Kong metrics |
-| Config Deployment Time | N/A | < 5 min | CI/CD metrics |
-| MTTR (Mean Time to Recovery) | N/A | < 15 min | Incident tracking |
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Auth Service uptime | 99.9% | Prometheus |
+| Login success rate | > 99% (excluding invalid credentials) | Auth metrics |
+| JWT validation latency | < 5ms P99 | Kong metrics |
+| Token refresh success | > 99.9% | Auth metrics |
 
-### 14.2 Security Metrics
+### 16.2 Security Metrics
 
-| Metric | Baseline | Target | Measurement |
-|--------|----------|--------|-------------|
-| Unprotected Endpoints | 100% | 0% | Route audit |
-| Rate Limit Coverage | 0% | 100% | Kong config review |
-| Security Incidents | Unknown | 0 critical | Security monitoring |
-| Failed Auth Attempts | Unknown | < 5% | Kong metrics |
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Unprotected endpoints | 0 | Route audit |
+| Failed auth attempts | < 5% | Auth metrics |
+| Security incidents | 0 critical | Incident tracking |
+| Key rotation compliance | 100% | Automation logs |
 
-### 14.3 Operational Metrics
+### 16.3 User Experience Metrics
 
-| Metric | Baseline | Target | Measurement |
-|--------|----------|--------|-------------|
-| Deployment Frequency | Manual | Daily capable | CI/CD metrics |
-| Change Failure Rate | Unknown | < 5% | Deployment tracking |
-| Log Coverage | 0% | 100% | Log audit |
-| Alert Noise | Unknown | < 5 false positives/week | Alert review |
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Login time | < 500ms | Frontend metrics |
+| Token refresh transparent | 100% | Frontend metrics |
+| Session persistence | 7 days (with activity) | Auth metrics |
 
 ---
 
-## 15. Dependencies and Prerequisites
+## 17. Dependencies and Prerequisites
 
-### 15.1 Infrastructure Prerequisites
+### 17.1 Infrastructure Prerequisites
 
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | Kubernetes Cluster | ✅ Available | EKS/Minikube |
-| Helm 3.x | ✅ Available | v3.x required |
-| PostgreSQL | ✅ Available | For Kong config (or use existing) |
-| Redis | ❌ Required | For distributed rate limiting |
-| External Secrets Operator | ❌ Recommended | For secret management |
+| Helm 3.x | ✅ Available | Required |
+| PostgreSQL (Auth DB) | ❌ Required | New database for auth |
+| PostgreSQL (Kong DB) | ❌ Required | For Kong config |
+| Redis | ❌ Required | For rate limiting |
 | cert-manager | ❌ Recommended | For TLS certificates |
 
-### 15.2 Application Prerequisites
+### 17.2 Application Prerequisites
 
 | Requirement | Status | Notes |
 |-------------|--------|-------|
-| Backend JWT Validation | ❌ Required | Backend should validate forwarded claims |
-| Health Check Endpoint | ✅ Available | /actuator/health |
-| Remove Backend CORS | ⚠️ Recommended | After Kong CORS is enabled |
-| Update Frontend API URL | ⚠️ Required | Point to Kong instead of backend |
+| Auth Service | ❌ Required | New microservice to build |
+| Backend header extraction | ❌ Required | Modify backend |
+| Frontend auth update | ❌ Required | Update auth flow |
+| Remove backend CORS | ⚠️ After Kong | After Kong CORS works |
 
-### 15.3 Team Prerequisites
+### 17.3 Team Prerequisites
 
 | Requirement | Description |
 |-------------|-------------|
-| Kubernetes Knowledge | Team familiarity with K8s operations |
-| Kong Training | Basic Kong administration knowledge |
-| Runbook Documentation | Operational procedures documentation |
+| Spring Security knowledge | For auth service development |
+| Kong administration | For gateway configuration |
+| JWT/OAuth understanding | For token implementation |
 
 ---
 
-## 16. Future Considerations
+## 18. Future Considerations
 
-### 16.1 Short-term Enhancements
-
-| Enhancement | Priority | Description |
-|-------------|----------|-------------|
-| OAuth2/OIDC Plugin | P1 | Support for OAuth2 providers (Google, Auth0) |
-| Request Validation | P1 | OpenAPI spec-based request validation |
-| Response Caching | P2 | Cache GET responses at gateway |
-| GraphQL Support | P2 | If GraphQL API is added |
-
-### 16.2 Medium-term Enhancements
+### 18.1 Short-term Enhancements
 
 | Enhancement | Priority | Description |
 |-------------|----------|-------------|
-| Kong Enterprise | P2 | For advanced features (Dev Portal, Analytics) |
-| Service Mesh Integration | P2 | Integrate with Istio/Linkerd |
-| API Versioning | P2 | Path-based or header-based versioning |
-| Multi-region Deployment | P3 | Geo-distributed Kong instances |
+| OAuth2/OIDC | P1 | Social login (Google, GitHub) |
+| MFA/2FA | P1 | Two-factor authentication |
+| Email verification | P1 | Verify user emails |
+| Password policies | P2 | Configurable password rules |
 
-### 16.3 Long-term Vision
+### 18.2 Medium-term Enhancements
+
+| Enhancement | Priority | Description |
+|-------------|----------|-------------|
+| Session management UI | P2 | Users can view/revoke sessions |
+| API key management | P2 | Self-service API keys |
+| Audit log UI | P2 | Admin view of security events |
+| Rate limit tiers | P3 | Premium user limits |
+
+### 18.3 Long-term Vision
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                         FUTURE ARCHITECTURE VISION                              │
+│                         FUTURE IDENTITY PLATFORM                                │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
-│  ┌─────────────┐                                                               │
-│  │   Clients   │                                                               │
-│  └──────┬──────┘                                                               │
-│         │                                                                       │
-│         ▼                                                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐           │
-│  │                    Kong Gateway (Multi-Region)                  │           │
-│  │  ├─ Global Load Balancing                                      │           │
-│  │  ├─ Geo-based Routing                                          │           │
-│  │  └─ Edge Caching                                               │           │
-│  └─────────────────────────────────────────────────────────────────┘           │
-│         │                                                                       │
-│         ▼                                                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐           │
-│  │                    Service Mesh (Istio/Linkerd)                 │           │
-│  │  ├─ mTLS between services                                      │           │
-│  │  ├─ Advanced traffic management                                │           │
-│  │  └─ Observability (distributed tracing)                        │           │
-│  └─────────────────────────────────────────────────────────────────┘           │
-│         │                                                                       │
-│         ├────────────────┬────────────────┬───────────────┐                    │
-│         ▼                ▼                ▼               ▼                    │
-│  ┌────────────┐   ┌────────────┐   ┌────────────┐  ┌────────────┐             │
-│  │  Property  │   │   User     │   │  Payment   │  │   Search   │             │
-│  │  Service   │   │  Service   │   │  Service   │  │  Service   │             │
-│  └────────────┘   └────────────┘   └────────────┘  └────────────┘             │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                      Identity Provider (Auth Service v2)                │   │
+│  │                                                                         │   │
+│  │  ├─ OAuth2/OIDC Server                                                 │   │
+│  │  ├─ Social Login (Google, Facebook, Apple)                             │   │
+│  │  ├─ Enterprise SSO (SAML, LDAP)                                        │   │
+│  │  ├─ Multi-factor Authentication                                        │   │
+│  │  ├─ Passwordless Authentication                                        │   │
+│  │  └─ Device Trust / Risk-based Authentication                           │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                      API Gateway (Kong Enterprise)                      │   │
+│  │                                                                         │   │
+│  │  ├─ Developer Portal                                                   │   │
+│  │  ├─ API Analytics                                                      │   │
+│  │  ├─ API Monetization                                                   │   │
+│  │  └─ Advanced Rate Limiting                                             │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1401,18 +2225,16 @@ For zero-downtime updates with configuration changes:
 
 ### Kong Documentation
 - [Kong Gateway Documentation](https://docs.konghq.com/gateway/)
+- [Kong JWT Plugin](https://docs.konghq.com/hub/kong-inc/jwt/)
 - [Kong Helm Chart](https://github.com/Kong/charts)
-- [Kong Plugin Hub](https://docs.konghq.com/hub/)
 
-### Related Tools
-- [decK - Kong declarative configuration](https://docs.konghq.com/deck/)
-- [Insomnia - API testing](https://insomnia.rest/)
-- [k6 - Load testing](https://k6.io/)
+### Spring Security Documentation
+- [Spring Security Reference](https://docs.spring.io/spring-security/reference/)
+- [Spring Boot OAuth2](https://docs.spring.io/spring-security/reference/servlet/oauth2/index.html)
 
-### Internal Documentation
-- [DEPLOYMENT_ARCHITECTURE.md](./DEPLOYMENT_ARCHITECTURE.md)
-- [HELM_VS_PLAIN_K8S.md](./HELM_VS_PLAIN_K8S.md)
-- [CI_CD_GUIDE.md](./CI_CD_GUIDE.md)
+### JWT/JWKS Standards
+- [RFC 7519 - JSON Web Token](https://tools.ietf.org/html/rfc7519)
+- [RFC 7517 - JSON Web Key](https://tools.ietf.org/html/rfc7517)
 
 ---
 
@@ -1420,14 +2242,14 @@ For zero-downtime updates with configuration changes:
 
 | Term | Definition |
 |------|------------|
-| **Service** | Kong entity representing an upstream service |
-| **Route** | Kong entity mapping requests to services |
-| **Consumer** | Kong entity representing an API client |
-| **Plugin** | Kong extension providing additional functionality |
-| **Upstream** | Kong entity for load balancing |
-| **decK** | Kong's declarative configuration tool |
-| **DB-less Mode** | Kong running without a database |
-| **Traditional Mode** | Kong running with PostgreSQL/Cassandra |
+| **JWT** | JSON Web Token - compact, URL-safe token format |
+| **JWKS** | JSON Web Key Set - set of public keys for JWT verification |
+| **RS256** | RSA Signature with SHA-256 - asymmetric signing algorithm |
+| **Access Token** | Short-lived JWT for API authentication |
+| **Refresh Token** | Long-lived token for obtaining new access tokens |
+| **ACL** | Access Control List - permission groups |
+| **Kong Consumer** | Entity representing an API client |
+| **Upstream** | Backend service that Kong proxies to |
 
 ---
 
@@ -1447,3 +2269,4 @@ For zero-downtime updates with configuration changes:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-26 | Engineering Team | Initial draft |
+| 2.0 | 2026-01-26 | Engineering Team | Added Hybrid Auth Architecture with Auth Service |

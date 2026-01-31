@@ -1,0 +1,59 @@
+{{- if .Values.keyRotation }}
+{{- if .Values.keyRotation.cronJob }}
+{{- if .Values.keyRotation.cronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Values.authService.name }}-key-rotation
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.authService.name }}
+    component: key-rotation
+spec:
+  # Run weekly on Sunday at 3 AM (backup to in-app scheduler)
+  schedule: "{{ .Values.keyRotation.cronJob.schedule | default "0 3 * * 0" }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: {{ .Values.authService.name }}
+            component: key-rotation
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: key-rotation
+              image: curlimages/curl:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "Triggering key rotation..."
+                  RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+                    "http://{{ .Values.authService.name }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.authService.service.port }}/admin/keys/rotate")
+                  HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                  BODY=$(echo "$RESPONSE" | sed '$d')
+
+                  echo "Response: $BODY"
+                  echo "HTTP Code: $HTTP_CODE"
+
+                  if [ "$HTTP_CODE" = "200" ]; then
+                    echo "Key rotation completed successfully"
+                    exit 0
+                  else
+                    echo "Key rotation failed with HTTP code: $HTTP_CODE"
+                    exit 1
+                  fi
+              resources:
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+{{- end }}
+{{- end }}
+{{- end }}

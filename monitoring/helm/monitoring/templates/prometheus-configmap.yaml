@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.prometheus.name }}-config
+  namespace: {{ .Values.namespace.name }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.prometheus.scrapeInterval | default "15s" }}
+      evaluation_interval: 15s
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              {{- if .Values.alertmanager.enabled }}
+                - '{{ .Values.alertmanager.name }}:9093'
+              {{- else }}
+                []
+              {{- end }}
+
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    scrape_configs:
+      # Prometheus self-monitoring
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Kong Gateway metrics
+      - job_name: 'kong'
+        static_configs:
+          - targets: ['kong-admin.kong.svc.cluster.local:8001']
+        metrics_path: /metrics
+
+      # Auth Service metrics
+      - job_name: 'auth-service'
+        static_configs:
+          - targets: ['auth-service.real-estate.svc.cluster.local:8081']
+        metrics_path: /actuator/prometheus
+
+      # Backend Service metrics
+      - job_name: 'backend-service'
+        static_configs:
+          - targets: ['real-estate-backend-backend.real-estate.svc.cluster.local:8080']
+        metrics_path: /actuator/prometheus
+
+      # Kubernetes pods with prometheus.io annotations
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+  alerting_rules.yml: |
+    groups:
+      - name: kong_alerts
+        rules:
+          - alert: KongHighErrorRate
+            expr: sum(rate(kong_http_requests_total{code=~"5.."}[5m])) / sum(rate(kong_http_requests_total[5m])) > 0.05
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Kong high error rate"
+              description: "Kong is returning more than 5% 5xx errors"
+
+          - alert: KongHighLatency
+            expr: histogram_quantile(0.99, sum(rate(kong_latency_bucket{type="request"}[5m])) by (le)) > 500
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Kong high latency"
+              description: "Kong P99 latency is above 500ms"
+
+          - alert: KongRateLimitExceeded
+            expr: sum(rate(kong_http_requests_total{code="429"}[5m])) > 10
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High rate limiting"
+              description: "More than 10 requests/min being rate limited"
+
+      - name: auth_service_alerts
+        rules:
+          - alert: AuthServiceDown
+            expr: up{job="auth-service"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Auth Service is down"
+              description: "Auth Service has been down for more than 1 minute"
+
+          - alert: AuthHighLoginFailureRate
+            expr: sum(rate(auth_login_failure_total[5m])) / sum(rate(auth_login_total[5m])) > 0.3
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High login failure rate"
+              description: "More than 30% of login attempts are failing"
+
+      - name: backend_service_alerts
+        rules:
+          - alert: BackendServiceDown
+            expr: up{job="backend-service"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Backend Service is down"
+              description: "Backend Service has been down for more than 1 minute"

@@ -1,7 +1,27 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8000',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8080',
+        pathname: '/uploads/**',
+      },
+    ],
+  },
+  // Disable router cache to ensure fresh data on navigation
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
   },
 }
 

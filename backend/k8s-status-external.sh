@@ -47,7 +47,7 @@ echo ""
 
 # Check Helm release
 echo "📦 Helm Release:"
-if helm list -n real-estate 2>/dev/null | grep -q "real-estate"; then
+if helm list -n real-estate 2>/dev/null | grep -q "real-estate-backend"; then
     helm list -n real-estate
 else
     echo -e "   ${RED}❌ Not installed${NC}"
@@ -90,50 +90,76 @@ echo "   Docker Volumes:"
 docker volume ls | grep -E "NAME|postgres_data" || echo "      No volumes found"
 echo ""
 
-# Get Minikube IP and test backend
-if minikube status > /dev/null 2>&1; then
-    MINIKUBE_IP=$(minikube ip)
-    BACKEND_URL="http://${MINIKUBE_IP}:30080"
+# Test backend health via port-forward (works on all platforms including Mac with Docker Desktop)
+echo "🏥 Backend Health Check:"
 
-    echo "🏥 Backend Health Check:"
+# Check if backend pod is running first
+if kubectl get pods -n real-estate 2>/dev/null | grep -q "real-estate-backend-backend.*Running"; then
+    # Kill any existing port-forward on test port
+    pkill -f "port-forward.*18080:8080" 2>/dev/null
+    sleep 1
+
+    # Start temporary port-forward for health check
+    kubectl port-forward svc/real-estate-backend-backend 18080:8080 -n real-estate > /dev/null 2>&1 &
+    PF_PID=$!
+    sleep 2
+
+    BACKEND_URL="http://localhost:18080"
+
     if curl -s ${BACKEND_URL}/actuator/health > /dev/null 2>&1; then
         echo -e "   ${GREEN}✅ Backend is healthy${NC}"
-        HEALTH_STATUS=$(curl -s ${BACKEND_URL}/actuator/health | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        HEALTH_RESPONSE=$(curl -s ${BACKEND_URL}/actuator/health)
+        HEALTH_STATUS=$(echo "$HEALTH_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
         echo "   Status: ${HEALTH_STATUS}"
 
         # Check database connection
-        DB_STATUS=$(curl -s ${BACKEND_URL}/actuator/health | grep -o '"db":{[^}]*}' | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        DB_STATUS=$(echo "$HEALTH_RESPONSE" | grep -o '"db":{[^}]*}' | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
         if [ "$DB_STATUS" == "UP" ]; then
             echo -e "   ${GREEN}✅ Database connection: UP${NC}"
         else
-            echo -e "   ${RED}❌ Database connection: ${DB_STATUS}${NC}"
+            echo -e "   ${RED}❌ Database connection: ${DB_STATUS:-UNKNOWN}${NC}"
         fi
     else
         echo -e "   ${RED}❌ Backend not accessible${NC}"
-        echo "   Expected URL: ${BACKEND_URL}/actuator/health"
         echo ""
         echo "   Troubleshooting:"
-        echo "   1. Check if pod is running: kubectl get pods -n real-estate"
-        echo "   2. Check pod logs: kubectl logs -n real-estate -l app.kubernetes.io/component=backend"
-        echo "   3. Check service: kubectl get svc -n real-estate"
+        echo "   1. Check pod logs: kubectl logs -n real-estate -l app.kubernetes.io/component=backend"
+        echo "   2. Check service: kubectl get svc -n real-estate"
+        echo "   3. Manual test: kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate &"
     fi
-    echo ""
+
+    # Clean up temporary port-forward
+    kill $PF_PID 2>/dev/null
+else
+    echo -e "   ${YELLOW}⏭️  Skipped (backend pod not running)${NC}"
 fi
+echo ""
 
 # Network connectivity check
 echo "🔌 Network Connectivity:"
 if kubectl get pods -n real-estate 2>/dev/null | grep -q "real-estate-backend-backend.*Running"; then
     echo "   Testing backend -> PostgreSQL connection..."
-    PING_RESULT=$(kubectl exec -n real-estate deployment/real-estate-backend-backend -- ping -c 1 host.minikube.internal 2>/dev/null)
+
+    # Try host.docker.internal first (works on Mac/Windows with Docker Desktop)
+    PING_RESULT=$(kubectl exec -n real-estate deployment/real-estate-backend-backend -- ping -c 1 host.docker.internal 2>/dev/null)
     if [ $? -eq 0 ]; then
-        echo -e "   ${GREEN}✅ Backend can reach host.minikube.internal${NC}"
+        echo -e "   ${GREEN}✅ Backend can reach host.docker.internal${NC}"
+        DB_HOST="host.docker.internal"
     else
-        echo -e "   ${YELLOW}⚠️  Cannot ping host.minikube.internal${NC}"
+        # Fallback to host.minikube.internal
+        PING_RESULT=$(kubectl exec -n real-estate deployment/real-estate-backend-backend -- ping -c 1 host.minikube.internal 2>/dev/null)
+        if [ $? -eq 0 ]; then
+            echo -e "   ${GREEN}✅ Backend can reach host.minikube.internal${NC}"
+            DB_HOST="host.minikube.internal"
+        else
+            echo -e "   ${YELLOW}⚠️  Cannot ping host gateway${NC}"
+            DB_HOST="host.docker.internal"
+        fi
     fi
 
     # Test PostgreSQL port
-    NC_RESULT=$(kubectl exec -n real-estate deployment/real-estate-backend-backend -- nc -zv host.minikube.internal 5432 2>&1)
-    if echo "$NC_RESULT" | grep -q "succeeded"; then
+    NC_RESULT=$(kubectl exec -n real-estate deployment/real-estate-backend-backend -- nc -zv ${DB_HOST} 5432 2>&1)
+    if echo "$NC_RESULT" | grep -q "succeeded\|open"; then
         echo -e "   ${GREEN}✅ PostgreSQL port 5432 is reachable${NC}"
     else
         echo -e "   ${RED}❌ Cannot reach PostgreSQL on port 5432${NC}"
@@ -145,13 +171,14 @@ echo ""
 
 # Summary
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📍 Quick Access:"
-if minikube status > /dev/null 2>&1; then
-    echo "   Backend:  ${BACKEND_URL}"
-    echo "   Health:   ${BACKEND_URL}/actuator/health"
-    echo "   Swagger:  ${BACKEND_URL}/swagger-ui.html"
-fi
+echo "📍 Quick Access (via port-forward):"
+echo "   Backend:  http://localhost:8080"
+echo "   Health:   http://localhost:8080/actuator/health"
+echo "   Swagger:  http://localhost:8080/swagger-ui.html"
 echo "   DB:       psql -h localhost -p 5432 -U postgres -d realestatedb"
+echo ""
+echo "🔌 Start Port-Forward:"
+echo "   kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate &"
 echo ""
 echo "🔧 Quick Commands:"
 echo "   Start all:      ./k8s-start-external.sh"

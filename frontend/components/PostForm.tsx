@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { postApi } from '@/lib/api/postApi';
 
 interface PostFormProps {
   onPostCreated: () => void;
 }
 
-const MAX_CHARACTERS = 500;
+const MAX_CHARACTERS = 5000;
 
 export default function PostForm({ onPostCreated }: PostFormProps) {
+  const { data: session } = useSession();
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,30 +25,26 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
 
     if (!isValid) return;
 
+    const accessToken = session?.accessToken as string | undefined;
+    if (!accessToken) {
+      setError('Vui lòng đăng nhập để đăng bài viết');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: content.trim() }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create post');
-      }
+      await postApi.create(
+        { content: content.trim() },
+        { accessToken }
+      );
 
       // Clear form on success
       setContent('');
 
       // Notify parent component
       onPostCreated();
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.');
     } finally {

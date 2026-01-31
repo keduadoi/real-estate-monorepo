@@ -49,28 +49,50 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
-export interface Post {
-  id: string;                    // "post-1", "post-2", etc.
-  content: string;               // Post text content
-  userId: string;                // Creator's user ID
-  createdAt: string;             // ISO timestamp
-  updatedAt?: string;            // ISO timestamp (for edits - future)
+// Legacy Post type (for mock data compatibility)
+export interface LegacyPost {
+  id: string;
+  content: string;
+  userId: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Like {
-  id: string;                    // "like-{timestamp}"
-  postId: string;                // Associated post ID
-  userId: string;                // User who liked
-  createdAt: string;             // ISO timestamp
+  id: string;
+  postId: string;
+  userId: string;
+  createdAt: string;
 }
 
-export interface PostWithMetadata extends Post {
-  user: {                        // Author information
+// Legacy PostWithMetadata (for mock data compatibility)
+export interface LegacyPostWithMetadata extends LegacyPost {
+  user: {
     id: string;
     name: string;
     email: string;
   };
-  likeCount: number;             // Total likes
-  isLikedByCurrentUser: boolean; // Current user's like status
-  likes: Like[];                 // All likes (for display)
+  likeCount: number;
+  isLikedByCurrentUser: boolean;
+  likes: Like[];
 }
+
+// New Post types (from post-service API)
+export interface PostAuthor {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
+
+export interface Post {
+  id: string;
+  content: string;
+  author: PostAuthor;
+  likeCount: number;
+  isLikedByCurrentUser: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Alias for compatibility
+export type PostWithMetadata = Post;

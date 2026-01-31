@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "post-service.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "post-service.labels" . | nindent 4 }}
+spec:
+  {{- if not (and .Values.postService.autoscaling .Values.postService.autoscaling.enabled) }}
+  replicas: {{ .Values.postService.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "post-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "post-service.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.postService.service.targetPort }}"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      {{- if .Values.postService.securityContext }}
+      securityContext:
+        {{- toYaml .Values.postService.securityContext | nindent 8 }}
+      {{- end }}
+      {{- if .Values.postService.affinity }}
+      affinity:
+        {{- toYaml .Values.postService.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.postService.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.postService.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: post-service
+          image: "{{ .Values.postService.image.repository }}:{{ .Values.postService.image.tag }}"
+          imagePullPolicy: {{ .Values.postService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.postService.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "post-service.fullname" . }}-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "post-service.fullname" . }}-config
+                  key: SERVER_PORT
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "post-service.fullname" . }}-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "post-service.fullname" . }}-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "post-service.fullname" . }}-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "post-service.fullname" . }}-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "post-service.fullname" . }}-secret
+                  key: DB_PASSWORD
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "post-service.fullname" . }}-config
+                  key: AUTH_SERVICE_URL
+          {{- if .Values.postService.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.postService.livenessProbe.httpGet.path }}
+              port: {{ .Values.postService.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.postService.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.postService.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.postService.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.postService.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.postService.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.postService.readinessProbe.httpGet.path }}
+              port: {{ .Values.postService.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.postService.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.postService.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.postService.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.postService.readinessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.postService.resources | nindent 12 }}

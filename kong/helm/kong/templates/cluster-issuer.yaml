@@ -1,0 +1,47 @@
+{{- if .Values.tls }}
+{{- if .Values.tls.enabled }}
+{{- if .Values.tls.certManager }}
+{{- if .Values.tls.certManager.enabled }}
+{{- if .Values.tls.certManager.createIssuer }}
+---
+# ClusterIssuer for Let's Encrypt
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.tls.certManager.issuerName }}
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: {{ .Values.tls.certManager.acmeServer | default "https://acme-v02.api.letsencrypt.org/directory" }}
+    email: {{ .Values.tls.certManager.email | required "tls.certManager.email is required" }}
+    privateKeySecretRef:
+      name: {{ .Values.tls.certManager.issuerName }}-account-key
+    solvers:
+      {{- if .Values.tls.certManager.dnsProvider }}
+      # DNS-01 challenge for wildcard certificates
+      - dns01:
+          {{- if eq .Values.tls.certManager.dnsProvider "route53" }}
+          route53:
+            region: {{ .Values.tls.certManager.route53.region }}
+            {{- if .Values.tls.certManager.route53.hostedZoneID }}
+            hostedZoneID: {{ .Values.tls.certManager.route53.hostedZoneID }}
+            {{- end }}
+          {{- end }}
+          {{- if eq .Values.tls.certManager.dnsProvider "cloudflare" }}
+          cloudflare:
+            email: {{ .Values.tls.certManager.cloudflare.email }}
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+          {{- end }}
+      {{- else }}
+      # HTTP-01 challenge (default)
+      - http01:
+          ingress:
+            class: kong
+      {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,5 +1,6 @@
 package com.realestate.backend.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -8,9 +9,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Web configuration for CORS and other web-related settings.
+ *
+ * When running behind Kong Gateway, CORS should be disabled here
+ * as Kong handles CORS via its cors plugin.
  */
 @Configuration
+@Slf4j
 public class WebConfig implements WebMvcConfigurer {
+
+    @Value("${cors.enabled:true}")
+    private boolean corsEnabled;
 
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
     private String[] allowedOrigins;
@@ -20,6 +28,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        if (!corsEnabled) {
+            log.info("CORS is disabled - Kong Gateway handles CORS");
+            return;
+        }
+
+        log.info("CORS enabled for origins: {}", String.join(", ", allowedOrigins));
         registry.addMapping("/api/**")
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")

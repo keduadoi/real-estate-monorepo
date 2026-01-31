@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  auth-db:
+    image: postgres:18-alpine
+    container_name: auth-db
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: .
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_NAME: authdb
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      auth-db:
+        condition: service_healthy
+
+volumes:
+  auth-db-data:

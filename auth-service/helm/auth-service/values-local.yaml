@@ -1,0 +1,29 @@
+namespace:
+  name: real-estate
+  create: false  # Namespace already exists
+
+authService:
+  name: auth-service
+  replicaCount: 1
+
+  image:
+    repository: auth-service
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  service:
+    type: NodePort
+    port: 8081
+    targetPort: 8081
+    nodePort: 30081
+
+  env:
+    serverPort: 8081
+    dbHost: host.docker.internal
+    dbPort: 5433
+    dbName: authdb
+    dbUser: postgres
+    dbPassword: postgres
+
+postgresql:
+  enabled: false

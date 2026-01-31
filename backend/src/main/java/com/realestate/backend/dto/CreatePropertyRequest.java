@@ -65,6 +65,9 @@ public class CreatePropertyRequest {
 
     private List<String> features;
 
-    @NotBlank(message = "User ID is required")
+    /**
+     * User ID is optional - if not provided, it will be automatically set from
+     * the authenticated user's JWT token via UserContext.
+     */
     private String userId;
 }

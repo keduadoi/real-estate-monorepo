@@ -1,0 +1,14 @@
+{{- if .Values.authService.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.authService.name }}-pdb
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.authService.name }}
+spec:
+  minAvailable: {{ .Values.authService.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ .Values.authService.name }}
+{{- end }}

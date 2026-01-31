@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const registered = searchParams.get('registered');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -51,6 +52,14 @@ export default function LoginPage() {
             Đăng nhập để đăng tin bất động sản
           </p>
         </div>
+
+        {registered && (
+          <div className="rounded-md bg-green-50 p-4">
+            <p className="text-sm text-green-800">
+              Đăng ký thành công! Vui lòng đăng nhập.
+            </p>
+          </div>
+        )}
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
@@ -104,28 +113,27 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center">
-            <Link
-              href="/"
-              className="text-sm text-primary-600 hover:text-primary-500"
-            >
-              Quay lại trang chủ
-            </Link>
+          <div className="text-center space-y-2">
+            <div>
+              <span className="text-sm text-gray-600">Chưa có tài khoản? </span>
+              <Link
+                href="/register"
+                className="text-sm text-primary-600 hover:text-primary-500 font-medium"
+              >
+                Đăng ký
+              </Link>
+            </div>
+            <div>
+              <Link
+                href="/"
+                className="text-sm text-primary-600 hover:text-primary-500"
+              >
+                Quay lại trang chủ
+              </Link>
+            </div>
           </div>
         </form>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-md">
-          <p className="text-sm text-gray-700 font-semibold mb-2">
-            Tài khoản demo:
-          </p>
-          <div className="space-y-1 text-sm text-gray-600">
-            <p>Email: user@example.com</p>
-            <p>Mật khẩu: password123</p>
-            <p className="mt-2">Hoặc</p>
-            <p>Email: admin@example.com</p>
-            <p>Mật khẩu: admin123</p>
-          </div>
-        </div>
       </div>
     </div>
   );
