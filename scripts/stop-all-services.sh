@@ -18,10 +18,10 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Ask for confirmation
 echo -e "${YELLOW}What do you want to stop?${NC}"
-echo "1) Stop K8s services only (keep databases running)"
-echo "2) Stop everything (K8s services + databases)"
-echo "3) Full cleanup (uninstall Helm, stop DBs, preserve data)"
-echo "4) Complete reset (delete everything including data)"
+echo "1) Stop app services only (keep databases running)"
+echo "2) Stop everything (app services + databases + Kong)"
+echo "3) Full cleanup (remove containers, preserve data volumes)"
+echo "4) Complete reset (remove everything including data)"
 echo ""
 read -p "Choose option (1-4): " -n 1 -r
 echo ""
@@ -29,62 +29,61 @@ echo ""
 
 case $REPLY in
     1)
-        echo -e "${BLUE}━━━ Stopping Kubernetes Services ━━━${NC}"
+        echo -e "${BLUE}━━━ Stopping App Services (keeping DBs) ━━━${NC}"
 
-        echo "   Scaling down deployments..."
-        kubectl scale deployment/real-estate-backend-backend --replicas=0 -n real-estate 2>/dev/null
-        kubectl scale deployment/auth-service --replicas=0 -n real-estate 2>/dev/null
-        kubectl scale deployment/post-service --replicas=0 -n real-estate 2>/dev/null
-        kubectl scale deployment/kong --replicas=0 -n kong 2>/dev/null
+        echo "   Stopping backend app..."
+        cd "$ROOT_DIR/backend" && docker compose stop backend 2>/dev/null
 
-        echo "   Killing port-forwards..."
-        pkill -f "port-forward" 2>/dev/null
+        echo "   Stopping auth-service app..."
+        cd "$ROOT_DIR/auth-service" && docker compose stop auth-service 2>/dev/null
+
+        echo "   Stopping post-service app..."
+        cd "$ROOT_DIR/post-service" && docker compose stop post-service 2>/dev/null
+
+        echo "   Stopping Kong Gateway..."
+        cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
         echo ""
-        echo -e "${GREEN}✅ K8s services stopped (databases still running)${NC}"
+        echo -e "${GREEN}✅ App services stopped (databases still running)${NC}"
         echo ""
-        echo "To restart: kubectl scale deployment/<name> --replicas=1 -n <namespace>"
+        echo "To restart: ./scripts/start-all-services.sh"
         ;;
 
     2)
         echo -e "${BLUE}━━━ Stopping All Services ━━━${NC}"
 
-        echo "   Scaling down K8s deployments..."
-        kubectl scale deployment/real-estate-backend-backend --replicas=0 -n real-estate 2>/dev/null
-        kubectl scale deployment/auth-service --replicas=0 -n real-estate 2>/dev/null
-        kubectl scale deployment/post-service --replicas=0 -n real-estate 2>/dev/null
-        kubectl scale deployment/kong --replicas=0 -n kong 2>/dev/null
+        echo "   Stopping backend..."
+        cd "$ROOT_DIR/backend" && docker compose stop 2>/dev/null
 
-        echo "   Killing port-forwards..."
-        pkill -f "port-forward" 2>/dev/null
+        echo "   Stopping auth-service..."
+        cd "$ROOT_DIR/auth-service" && docker compose stop 2>/dev/null
 
-        echo "   Stopping databases (preserving data)..."
-        cd "$ROOT_DIR/backend" && docker-compose -f docker-compose-db.yml stop 2>/dev/null
-        cd "$ROOT_DIR/auth-service" && docker-compose -f docker-compose-db.yml stop 2>/dev/null
-        cd "$ROOT_DIR/post-service" && docker-compose -f docker-compose-db.yml stop 2>/dev/null
+        echo "   Stopping post-service..."
+        cd "$ROOT_DIR/post-service" && docker compose stop 2>/dev/null
+
+        echo "   Stopping Kong Gateway..."
+        cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
         echo ""
-        echo -e "${GREEN}✅ All services stopped (data preserved)${NC}"
+        echo -e "${GREEN}✅ All services stopped (containers and data preserved)${NC}"
         echo ""
         echo "To restart: ./scripts/start-all-services.sh"
         ;;
 
     3)
-        echo -e "${BLUE}━━━ Full Cleanup (Preserving Data) ━━━${NC}"
+        echo -e "${BLUE}━━━ Full Cleanup (Preserving Data Volumes) ━━━${NC}"
 
-        echo "   Uninstalling Helm releases..."
-        helm uninstall real-estate-backend -n real-estate 2>/dev/null
-        helm uninstall auth-service -n real-estate 2>/dev/null
-        helm uninstall post-service -n real-estate 2>/dev/null
-        helm uninstall kong-gateway -n kong 2>/dev/null
+        echo "   Removing backend containers..."
+        cd "$ROOT_DIR/backend" && docker compose down 2>/dev/null
 
-        echo "   Killing port-forwards..."
-        pkill -f "port-forward" 2>/dev/null
+        echo "   Removing auth-service containers..."
+        cd "$ROOT_DIR/auth-service" && docker compose down 2>/dev/null
 
-        echo "   Stopping databases (preserving data)..."
-        cd "$ROOT_DIR/backend" && docker-compose -f docker-compose-db.yml stop 2>/dev/null
-        cd "$ROOT_DIR/auth-service" && docker-compose -f docker-compose-db.yml stop 2>/dev/null
-        cd "$ROOT_DIR/post-service" && docker-compose -f docker-compose-db.yml stop 2>/dev/null
+        echo "   Removing post-service containers..."
+        cd "$ROOT_DIR/post-service" && docker compose down 2>/dev/null
+
+        echo "   Removing Kong Gateway..."
+        cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
         echo ""
         echo -e "${GREEN}✅ Cleanup completed (data preserved in Docker volumes)${NC}"
@@ -94,9 +93,9 @@ case $REPLY in
 
     4)
         echo -e "${RED}⚠️  WARNING: This will delete ALL data!${NC}"
-        echo "   - All Helm releases"
-        echo "   - All Kubernetes resources"
-        echo "   - All database data"
+        echo "   - All containers"
+        echo "   - All database data (volumes)"
+        echo "   - All built images"
         echo ""
         read -p "Are you absolutely sure? Type 'DELETE' to confirm: " -r
         echo ""
@@ -104,27 +103,17 @@ case $REPLY in
         if [[ $REPLY == "DELETE" ]]; then
             echo -e "${BLUE}━━━ Complete Reset ━━━${NC}"
 
-            echo "   Uninstalling Helm releases..."
-            helm uninstall real-estate-backend -n real-estate 2>/dev/null
-            helm uninstall auth-service -n real-estate 2>/dev/null
-            helm uninstall post-service -n real-estate 2>/dev/null
-            helm uninstall kong-gateway -n kong 2>/dev/null
+            echo "   Removing backend containers and volumes..."
+            cd "$ROOT_DIR/backend" && docker compose down -v 2>/dev/null
 
-            echo "   Deleting PVCs..."
-            kubectl delete pvc --all -n real-estate 2>/dev/null
-            kubectl delete pvc --all -n kong 2>/dev/null
+            echo "   Removing auth-service containers and volumes..."
+            cd "$ROOT_DIR/auth-service" && docker compose down -v 2>/dev/null
 
-            echo "   Deleting namespaces..."
-            kubectl delete namespace real-estate 2>/dev/null
-            kubectl delete namespace kong 2>/dev/null
+            echo "   Removing post-service containers and volumes..."
+            cd "$ROOT_DIR/post-service" && docker compose down -v 2>/dev/null
 
-            echo "   Killing port-forwards..."
-            pkill -f "port-forward" 2>/dev/null
-
-            echo "   Removing databases and volumes..."
-            cd "$ROOT_DIR/backend" && docker-compose -f docker-compose-db.yml down -v 2>/dev/null
-            cd "$ROOT_DIR/auth-service" && docker-compose -f docker-compose-db.yml down -v 2>/dev/null
-            cd "$ROOT_DIR/post-service" && docker-compose -f docker-compose-db.yml down -v 2>/dev/null
+            echo "   Removing Kong Gateway..."
+            cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
             echo ""
             echo -e "${GREEN}✅ Complete reset done${NC}"
@@ -150,10 +139,10 @@ echo "📊 Current Status:"
 echo ""
 
 echo "🐘 Databases:"
-for db in "real-estate-postgres-local" "auth-db" "post-db"; do
-    if docker ps | grep -q "$db"; then
+for db in "real-estate-postgres" "auth-db" "post-db"; do
+    if docker ps --format '{{.Names}}' | grep -q "^${db}$"; then
         echo -e "   $db: ${GREEN}Running${NC}"
-    elif docker ps -a | grep -q "$db"; then
+    elif docker ps -a --format '{{.Names}}' | grep -q "^${db}$"; then
         echo -e "   $db: ${YELLOW}Stopped${NC}"
     else
         echo -e "   $db: ${RED}Not found${NC}"
@@ -161,9 +150,24 @@ for db in "real-estate-postgres-local" "auth-db" "post-db"; do
 done
 echo ""
 
-echo "☸️  Kubernetes Pods:"
-kubectl get pods -n real-estate 2>/dev/null | head -10 || echo "   No pods in real-estate namespace"
-kubectl get pods -n kong 2>/dev/null | head -5 || echo "   No pods in kong namespace"
+echo "🚀 App Services:"
+for svc in "real-estate-backend" "auth-service" "post-service"; do
+    if docker ps --format '{{.Names}}' | grep -q "^${svc}$"; then
+        echo -e "   $svc: ${GREEN}Running${NC}"
+    elif docker ps -a --format '{{.Names}}' | grep -q "^${svc}$"; then
+        echo -e "   $svc: ${YELLOW}Stopped${NC}"
+    else
+        echo -e "   $svc: ${RED}Not found${NC}"
+    fi
+done
+echo ""
+
+echo "🦍 Kong Gateway:"
+if docker ps --format '{{.Names}}' | grep -q "^kong-gateway$"; then
+    echo -e "   kong-gateway: ${GREEN}Running${NC}"
+else
+    echo -e "   kong-gateway: ${RED}Stopped${NC}"
+fi
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

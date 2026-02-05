@@ -22,7 +22,8 @@ postService:
   env:
     springProfile: dev
     # External database connection (Docker PostgreSQL)
-    dbHost: host.docker.internal
+    # For QEMU driver use: 192.168.105.1
+    dbHost: "192.168.105.1"
     dbPort: 5434
     dbName: postdb
     dbUser: postgres

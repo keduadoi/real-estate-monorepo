@@ -152,7 +152,7 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
  * Converts http://localhost:8080/uploads/... to http://localhost:8000/uploads/...
  */
 export function fixImageUrl(url: string | undefined): string {
-  if (!url) return '/placeholder-property.jpg';
+  if (!url) return '/placeholder-property.svg';
 
   // Replace localhost:8080 with Kong gateway port 8000
   return url.replace('http://localhost:8080', 'http://localhost:8000');

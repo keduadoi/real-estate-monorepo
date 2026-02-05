@@ -17,6 +17,10 @@ logs/
 # Environment files
 .env*.local
 
+# Java/Maven
+target/
+.mvn/
+
 # Each subdirectory has its own .gitignore:
 # - frontend/.gitignore (Next.js specific)
 # - backend/.gitignore (Java/Maven specific)

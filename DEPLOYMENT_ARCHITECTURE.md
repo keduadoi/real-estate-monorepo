@@ -60,20 +60,50 @@
 │  │ Port: 8081    │      │ Port: 8080    │      │ Port: 8082    │             │
 │  └───────┬───────┘      └───────┬───────┘      └───────┬───────┘             │
 │          │                      │                      │                      │
-│          ▼                      ▼                      ▼                      │
-│  ┌───────────────┐      ┌───────────────┐      ┌───────────────┐             │
-│  │   Auth DB     │      │  Property DB  │      │   Post DB     │             │
-│  │  PostgreSQL   │      │  PostgreSQL   │      │  PostgreSQL   │             │
-│  │  Port: 5433   │      │  Port: 5432   │      │  Port: 5434   │             │
-│  └───────────────┘      └───────────────┘      └───────────────┘             │
-│                                                                               │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │                          MONITORING STACK                                │ │
 │  │           Prometheus (9090) │ Grafana (3001) │ AlertManager              │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
+│          │                      │                      │                      │
+└──────────┼──────────────────────┼──────────────────────┼──────────────────────┘
+           │                      │                      │
+           │ host.docker.internal │                      │
+           │ (K8s → Docker)       │                      │
+           ▼                      ▼                      ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                     DATABASES (Docker Containers - External)                  │
 │                                                                               │
+│  ┌───────────────┐      ┌───────────────┐      ┌───────────────┐             │
+│  │   Auth DB     │      │  Property DB  │      │   Post DB     │             │
+│  │  PostgreSQL   │      │  PostgreSQL   │      │  PostgreSQL   │             │
+│  │ Container:    │      │ Container:    │      │ Container:    │             │
+│  │   auth-db     │      │ real-estate-  │      │   post-db     │             │
+│  │               │      │ postgres-local│      │               │             │
+│  │ Host: 5433    │      │ Host: 5432    │      │ Host: 5434    │             │
+│  │ DB: authdb    │      │ DB: realestate│      │ DB: postdb    │             │
+│  └───────────────┘      └───────────────┘      └───────────────┘             │
+│                                                                               │
+│  Note: Services in K8s connect via host.docker.internal:PORT                 │
+│  Production: Replace with managed RDS PostgreSQL (Multi-AZ)                  │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Database Architecture Notes
+
+### Local Development (Minikube)
+- **Databases run in Docker containers** (external to Kubernetes)
+- **Connection method**: K8s services connect to databases using `host.docker.internal:PORT`
+- **Ports**: 5432 (backend), 5433 (auth), 5434 (post)
+- **Containers**: `real-estate-postgres-local`, `auth-db`, `post-db`
+- **Why external?**: Simpler development workflow, easier database access from host machine
+
+### Production (AWS EKS)
+- **Databases run as AWS RDS** (managed PostgreSQL)
+- **Connection method**: Private VPC endpoint (e.g., `mydb.abc123.us-east-1.rds.amazonaws.com:5432`)
+- **Features**: Multi-AZ deployment, automated backups, encryption at rest/transit
+- **Security**: Private subnets only, no public access
 
 ---
 
@@ -926,15 +956,19 @@ The Auth Service is a dedicated Spring Boot application handling:
 
 ### Production Deployment
 
-| Component | Replicas | HPA | PDB |
-|-----------|----------|-----|-----|
-| Kong Gateway | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
-| Auth Service | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
-| Backend Service | 3 | 3-15 (CPU 70%) | minAvailable: 2 |
-| Post Service | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
-| PostgreSQL (Auth) | Managed (RDS Multi-AZ) | N/A | N/A |
-| PostgreSQL (Property) | Managed (RDS Multi-AZ) | N/A | N/A |
-| PostgreSQL (Post) | Managed (RDS Multi-AZ) | N/A | N/A |
+| Component | Local Dev | Production | Replicas | HPA | PDB |
+|-----------|-----------|------------|----------|-----|-----|
+| Kong Gateway | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
+| Auth Service | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
+| Backend Service | K8s (Minikube) | K8s (EKS) | 3 | 3-15 (CPU 70%) | minAvailable: 2 |
+| Post Service | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
+| PostgreSQL (Auth) | Docker (auth-db) | RDS Multi-AZ | N/A | N/A | N/A |
+| PostgreSQL (Property) | Docker (real-estate-postgres-local) | RDS Multi-AZ | N/A | N/A | N/A |
+| PostgreSQL (Post) | Docker (post-db) | RDS Multi-AZ | N/A | N/A | N/A |
+
+**Key Differences:**
+- **Local Development**: Databases run in Docker containers, accessed via `host.docker.internal`
+- **Production (AWS)**: Databases run as managed RDS instances within VPC private subnets
 
 ### Anti-Affinity Rules
 
@@ -1081,31 +1115,56 @@ project-root/
 - Minikube
 - kubectl
 - Helm 3
+- Node.js 18+ (for frontend)
 
 ### Deploy Stack
 
 ```bash
-# Start Minikube
+# 1. Start Minikube
 minikube start --memory 8192 --cpus 4
 
-# Deploy Kong
-helm install kong ./kong/helm/kong -n kong --create-namespace
+# 2. Start PostgreSQL Databases (Docker - External to K8s)
+cd backend && docker-compose -f docker-compose-db.yml up -d
+cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
+cd ../post-service && docker-compose -f docker-compose-db.yml up -d
 
-# Deploy Auth Service
-helm install auth-service ./auth-service/helm/auth-service -n real-estate --create-namespace
+# Verify databases are running
+docker ps | grep -E "postgres|auth-db|post-db"
 
-# Deploy Backend
-helm install backend ./backend/helm/real-estate-backend -n real-estate
+# 3. Deploy Kong API Gateway
+cd ../kong
+helm install kong ./helm/kong -n kong --create-namespace
 
-# Deploy Monitoring
-helm install monitoring ./monitoring/helm/monitoring -n monitoring --create-namespace
+# 4. Deploy Auth Service
+cd ../auth-service
+helm install auth-service ./helm/auth-service -n real-estate --create-namespace -f helm/auth-service/values-local.yaml
 
-# Port forward Kong
+# 5. Deploy Backend Service
+cd ../backend
+helm install real-estate-backend ./helm/real-estate-backend -n real-estate -f helm/real-estate-backend/values-local.yaml
+
+# 6. Deploy Post Service
+cd ../post-service
+helm install post-service ./helm/post-service -n real-estate -f helm/post-service/values-local.yaml
+
+# 7. Deploy Monitoring (Optional)
+cd ../monitoring
+helm install monitoring ./helm/monitoring -n monitoring --create-namespace
+
+# 8. Setup Port Forwards (required for Mac/Windows to access K8s services)
 kubectl port-forward -n kong svc/kong-proxy 8000:80 &
 kubectl port-forward -n kong svc/kong-admin 8001:8001 &
+kubectl port-forward -n real-estate svc/real-estate-backend-backend 8080:8080 &
+kubectl port-forward -n real-estate svc/auth-service 8081:8081 &
+kubectl port-forward -n real-estate svc/post-service 8082:8082 &
 
-# Run integration tests
-./kong/scripts/test-kong-integration.sh
+# 9. Verify all services are running
+kubectl get pods -n real-estate
+kubectl get pods -n kong
+
+# 10. Run integration tests
+cd ../kong/scripts
+./test-kong-integration.sh
 ```
 
 ### Frontend Configuration
@@ -1134,14 +1193,15 @@ The Real Estate application now has:
 
 ### Architecture Highlights
 
-| Feature | Implementation |
-|---------|----------------|
-| API Gateway | Kong with JWT plugin (RS256) |
-| Authentication | Stateless JWT with automatic key rotation |
-| Database per Service | Separate PostgreSQL for each microservice |
-| Service Discovery | Kubernetes DNS (*.svc.cluster.local) |
-| Rate Limiting | Redis-backed distributed rate limiting |
-| Observability | Prometheus metrics + Grafana dashboards |
+| Feature | Local Development | Production |
+|---------|-------------------|------------|
+| API Gateway | Kong in Minikube | Kong in EKS |
+| Authentication | Stateless JWT with automatic key rotation | Same |
+| Database per Service | Docker PostgreSQL containers (external) | AWS RDS Multi-AZ PostgreSQL |
+| Database Connection | `host.docker.internal:PORT` | Private VPC endpoint |
+| Service Discovery | Kubernetes DNS (*.svc.cluster.local) | Same |
+| Rate Limiting | Redis-backed distributed rate limiting | Same |
+| Observability | Prometheus metrics + Grafana dashboards | Same + CloudWatch |
 
 ---
 
@@ -1150,19 +1210,36 @@ The Real Estate application now has:
 ### Start Local Development Environment
 
 ```bash
-# 1. Start databases (Docker)
+# 1. Start PostgreSQL databases (Docker - runs OUTSIDE Kubernetes)
 cd backend && docker-compose -f docker-compose-db.yml up -d
 cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
 cd ../post-service && docker-compose -f docker-compose-db.yml up -d
 
-# 2. Start Kubernetes services
+# Verify databases are accessible
+docker ps | grep -E "postgres|auth-db|post-db"
+psql -h localhost -p 5432 -U postgres -d realestatedb -c "SELECT 1"  # Backend DB
+psql -h localhost -p 5433 -U postgres -d authdb -c "SELECT 1"         # Auth DB
+psql -h localhost -p 5434 -U postgres -d postdb -c "SELECT 1"         # Post DB
+
+# 2. Ensure Kubernetes services are deployed (one-time setup)
+# If not already deployed, run:
+#   cd backend && ./k8s-start-external.sh
+#   cd ../auth-service && ./k8s-start-external.sh
+#   cd ../post-service && ./k8s-start-external.sh
+#   cd ../kong && ./k8s-start.sh
+
+# 3. Setup port-forwards (Kubernetes services → localhost)
 kubectl port-forward svc/kong-proxy 8000:80 -n kong &
 kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate &
 kubectl port-forward svc/auth-service 8081:8081 -n real-estate &
 kubectl port-forward svc/post-service 8082:8082 -n real-estate &
 
-# 3. Start frontend
+# 4. Start frontend (runs on host machine)
 cd frontend && npm run dev
+
+# Access the application:
+# Frontend: http://localhost:3000
+# Kong API Gateway: http://localhost:8000
 ```
 
 ### Test API Endpoints
@@ -1201,8 +1278,15 @@ curl http://localhost:8000/api/properties/user \
 
 ---
 
-**Version:** 3.0.0
-**Last Updated:** 2026-01-31
+**Version:** 3.1.0
+**Last Updated:** 2026-02-01
+**Changes in v3.1.0:**
+- **CORRECTED**: Architecture diagram now accurately shows databases running in Docker containers (external to K8s)
+- **ADDED**: Database Architecture Notes section explaining local vs production setup
+- **FIXED**: Quick Start guide now includes database startup steps
+- **ENHANCED**: Production Deployment table shows local vs production environment differences
+- **CLARIFIED**: Database connection method using `host.docker.internal` for local development
+
 **Changes in v3.0.0:**
 - Added detailed request flow navigation diagrams
 - Added complete URL mapping reference tables

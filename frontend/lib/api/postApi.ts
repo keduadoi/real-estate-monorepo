@@ -4,18 +4,13 @@
  * Handles all communication with the post-service backend
  * for social feed functionality (posts, likes).
  *
- * Uses local Next.js API routes which proxy to the backend
- * and provide mock fallback when backend is unavailable.
+ * Calls Kong Gateway directly with Bearer token authentication.
  */
 
-// Use local API routes for development fallback support
+// Kong Gateway URL for post-service
 const getApiBaseUrl = () => {
-  // Server-side: use internal URL
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  }
-  // Client-side: use relative URL (browser handles it)
-  return '';
+  // Use Kong Gateway URL from environment or default
+  return process.env.NEXT_PUBLIC_KONG_URL || 'http://127.0.0.1:8000';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -61,8 +56,16 @@ export interface PageResponse<T> {
   totalPages: number;
 }
 
+export interface UserInfo {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  roles?: string[];
+}
+
 export interface RequestOptions {
   accessToken?: string;
+  user?: UserInfo;
 }
 
 // ============================================================================
@@ -80,6 +83,7 @@ class PostApi {
 
   /**
    * Build headers for requests
+   * Includes X-User-* headers for microservice authentication
    */
   private buildHeaders(options?: RequestOptions, contentType?: string): HeadersInit {
     const headers: HeadersInit = {};
@@ -90,6 +94,20 @@ class PostApi {
 
     if (options?.accessToken) {
       headers['Authorization'] = `Bearer ${options.accessToken}`;
+    }
+
+    // Add X-User-* headers for microservice authentication
+    if (options?.user) {
+      headers['X-User-Id'] = options.user.id;
+      if (options.user.email) {
+        headers['X-User-Email'] = options.user.email;
+      }
+      if (options.user.name) {
+        headers['X-User-Name'] = options.user.name;
+      }
+      if (options.user.roles?.length) {
+        headers['X-User-Roles'] = options.user.roles.join(',');
+      }
     }
 
     return headers;

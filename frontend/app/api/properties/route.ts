@@ -23,7 +23,8 @@ async function tryBackendRequest(
   method: string,
   path: string,
   body?: any,
-  accessToken?: string
+  accessToken?: string,
+  user?: { id?: string; email?: string | null; name?: string | null }
 ): Promise<Response | null> {
   try {
     const headers: HeadersInit = {
@@ -31,6 +32,15 @@ async function tryBackendRequest(
     };
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    if (user?.id) {
+      headers['X-User-Id'] = user.id;
+    }
+    if (user?.email) {
+      headers['X-User-Email'] = user.email;
+    }
+    if (user?.name) {
+      headers['X-User-Name'] = user.name;
     }
 
     const response = await fetch(`${BACKEND_URL}${path}`, {
@@ -113,7 +123,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Try backend first
-    const backendResponse = await tryBackendRequest('POST', '/api/properties', apiRequest, accessToken);
+    const backendResponse = await tryBackendRequest('POST', '/api/properties', apiRequest, accessToken, session.user);
 
     if (backendResponse?.ok) {
       const data = await backendResponse.json();
@@ -180,7 +190,8 @@ export async function GET(request: NextRequest) {
     'GET',
     `/api/properties?page=${page}&size=${size}`,
     undefined,
-    accessToken
+    accessToken,
+    session?.user
   );
 
   if (backendResponse?.ok) {

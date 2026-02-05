@@ -54,7 +54,7 @@ export async function uploadForProperty(
     formData.append('files', file);
   });
 
-  const response = await fetch(`${API_URL}/properties/${propertyId}/images`, {
+  const response = await fetch(`${BACKEND_API_URL}/properties/${propertyId}/images`, {
     method: 'POST',
     body: formData,
   });
@@ -75,7 +75,7 @@ export async function deleteFromProperty(
   propertyId: number,
   imageUrls: string[]
 ): Promise<void> {
-  const response = await fetch(`${API_URL}/properties/${propertyId}/images`, {
+  const response = await fetch(`${BACKEND_API_URL}/properties/${propertyId}/images`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',

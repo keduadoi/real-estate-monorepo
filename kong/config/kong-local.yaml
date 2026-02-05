@@ -1,0 +1,245 @@
+_format_version: "3.0"
+_transform: true
+
+# ============================================================================
+# SERVICES (Local Docker - using host.docker.internal to reach host services)
+# ============================================================================
+services:
+  - name: auth-service
+    url: http://host.docker.internal:8081
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
+  - name: backend-service
+    url: http://host.docker.internal:8080
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
+  - name: post-service
+    url: http://host.docker.internal:8082
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
+# ============================================================================
+# GLOBAL PLUGINS
+# ============================================================================
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:3000
+        - http://127.0.0.1:3000
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - PATCH
+      headers:
+        - Accept
+        - Authorization
+        - Content-Type
+        - Origin
+        - X-Requested-With
+        - X-User-Id
+        - X-User-Email
+        - X-User-Name
+        - X-User-Roles
+      exposed_headers:
+        - X-Auth-Token
+      credentials: true
+      max_age: 3600
+      preflight_continue: false
+
+# ============================================================================
+# ROUTES
+# ============================================================================
+routes:
+  # --- Auth Service: Public routes (no JWT) ---
+  - name: auth-public
+    service: auth-service
+    paths:
+      - /auth/login
+      - /auth/register
+      - /auth/refresh
+      - /auth/forgot-password
+      - /auth/reset-password
+    methods:
+      - POST
+      - OPTIONS
+    strip_path: false
+
+  - name: auth-jwks
+    service: auth-service
+    paths:
+      - /.well-known/jwks.json
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  # --- Auth Service: Protected routes (JWT required in Phase 3) ---
+  - name: auth-protected
+    service: auth-service
+    paths:
+      - /auth/logout
+      - /auth/change-password
+      - /auth/me
+    strip_path: false
+
+  # --- Auth Service: User management (Admin only in Phase 3) ---
+  - name: users-admin
+    service: auth-service
+    paths:
+      - /users
+    strip_path: false
+
+  # --- Backend: Public GET routes ---
+  - name: properties-public-get
+    service: backend-service
+    paths:
+      - /api/properties
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: properties-search
+    service: backend-service
+    paths:
+      - /api/properties/search
+    methods:
+      - POST
+      - OPTIONS
+    strip_path: false
+
+  - name: properties-cities
+    service: backend-service
+    paths:
+      - /api/properties/cities
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  # --- Backend: Protected routes (JWT required in Phase 3) ---
+  - name: properties-protected
+    service: backend-service
+    paths:
+      - /api/properties
+    methods:
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    strip_path: false
+
+  - name: properties-user
+    service: backend-service
+    paths:
+      - /api/properties/user
+    strip_path: false
+
+  - name: upload-routes
+    service: backend-service
+    paths:
+      - /api/upload
+    strip_path: false
+
+  # --- Backend: Admin routes ---
+  - name: admin-routes
+    service: backend-service
+    paths:
+      - /api/admin
+    strip_path: false
+
+  # --- Post Service: Public routes ---
+  - name: posts-public-get
+    service: post-service
+    paths:
+      - /api/posts
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: posts-search
+    service: post-service
+    paths:
+      - /api/posts/search
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: posts-user
+    service: post-service
+    paths:
+      - /api/posts/user
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  # --- Post Service: Protected routes (JWT required) ---
+  - name: posts-protected
+    service: post-service
+    paths:
+      - /api/posts
+    methods:
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    strip_path: false
+
+  - name: posts-like
+    service: post-service
+    paths:
+      - ~/api/posts/[^/]+/like$
+    methods:
+      - POST
+      - OPTIONS
+    strip_path: false
+
+  - name: posts-me
+    service: post-service
+    paths:
+      - /api/posts/me
+    strip_path: false
+
+  # --- Backend: Static uploads ---
+  - name: uploads
+    service: backend-service
+    paths:
+      - /uploads
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  # --- Health checks ---
+  - name: health-backend
+    service: backend-service
+    paths:
+      - /actuator/health
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: health-post-service
+    service: post-service
+    paths:
+      - /api/posts/actuator/health
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false

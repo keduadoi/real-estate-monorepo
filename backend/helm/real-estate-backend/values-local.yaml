@@ -44,10 +44,10 @@ backend:
     corsAllowedOrigins: "http://localhost:3000,http://localhost:3001"
 
     # External database connection (Docker PostgreSQL)
-    # For Mac/Windows Docker Desktop
-    dbHost: host.docker.internal
-    # For Linux with Kind, use: 172.17.0.1
-    # For K3d, use: host.k3d.internal
+    # For Mac/Windows Docker Desktop: host.docker.internal
+    # For QEMU driver: 192.168.105.1
+    # For Linux with Kind: 172.17.0.1
+    dbHost: "192.168.105.1"
     dbPort: 5432
     dbName: realestatedb
     dbUser: postgres

@@ -1,0 +1,26 @@
+_format_version: "3.0"
+
+services:
+  - name: backend-service
+    url: http://host.docker.internal:8080
+    routes:
+      - name: backend-route
+        paths:
+          - /api
+        strip_path: false
+
+  - name: auth-service
+    url: http://host.docker.internal:8081
+    routes:
+      - name: auth-route
+        paths:
+          - /auth
+        strip_path: true
+
+  - name: post-service
+    url: http://host.docker.internal:8082
+    routes:
+      - name: post-route
+        paths:
+          - /api/posts
+        strip_path: false

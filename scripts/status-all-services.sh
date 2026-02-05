@@ -23,13 +23,6 @@ if docker info > /dev/null 2>&1; then
 else
     echo -e "Docker:     ${RED}❌ Not running${NC}"
 fi
-
-# Minikube
-if minikube status > /dev/null 2>&1; then
-    echo -e "Minikube:   ${GREEN}✅ Running${NC}"
-else
-    echo -e "Minikube:   ${RED}❌ Not running${NC}"
-fi
 echo ""
 
 # ============================================================================
@@ -42,14 +35,14 @@ check_db() {
     local container=$2
     local port=$3
 
-    if docker ps | grep -q "$container"; then
+    if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
         if docker exec "$container" pg_isready -U postgres > /dev/null 2>&1; then
             echo -e "$name:  ${GREEN}✅ Running (port $port)${NC}"
         else
             echo -e "$name:  ${YELLOW}⚠️  Container up but DB not ready${NC}"
         fi
     else
-        if docker ps -a | grep -q "$container"; then
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
             echo -e "$name:  ${YELLOW}⏸️  Stopped${NC}"
         else
             echo -e "$name:  ${RED}❌ Not found${NC}"
@@ -57,88 +50,90 @@ check_db() {
     fi
 }
 
-check_db "Backend DB " "real-estate-postgres-local" "5432"
+check_db "Backend DB " "real-estate-postgres" "5432"
 check_db "Auth DB    " "auth-db" "5433"
 check_db "Post DB    " "post-db" "5434"
 echo ""
 
 # ============================================================================
-# Kubernetes Pods Status
+# App Services Status (Docker)
 # ============================================================================
-echo -e "${BLUE}━━━ Kubernetes Pods ━━━${NC}"
-echo ""
-echo "real-estate namespace:"
-kubectl get pods -n real-estate 2>/dev/null || echo "  Namespace not found"
-echo ""
-echo "kong namespace:"
-kubectl get pods -n kong 2>/dev/null || echo "  Namespace not found"
+echo -e "${BLUE}━━━ App Services (Docker) ━━━${NC}"
+
+check_service() {
+    local name=$1
+    local container=$2
+    local port=$3
+
+    if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+        local status=$(docker ps --filter "name=^${container}$" --format '{{.Status}}')
+        echo -e "$name:  ${GREEN}✅ Running${NC} ($status)"
+    else
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            echo -e "$name:  ${YELLOW}⏸️  Stopped${NC}"
+        else
+            echo -e "$name:  ${RED}❌ Not found${NC}"
+        fi
+    fi
+}
+
+check_service "Backend    " "real-estate-backend" "8080"
+check_service "Auth       " "auth-service" "8081"
+check_service "Post       " "post-service" "8082"
 echo ""
 
 # ============================================================================
-# Helm Releases
+# Kong Gateway Status (Docker)
 # ============================================================================
-echo -e "${BLUE}━━━ Helm Releases ━━━${NC}"
-helm list -A 2>/dev/null | grep -E "NAME|real-estate|auth-service|post-service|kong"
+echo -e "${BLUE}━━━ Kong Gateway (Docker) ━━━${NC}"
+if docker ps --filter "name=kong-gateway" --format '{{.Status}}' 2>/dev/null | grep -q "Up"; then
+    KONG_STATUS=$(docker ps --filter "name=kong-gateway" --format '{{.Status}}')
+    echo -e "Container:  ${GREEN}Running${NC} ($KONG_STATUS)"
+    if curl -s http://localhost:8001/status > /dev/null 2>&1; then
+        SERVICES=$(curl -s http://localhost:8001/services | grep -o '"total":[0-9]*' | cut -d: -f2)
+        ROUTES=$(curl -s http://localhost:8001/routes | grep -o '"total":[0-9]*' | cut -d: -f2)
+        echo -e "Admin API:  ${GREEN}Healthy${NC} (services: ${SERVICES:-0}, routes: ${ROUTES:-0})"
+    else
+        echo -e "Admin API:  ${RED}Not responding${NC}"
+    fi
+else
+    echo -e "Container:  ${RED}Not running${NC}"
+fi
 echo ""
 
 # ============================================================================
 # Service Health Checks
 # ============================================================================
-echo -e "${BLUE}━━━ Service Health (via port-forward) ━━━${NC}"
+echo -e "${BLUE}━━━ Service Health ━━━${NC}"
 
 check_health() {
     local name=$1
-    local port=$2
-    local path=$3
-    local temp_port=$((port + 10000))
+    local url=$2
 
-    # Check if service pod is running
-    if ! kubectl get pods -A 2>/dev/null | grep -q "$name.*Running"; then
-        echo -e "$name:  ${YELLOW}⏭️  Pod not running${NC}"
-        return
-    fi
-
-    # Try to check health
-    pkill -f "port-forward.*$temp_port:$port" 2>/dev/null
-
-    # Determine namespace
-    local ns="real-estate"
-    if [[ "$name" == "kong"* ]]; then
-        ns="kong"
-    fi
-
-    kubectl port-forward svc/$name $temp_port:$port -n $ns > /dev/null 2>&1 &
-    local pf_pid=$!
-    sleep 2
-
-    if curl -s "http://localhost:$temp_port$path" > /dev/null 2>&1; then
-        local status=$(curl -s "http://localhost:$temp_port$path" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+    if curl -s "$url" > /dev/null 2>&1; then
+        local status=$(curl -s "$url" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
         echo -e "$name:  ${GREEN}✅ Healthy${NC} (status: ${status:-OK})"
     else
         echo -e "$name:  ${RED}❌ Not responding${NC}"
     fi
-
-    kill $pf_pid 2>/dev/null
 }
 
-check_health "real-estate-backend-backend" "8080" "/actuator/health"
-check_health "auth-service" "8081" "/actuator/health"
-check_health "post-service" "8082" "/actuator/health"
-check_health "kong-proxy" "80" "/"
-echo ""
-
-# ============================================================================
-# Port Forwards Status
-# ============================================================================
-echo -e "${BLUE}━━━ Active Port Forwards ━━━${NC}"
-ps aux | grep "port-forward" | grep -v grep | awk '{print "  " $NF}' || echo "  None active"
+check_health "Backend      " "http://localhost:8080/actuator/health"
+check_health "Auth Service " "http://localhost:8081/actuator/health"
+check_health "Post Service " "http://localhost:8082/actuator/health"
+# Kong health (Docker — direct access)
+if curl -s http://localhost:8001/status > /dev/null 2>&1; then
+    echo -e "Kong Gateway:  ${GREEN}✅ Healthy${NC}"
+else
+    echo -e "Kong Gateway:  ${RED}❌ Not responding${NC}"
+fi
 echo ""
 
 # ============================================================================
 # Summary
 # ============================================================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📍 Service URLs (when port-forwards are active):"
+echo "📍 Service URLs:"
 echo "   Kong Gateway:  http://localhost:8000"
 echo "   Backend:       http://localhost:8080"
 echo "   Auth Service:  http://localhost:8081"

@@ -47,7 +47,15 @@ export default function FeedPageClient({
     setError(null);
 
     try {
-      const response = await postApi.getFeed(0, 20, { accessToken });
+      const response = await postApi.getFeed(0, 20, {
+        accessToken,
+        user: session?.user ? {
+          id: session.user.id as string,
+          email: session.user.email,
+          name: session.user.name,
+          roles: ['ROLE_USER'],
+        } : undefined,
+      });
       setPosts(response.data);
       setTotal(response.total);
       setCurrentPage(0);
@@ -86,7 +94,15 @@ export default function FeedPageClient({
 
     try {
       const nextPage = currentPage + 1;
-      const response = await postApi.getFeed(nextPage, 20, { accessToken });
+      const response = await postApi.getFeed(nextPage, 20, {
+        accessToken,
+        user: session?.user ? {
+          id: session.user.id as string,
+          email: session.user.email,
+          name: session.user.name,
+          roles: ['ROLE_USER'],
+        } : undefined,
+      });
 
       setPosts(prev => [...prev, ...response.data]);
       setCurrentPage(nextPage);
@@ -117,7 +133,15 @@ export default function FeedPageClient({
     setPosts(updatedPosts);
 
     try {
-      const response = await postApi.toggleLike(postId, { accessToken });
+      const response = await postApi.toggleLike(postId, {
+        accessToken,
+        user: session?.user ? {
+          id: session.user.id as string,
+          email: session.user.email,
+          name: session.user.name,
+          roles: ['ROLE_USER'],
+        } : undefined,
+      });
 
       // Update with actual server response
       const finalPosts = [...posts];

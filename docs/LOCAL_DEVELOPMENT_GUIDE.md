@@ -16,25 +16,22 @@ This guide explains how to start, stop, and manage all services for the Real Est
 │                               │                                          │
 │                               ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │              KUBERNETES (Minikube) + Port Forwards               │   │
-│  │                                                                   │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │
-│  │  │    Kong     │  │   Backend   │  │    Auth     │              │   │
-│  │  │  Gateway    │  │   Service   │  │   Service   │              │   │
-│  │  │ :8000 → :80 │  │ :8080→:8080 │  │ :8081→:8081 │              │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘              │   │
-│  │                                                                   │   │
-│  │  ┌─────────────┐                                                 │   │
-│  │  │    Post     │                                                 │   │
-│  │  │   Service   │                                                 │   │
-│  │  │ :8082→:8082 │                                                 │   │
-│  │  └─────────────┘                                                 │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                               │                                          │
+│  │                    KONG GATEWAY (Docker)                         │   │
+│  │              DB-less mode, declarative config                    │   │
+│  │              Proxy: :8000    Admin: :8001                       │   │
+│  └────────────────────────────┬────────────────────────────────────┘   │
+│                               │ (via host.docker.internal)              │
 │                               ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                    DATABASES (Docker)                            │   │
+│  │               MICROSERVICES (Docker Compose)                     │   │
 │  │                                                                   │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │
+│  │  │   Backend   │  │    Auth     │  │    Post     │              │   │
+│  │  │   Service   │  │   Service   │  │   Service   │              │   │
+│  │  │  :8080      │  │  :8081      │  │  :8082      │              │   │
+│  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │   │
+│  │         │                │                │                       │   │
+│  │         ▼                ▼                ▼                       │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │
 │  │  │  Backend DB │  │   Auth DB   │  │   Post DB   │              │   │
 │  │  │ Port: 5432  │  │ Port: 5433  │  │ Port: 5434  │              │   │
@@ -47,10 +44,7 @@ This guide explains how to start, stop, and manage all services for the Real Est
 
 ## Prerequisites
 
-- **Docker Desktop** - For running PostgreSQL databases
-- **Minikube** - For running Kubernetes locally
-- **kubectl** - Kubernetes CLI
-- **Helm 3** - Kubernetes package manager
+- **Docker Desktop** - For running all microservices, databases, and Kong Gateway
 - **Node.js 18+** - For frontend development
 
 ## Quick Start
@@ -66,24 +60,17 @@ chmod +x scripts/*.sh
 ### Option 2: Start Services Individually
 
 ```bash
-# 1. Start Minikube
-minikube start --memory=8192 --cpus=4
+# 1. Start backend (DB + app)
+cd backend && docker compose up -d --build
 
-# 2. Start databases
-cd backend && docker-compose -f docker-compose-db.yml up -d
-cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
-cd ../post-service && docker-compose -f docker-compose-db.yml up -d
+# 2. Start auth-service (DB + app)
+cd ../auth-service && docker compose up -d --build
 
-# 3. Deploy services to K8s
-cd ../backend && ./k8s-start-external.sh
-cd ../auth-service && ./k8s-start-external.sh
-cd ../post-service && ./k8s-start-external.sh
+# 3. Start post-service (DB + app)
+cd ../post-service && docker compose up -d --build
 
-# 4. Start port-forwards
-kubectl port-forward svc/kong-proxy 8000:80 -n kong &
-kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate &
-kubectl port-forward svc/auth-service 8081:8081 -n real-estate &
-kubectl port-forward svc/post-service 8082:8082 -n real-estate &
+# 4. Start Kong Gateway
+cd ../kong && docker compose up -d
 
 # 5. Start frontend
 cd ../frontend && npm run dev
@@ -120,47 +107,35 @@ psql -h localhost -p 5433 -U postgres -d authdb
 psql -h localhost -p 5434 -U postgres -d postdb
 ```
 
+## Docker Containers
+
+| Container | Service | Port |
+|-----------|---------|------|
+| `real-estate-postgres` | Backend PostgreSQL | 5432 |
+| `real-estate-backend` | Backend Spring Boot | 8080 |
+| `auth-db` | Auth PostgreSQL | 5433 |
+| `auth-service` | Auth Spring Boot | 8081 |
+| `post-db` | Post PostgreSQL | 5434 |
+| `post-service` | Post Spring Boot | 8082 |
+| `kong-gateway` | Kong API Gateway | 8000, 8001 |
+
 ## Scripts Reference
 
 ### Master Scripts (in `scripts/` directory)
 
 | Script | Description |
 |--------|-------------|
-| `start-all-services.sh` | Start all databases, deploy all K8s services, setup port-forwards, optionally start frontend |
-| `status-all-services.sh` | Check status of all services |
+| `start-all-services.sh` | Build and start all services via Docker Compose, start Kong, optionally start frontend |
+| `status-all-services.sh` | Check status of all Docker containers and service health |
 | `stop-all-services.sh` | Stop services (with options for partial/full cleanup) |
-
-### Backend Service Scripts (`backend/`)
-
-| Script | Description |
-|--------|-------------|
-| `k8s-start-external.sh` | Start backend with external DB (Docker) |
-| `k8s-status-external.sh` | Check backend service status |
-| `k8s-stop-external.sh` | Stop backend service |
-
-### Auth Service Scripts (`auth-service/`)
-
-| Script | Description |
-|--------|-------------|
-| `k8s-start-external.sh` | Start auth service with external DB (Docker) |
-| `k8s-status-external.sh` | Check auth service status |
-| `k8s-stop-external.sh` | Stop auth service |
-
-### Post Service Scripts (`post-service/`)
-
-| Script | Description |
-|--------|-------------|
-| `k8s-start-external.sh` | Start post service with external DB (Docker) |
-| `k8s-status-external.sh` | Check post service status |
-| `k8s-stop-external.sh` | Stop post service |
 
 ### Kong Gateway Scripts (`kong/`)
 
 | Script | Description |
 |--------|-------------|
-| `k8s-start.sh` | Start Kong API Gateway (includes PostgreSQL & Redis in K8s) |
-| `k8s-status.sh` | Check Kong status, routes, and services |
-| `k8s-stop.sh` | Stop Kong (with options for partial/full cleanup) |
+| `docker-start.sh` | Start Kong API Gateway via Docker Compose (DB-less mode) |
+| `docker-status.sh` | Check Kong container and admin API status |
+| `docker-stop.sh` | Stop Kong container |
 
 ### Frontend Scripts (`frontend/`)
 
@@ -177,52 +152,61 @@ psql -h localhost -p 5434 -U postgres -d postdb
 # All services
 ./scripts/status-all-services.sh
 
-# Individual service
-cd backend && ./k8s-status-external.sh
+# Docker containers
+docker ps
+
+# Kong only
+cd kong && ./docker-status.sh
 ```
 
 ### View Logs
 ```bash
 # Backend
-kubectl logs -f deployment/real-estate-backend-backend -n real-estate
+docker logs -f real-estate-backend
 
 # Auth Service
-kubectl logs -f deployment/auth-service -n real-estate
+docker logs -f auth-service
 
 # Post Service
-kubectl logs -f deployment/post-service -n real-estate
+docker logs -f post-service
 
 # Kong
-kubectl logs -f deployment/kong -n kong
+docker logs -f kong-gateway
 
 # Database logs
-docker logs -f real-estate-postgres-local
+docker logs -f real-estate-postgres
 docker logs -f auth-db
 docker logs -f post-db
 ```
 
 ### Restart a Service
 ```bash
-# Restart backend
-kubectl rollout restart deployment/real-estate-backend-backend -n real-estate
+# Restart backend app only (keeps DB running)
+cd backend && docker compose restart backend
 
-# Restart auth-service
-kubectl rollout restart deployment/auth-service -n real-estate
+# Restart auth-service app only
+cd auth-service && docker compose restart auth-service
 
-# Restart post-service
-kubectl rollout restart deployment/post-service -n real-estate
+# Restart post-service app only
+cd post-service && docker compose restart post-service
 
 # Restart Kong
-kubectl rollout restart deployment/kong -n kong
+cd kong && docker compose restart
+
+# Rebuild and restart (after code changes)
+cd backend && docker compose up -d --build
 ```
 
 ### Kong Gateway Management
 ```bash
 # Start Kong
-cd kong && ./k8s-start.sh
+cd kong && ./docker-start.sh
 
 # Check Kong status
-cd kong && ./k8s-status.sh
+cd kong && ./docker-status.sh
+
+# Stop Kong
+cd kong && ./docker-stop.sh
 
 # View Kong routes
 curl http://localhost:8001/routes | jq
@@ -234,7 +218,7 @@ curl http://localhost:8001/services | jq
 curl http://localhost:8001/plugins | jq
 
 # Kong logs
-kubectl logs -f deployment/kong -n kong
+docker logs -f kong-gateway
 ```
 
 ### Frontend Management
@@ -255,20 +239,6 @@ cd frontend && npm run build
 cd frontend && npm run start
 ```
 
-### Rebuild and Redeploy
-```bash
-# Point to Minikube's Docker
-eval $(minikube docker-env)
-
-# Rebuild and redeploy backend
-cd backend
-mvn clean package -DskipTests
-docker build -t real-estate-backend:latest .
-kubectl rollout restart deployment/real-estate-backend-backend -n real-estate
-
-# Similar for other services...
-```
-
 ### Stop Services
 
 ```bash
@@ -276,9 +246,9 @@ kubectl rollout restart deployment/real-estate-backend-backend -n real-estate
 ./scripts/stop-all-services.sh
 # Choose option 2
 
-# Stop individual service
-cd backend && ./k8s-stop-external.sh
-# Choose option 1 (K8s only) or 2 (K8s + DB)
+# Stop apps only (keep DBs running)
+./scripts/stop-all-services.sh
+# Choose option 1
 ```
 
 ### Full Reset
@@ -287,57 +257,56 @@ cd backend && ./k8s-stop-external.sh
 # Choose option 4 and type DELETE
 
 # Or manually:
-helm uninstall real-estate-backend -n real-estate
-helm uninstall auth-service -n real-estate
-helm uninstall post-service -n real-estate
-helm uninstall kong-gateway -n kong
-kubectl delete namespace real-estate
-kubectl delete namespace kong
-cd backend && docker-compose -f docker-compose-db.yml down -v
-cd ../auth-service && docker-compose -f docker-compose-db.yml down -v
-cd ../post-service && docker-compose -f docker-compose-db.yml down -v
-```
-
-## Port Forward Management
-
-Port forwards are required because Minikube runs in a VM/container and NodePorts aren't directly accessible on Mac/Windows.
-
-### Start Port Forwards
-```bash
-kubectl port-forward svc/kong-proxy 8000:80 -n kong &
-kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate &
-kubectl port-forward svc/auth-service 8081:8081 -n real-estate &
-kubectl port-forward svc/post-service 8082:8082 -n real-estate &
-```
-
-### Kill All Port Forwards
-```bash
-pkill -f "port-forward"
-```
-
-### Check Active Port Forwards
-```bash
-ps aux | grep port-forward | grep -v grep
+cd backend && docker compose down -v
+cd ../auth-service && docker compose down -v
+cd ../post-service && docker compose down -v
+cd ../kong && docker compose down
 ```
 
 ## Troubleshooting
 
 ### Service Not Starting
 
-1. Check pod status:
+1. Check container status:
    ```bash
-   kubectl get pods -n real-estate
-   kubectl describe pod <pod-name> -n real-estate
+   docker ps -a
    ```
 
 2. Check logs:
    ```bash
-   kubectl logs <pod-name> -n real-estate
+   docker logs real-estate-backend
+   docker logs auth-service
+   docker logs post-service
    ```
 
-3. Check events:
+3. Check if port is in use:
    ```bash
-   kubectl get events -n real-estate --sort-by='.lastTimestamp'
+   lsof -i :8080
+   lsof -i :8081
+   lsof -i :8082
+   ```
+
+4. Rebuild from scratch:
+   ```bash
+   cd backend && docker compose down && docker compose up -d --build
+   ```
+
+### Kong Not Starting
+
+1. Check container status:
+   ```bash
+   docker ps -a --filter "name=kong-gateway"
+   ```
+
+2. Check logs:
+   ```bash
+   docker logs kong-gateway
+   ```
+
+3. Verify config:
+   ```bash
+   curl http://localhost:8001/status
+   curl http://localhost:8001/routes | jq
    ```
 
 ### Database Connection Issues
@@ -349,26 +318,9 @@ ps aux | grep port-forward | grep -v grep
 
 2. Test database connection:
    ```bash
-   docker exec real-estate-postgres-local pg_isready -U postgres
-   ```
-
-3. Check from inside K8s pod:
-   ```bash
-   kubectl exec -it deployment/real-estate-backend-backend -n real-estate -- sh
-   # Inside pod:
-   nc -zv host.docker.internal 5432
-   ```
-
-### Port Forward Issues
-
-1. Check if port is in use:
-   ```bash
-   lsof -i :8080
-   ```
-
-2. Kill existing port-forward:
-   ```bash
-   pkill -f "port-forward.*8080"
+   docker exec real-estate-postgres pg_isready -U postgres
+   docker exec auth-db pg_isready -U postgres
+   docker exec post-db pg_isready -U postgres
    ```
 
 ### Frontend API Errors
@@ -384,6 +336,10 @@ ps aux | grep port-forward | grep -v grep
    NEXT_PUBLIC_AUTH_API_URL=http://127.0.0.1:8000
    ```
 
+### First Build Is Slow
+
+The first `docker compose up --build` for each service runs a full Maven build inside Docker (multi-stage Dockerfile). This can take several minutes. Subsequent builds use Docker layer caching and are much faster.
+
 ## Environment Configuration
 
 ### Frontend (.env.local)
@@ -395,11 +351,8 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
 NEXT_PUBLIC_AUTH_API_URL=http://127.0.0.1:8000
 ```
 
-### Kubernetes Values (values-local.yaml)
-Each service has a `values-local.yaml` that configures:
-- `host.docker.internal` for database host (accessible from K8s to Docker)
-- External database ports (5432, 5433, 5434)
-- `pullPolicy: Never` or `IfNotPresent` for local images
+### Kong Configuration
+Kong runs in **DB-less mode** locally using a declarative config file at `kong/config/kong-local.yaml`. This file defines all services, routes, and plugins. Services point to `host.docker.internal` to reach backend services running on the host via Docker port mappings.
 
 ## API Testing
 
@@ -433,4 +386,4 @@ curl http://localhost:8082/actuator/health
 
 ---
 
-**Last Updated:** 2026-01-31
+**Last Updated:** 2026-02-05

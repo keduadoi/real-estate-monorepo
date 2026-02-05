@@ -37,7 +37,15 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
     try {
       await postApi.create(
         { content: content.trim() },
-        { accessToken }
+        {
+          accessToken,
+          user: session?.user ? {
+            id: session.user.id as string,
+            email: session.user.email,
+            name: session.user.name,
+            roles: ['ROLE_USER']
+          } : undefined
+        }
       );
 
       // Clear form on success

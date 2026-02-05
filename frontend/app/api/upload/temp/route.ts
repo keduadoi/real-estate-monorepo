@@ -19,12 +19,22 @@ if (!global.mockUploads) {
 
 async function tryBackendUpload(
   formData: FormData,
-  accessToken?: string
+  accessToken?: string,
+  user?: { id?: string; email?: string | null; name?: string | null }
 ): Promise<Response | null> {
   try {
     const headers: HeadersInit = {};
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    if (user?.id) {
+      headers['X-User-Id'] = user.id;
+    }
+    if (user?.email) {
+      headers['X-User-Email'] = user.email;
+    }
+    if (user?.name) {
+      headers['X-User-Name'] = user.name;
     }
 
     const response = await fetch(`${BACKEND_URL}/api/upload/temp`, {
@@ -63,7 +73,7 @@ export async function POST(request: NextRequest) {
       backendFormData.append('files', file);
     }
 
-    const backendResponse = await tryBackendUpload(backendFormData, accessToken);
+    const backendResponse = await tryBackendUpload(backendFormData, accessToken, session.user);
 
     if (backendResponse?.ok) {
       const data = await backendResponse.json();

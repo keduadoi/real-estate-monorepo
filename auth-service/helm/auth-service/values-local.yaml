@@ -19,7 +19,7 @@ authService:
 
   env:
     serverPort: 8081
-    dbHost: host.docker.internal
+    dbHost: "192.168.105.1"
     dbPort: 5433
     dbName: authdb
     dbUser: postgres
