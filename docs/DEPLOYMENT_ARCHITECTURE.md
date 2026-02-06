@@ -77,8 +77,8 @@
 │  │   Auth DB     │      │  Property DB  │      │   Post DB     │             │
 │  │  PostgreSQL   │      │  PostgreSQL   │      │  PostgreSQL   │             │
 │  │ Container:    │      │ Container:    │      │ Container:    │             │
-│  │   auth-db     │      │ real-estate-  │      │   post-db     │             │
-│  │               │      │ postgres-local│      │               │             │
+│  │   auth-db     │      │  property-db  │      │   post-db     │             │
+│  │               │      │               │      │               │             │
 │  │ Host: 5433    │      │ Host: 5432    │      │ Host: 5434    │             │
 │  │ DB: authdb    │      │ DB: realestate│      │ DB: postdb    │             │
 │  └───────────────┘      └───────────────┘      └───────────────┘             │
@@ -96,7 +96,7 @@
 - **Databases run in Docker containers** (external to Kubernetes)
 - **Connection method**: K8s services connect to databases using `host.docker.internal:PORT`
 - **Ports**: 5432 (backend), 5433 (auth), 5434 (post)
-- **Containers**: `real-estate-postgres-local`, `auth-db`, `post-db`
+- **Containers**: `property-db`, `auth-db`, `post-db`
 - **Why external?**: Simpler development workflow, easier database access from host machine
 
 ### Production (AWS EKS)
@@ -484,11 +484,11 @@ Content-Type: application/json
 | auth-protected | `/auth/change-password` | POST | auth-service | 8081 | JWT | 100/min |
 | auth-jwks | `/.well-known/jwks.json` | GET | auth-service | 8081 | No | 1000/min |
 | **Properties** |
-| properties-public-get | `/api/properties` | GET | backend-service | 8080 | No | 100/min |
-| properties-protected | `/api/properties` | POST,PUT,DELETE | backend-service | 8080 | JWT | 100/min |
-| properties-search | `/api/properties/search` | POST | backend-service | 8080 | No | 100/min |
-| properties-cities | `/api/properties/cities` | GET | backend-service | 8080 | No | 100/min |
-| properties-user | `/api/properties/user` | GET | backend-service | 8080 | JWT | 100/min |
+| properties-public-get | `/api/properties` | GET | property-service | 8080 | No | 100/min |
+| properties-protected | `/api/properties` | POST,PUT,DELETE | property-service | 8080 | JWT | 100/min |
+| properties-search | `/api/properties/search` | POST | property-service | 8080 | No | 100/min |
+| properties-cities | `/api/properties/cities` | GET | property-service | 8080 | No | 100/min |
+| properties-user | `/api/properties/user` | GET | property-service | 8080 | JWT | 100/min |
 | **Posts (Social Feed)** |
 | posts-public-get | `/api/posts` | GET | post-service | 8082 | No | 100/min |
 | posts-protected | `/api/posts` | POST,PUT,DELETE | post-service | 8082 | JWT | 100/min |
@@ -497,10 +497,10 @@ Content-Type: application/json
 | posts-search | `/api/posts/search` | GET | post-service | 8082 | No | 100/min |
 | posts-like | `/api/posts/{id}/like` | POST | post-service | 8082 | JWT | 100/min |
 | **File Upload** |
-| upload-routes | `/api/upload/*` | POST | backend-service | 8080 | JWT | 50/min |
-| uploads-static | `/uploads/*` | GET | backend-service | 8080 | No | 200/min |
+| upload-routes | `/api/upload/*` | POST | property-service | 8080 | JWT | 50/min |
+| uploads-static | `/uploads/*` | GET | property-service | 8080 | No | 200/min |
 | **Admin** |
-| admin-routes | `/api/admin/*` | ALL | backend-service | 8080 | JWT+ACL | 100/min |
+| admin-routes | `/api/admin/*` | ALL | property-service | 8080 | JWT+ACL | 100/min |
 | users-admin | `/users/*` | ALL | auth-service | 8081 | JWT+ACL | 100/min |
 
 ### Service Endpoints (Internal K8s DNS)
@@ -528,7 +528,7 @@ Content-Type: application/json
 
 | Database | Container Name | Host Port | Internal Port | Database Name |
 |----------|---------------|-----------|---------------|---------------|
-| Property DB | real-estate-postgres-local | 5432 | 5432 | realestatedb |
+| Property DB | property-db | 5432 | 5432 | realestatedb |
 | Auth DB | auth-db | 5433 | 5432 | authdb |
 | Post DB | post-db | 5434 | 5432 | postdb |
 
@@ -591,7 +591,7 @@ Kong Gateway serves as the central entry point for all API traffic, providing:
 │  Service            │ Host                                    │ Port │      │
 ├─────────────────────┼─────────────────────────────────────────┼──────┼──────┤
 │  auth-service       │ auth-service.real-estate.svc            │ 8081 │ HTTP │
-│  backend-service    │ real-estate-backend-backend.real-estate │ 8080 │ HTTP │
+│  property-service   │ real-estate-backend-backend.real-estate │ 8080 │ HTTP │
 │  post-service       │ post-service.real-estate.svc            │ 8082 │ HTTP │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -963,7 +963,7 @@ The Auth Service is a dedicated Spring Boot application handling:
 | Backend Service | K8s (Minikube) | K8s (EKS) | 3 | 3-15 (CPU 70%) | minAvailable: 2 |
 | Post Service | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
 | PostgreSQL (Auth) | Docker (auth-db) | RDS Multi-AZ | N/A | N/A | N/A |
-| PostgreSQL (Property) | Docker (real-estate-postgres-local) | RDS Multi-AZ | N/A | N/A | N/A |
+| PostgreSQL (Property) | Docker (property-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Post) | Docker (post-db) | RDS Multi-AZ | N/A | N/A | N/A |
 
 **Key Differences:**
@@ -1034,7 +1034,7 @@ project-root/
 │               ├── networkpolicy.yaml
 │               └── key-rotation-cronjob.yaml
 │
-├── backend/
+├── property-service/
 │   └── helm/
 │       └── real-estate-backend/
 │           ├── Chart.yaml
@@ -1124,7 +1124,7 @@ project-root/
 minikube start --memory 8192 --cpus 4
 
 # 2. Start PostgreSQL Databases (Docker - External to K8s)
-cd backend && docker-compose -f docker-compose-db.yml up -d
+cd property-service && docker-compose -f docker-compose-db.yml up -d
 cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
 cd ../post-service && docker-compose -f docker-compose-db.yml up -d
 
@@ -1140,7 +1140,7 @@ cd ../auth-service
 helm install auth-service ./helm/auth-service -n real-estate --create-namespace -f helm/auth-service/values-local.yaml
 
 # 5. Deploy Backend Service
-cd ../backend
+cd ../property-service
 helm install real-estate-backend ./helm/real-estate-backend -n real-estate -f helm/real-estate-backend/values-local.yaml
 
 # 6. Deploy Post Service
@@ -1211,7 +1211,7 @@ The Real Estate application now has:
 
 ```bash
 # 1. Start PostgreSQL databases (Docker - runs OUTSIDE Kubernetes)
-cd backend && docker-compose -f docker-compose-db.yml up -d
+cd property-service && docker-compose -f docker-compose-db.yml up -d
 cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
 cd ../post-service && docker-compose -f docker-compose-db.yml up -d
 
@@ -1223,7 +1223,7 @@ psql -h localhost -p 5434 -U postgres -d postdb -c "SELECT 1"         # Post DB
 
 # 2. Ensure Kubernetes services are deployed (one-time setup)
 # If not already deployed, run:
-#   cd backend && ./k8s-start-external.sh
+#   cd property-service && ./k8s-start-external.sh
 #   cd ../auth-service && ./k8s-start-external.sh
 #   cd ../post-service && ./k8s-start-external.sh
 #   cd ../kong && ./k8s-start.sh
