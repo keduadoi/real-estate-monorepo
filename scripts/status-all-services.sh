@@ -50,7 +50,7 @@ check_db() {
     fi
 }
 
-check_db "Backend DB " "real-estate-postgres" "5432"
+check_db "Property DB" "property-db" "5432"
 check_db "Auth DB    " "auth-db" "5433"
 check_db "Post DB    " "post-db" "5434"
 echo ""
@@ -77,7 +77,7 @@ check_service() {
     fi
 }
 
-check_service "Backend    " "real-estate-backend" "8080"
+check_service "Property   " "property-service" "8080"
 check_service "Auth       " "auth-service" "8081"
 check_service "Post       " "post-service" "8082"
 echo ""
@@ -118,7 +118,7 @@ check_health() {
     fi
 }
 
-check_health "Backend      " "http://localhost:8080/actuator/health"
+check_health "Property Svc " "http://localhost:8080/actuator/health"
 check_health "Auth Service " "http://localhost:8081/actuator/health"
 check_health "Post Service " "http://localhost:8082/actuator/health"
 # Kong health (Docker — direct access)
@@ -135,7 +135,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📍 Service URLs:"
 echo "   Kong Gateway:  http://localhost:8000"
-echo "   Backend:       http://localhost:8080"
+echo "   Property Svc:  http://localhost:8080"
 echo "   Auth Service:  http://localhost:8081"
 echo "   Post Service:  http://localhost:8082"
 echo ""

@@ -31,8 +31,8 @@ case $REPLY in
     1)
         echo -e "${BLUE}━━━ Stopping App Services (keeping DBs) ━━━${NC}"
 
-        echo "   Stopping backend app..."
-        cd "$ROOT_DIR/backend" && docker compose stop backend 2>/dev/null
+        echo "   Stopping property-service app..."
+        cd "$ROOT_DIR/property-service" && docker compose stop property-service 2>/dev/null
 
         echo "   Stopping auth-service app..."
         cd "$ROOT_DIR/auth-service" && docker compose stop auth-service 2>/dev/null
@@ -52,8 +52,8 @@ case $REPLY in
     2)
         echo -e "${BLUE}━━━ Stopping All Services ━━━${NC}"
 
-        echo "   Stopping backend..."
-        cd "$ROOT_DIR/backend" && docker compose stop 2>/dev/null
+        echo "   Stopping property-service..."
+        cd "$ROOT_DIR/property-service" && docker compose stop 2>/dev/null
 
         echo "   Stopping auth-service..."
         cd "$ROOT_DIR/auth-service" && docker compose stop 2>/dev/null
@@ -73,8 +73,8 @@ case $REPLY in
     3)
         echo -e "${BLUE}━━━ Full Cleanup (Preserving Data Volumes) ━━━${NC}"
 
-        echo "   Removing backend containers..."
-        cd "$ROOT_DIR/backend" && docker compose down 2>/dev/null
+        echo "   Removing property-service containers..."
+        cd "$ROOT_DIR/property-service" && docker compose down 2>/dev/null
 
         echo "   Removing auth-service containers..."
         cd "$ROOT_DIR/auth-service" && docker compose down 2>/dev/null
@@ -103,8 +103,8 @@ case $REPLY in
         if [[ $REPLY == "DELETE" ]]; then
             echo -e "${BLUE}━━━ Complete Reset ━━━${NC}"
 
-            echo "   Removing backend containers and volumes..."
-            cd "$ROOT_DIR/backend" && docker compose down -v 2>/dev/null
+            echo "   Removing property-service containers and volumes..."
+            cd "$ROOT_DIR/property-service" && docker compose down -v 2>/dev/null
 
             echo "   Removing auth-service containers and volumes..."
             cd "$ROOT_DIR/auth-service" && docker compose down -v 2>/dev/null
@@ -139,7 +139,7 @@ echo "📊 Current Status:"
 echo ""
 
 echo "🐘 Databases:"
-for db in "real-estate-postgres" "auth-db" "post-db"; do
+for db in "property-db" "auth-db" "post-db"; do
     if docker ps --format '{{.Names}}' | grep -q "^${db}$"; then
         echo -e "   $db: ${GREEN}Running${NC}"
     elif docker ps -a --format '{{.Names}}' | grep -q "^${db}$"; then
@@ -151,7 +151,7 @@ done
 echo ""
 
 echo "🚀 App Services:"
-for svc in "real-estate-backend" "auth-service" "post-service"; do
+for svc in "property-service" "auth-service" "post-service"; do
     if docker ps --format '{{.Names}}' | grep -q "^${svc}$"; then
         echo -e "   $svc: ${GREEN}Running${NC}"
     elif docker ps -a --format '{{.Names}}' | grep -q "^${svc}$"; then

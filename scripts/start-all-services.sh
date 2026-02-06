@@ -36,14 +36,14 @@ echo ""
 # ============================================================================
 # STEP 2: Start Backend (Docker Compose)
 # ============================================================================
-echo -e "${BLUE}━━━ Step 2: Starting Backend Service (Docker Compose) ━━━${NC}"
-cd "$ROOT_DIR/backend"
+echo -e "${BLUE}━━━ Step 2: Starting Property Service (Docker Compose) ━━━${NC}"
+cd "$ROOT_DIR/property-service"
 
-if docker ps --format '{{.Names}}' | grep -q "^real-estate-backend$"; then
-    echo "   Backend is already running, rebuilding..."
+if docker ps --format '{{.Names}}' | grep -q "^property-service$"; then
+    echo "   Property service is already running, rebuilding..."
 fi
 docker compose up -d --build
-echo -e "${GREEN}✅ Backend started (DB: port 5432, App: port 8080)${NC}"
+echo -e "${GREEN}✅ Property service started (DB: port 5432, App: port 8080)${NC}"
 echo ""
 
 # ============================================================================
@@ -124,7 +124,7 @@ check_health() {
 }
 
 echo "   Waiting for services to be ready (first build may take a few minutes)..."
-check_health "Backend" "http://localhost:8080/actuator/health"
+check_health "Property Service" "http://localhost:8080/actuator/health"
 check_health "Auth Service" "http://localhost:8081/actuator/health"
 check_health "Post Service" "http://localhost:8082/actuator/health"
 check_health "Kong Gateway" "http://localhost:8001/status"
@@ -174,12 +174,12 @@ echo "📍 Service URLs:"
 echo "   Frontend:      http://localhost:3000"
 echo "   Kong Gateway:  http://localhost:8000"
 echo "   Kong Admin:    http://localhost:8001"
-echo "   Backend API:   http://localhost:8080"
+echo "   Property API:  http://localhost:8080"
 echo "   Auth Service:  http://localhost:8081"
 echo "   Post Service:  http://localhost:8082"
 echo ""
 echo "🐘 Databases (Docker):"
-echo "   Backend DB:    localhost:5432 (realestatedb)"
+echo "   Property DB:   localhost:5432 (realestatedb)"
 echo "   Auth DB:       localhost:5433 (authdb)"
 echo "   Post DB:       localhost:5434 (postdb)"
 echo ""
@@ -187,7 +187,7 @@ echo "🔧 Commands:"
 echo "   Status:        $SCRIPT_DIR/status-all-services.sh"
 echo "   Stop:          $SCRIPT_DIR/stop-all-services.sh"
 echo "   Logs:          docker logs -f <container-name>"
-echo "                  (real-estate-backend | auth-service | post-service | kong-gateway)"
+echo "                  (property-service | auth-service | post-service | kong-gateway)"
 echo ""
 echo "🌐 Frontend Commands:"
 echo "   Start:   cd $ROOT_DIR/frontend && ./start-dev.sh"

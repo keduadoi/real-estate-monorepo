@@ -12,7 +12,7 @@ services:
     read_timeout: 60000
     retries: 3
 
-  - name: backend-service
+  - name: property-service
     url: http://host.docker.internal:8080
     connect_timeout: 10000
     write_timeout: 60000
@@ -103,7 +103,7 @@ routes:
 
   # --- Backend: Public GET routes ---
   - name: properties-public-get
-    service: backend-service
+    service: property-service
     paths:
       - /api/properties
     methods:
@@ -112,7 +112,7 @@ routes:
     strip_path: false
 
   - name: properties-search
-    service: backend-service
+    service: property-service
     paths:
       - /api/properties/search
     methods:
@@ -121,7 +121,7 @@ routes:
     strip_path: false
 
   - name: properties-cities
-    service: backend-service
+    service: property-service
     paths:
       - /api/properties/cities
     methods:
@@ -131,7 +131,7 @@ routes:
 
   # --- Backend: Protected routes (JWT required in Phase 3) ---
   - name: properties-protected
-    service: backend-service
+    service: property-service
     paths:
       - /api/properties
     methods:
@@ -142,20 +142,20 @@ routes:
     strip_path: false
 
   - name: properties-user
-    service: backend-service
+    service: property-service
     paths:
       - /api/properties/user
     strip_path: false
 
   - name: upload-routes
-    service: backend-service
+    service: property-service
     paths:
       - /api/upload
     strip_path: false
 
   # --- Backend: Admin routes ---
   - name: admin-routes
-    service: backend-service
+    service: property-service
     paths:
       - /api/admin
     strip_path: false
@@ -217,7 +217,7 @@ routes:
 
   # --- Backend: Static uploads ---
   - name: uploads
-    service: backend-service
+    service: property-service
     paths:
       - /uploads
     methods:
@@ -227,7 +227,7 @@ routes:
 
   # --- Health checks ---
   - name: health-backend
-    service: backend-service
+    service: property-service
     paths:
       - /actuator/health
     methods:

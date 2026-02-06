@@ -1,7 +1,7 @@
 _format_version: "3.0"
 
 services:
-  - name: backend-service
+  - name: property-service
     url: http://host.docker.internal:8080
     routes:
       - name: backend-route

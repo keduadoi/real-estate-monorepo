@@ -60,8 +60,8 @@ chmod +x scripts/*.sh
 ### Option 2: Start Services Individually
 
 ```bash
-# 1. Start backend (DB + app)
-cd backend && docker compose up -d --build
+# 1. Start property-service (DB + app)
+cd property-service && docker compose up -d --build
 
 # 2. Start auth-service (DB + app)
 cd ../auth-service && docker compose up -d --build
@@ -111,8 +111,8 @@ psql -h localhost -p 5434 -U postgres -d postdb
 
 | Container | Service | Port |
 |-----------|---------|------|
-| `real-estate-postgres` | Backend PostgreSQL | 5432 |
-| `real-estate-backend` | Backend Spring Boot | 8080 |
+| `property-db` | Property PostgreSQL | 5432 |
+| `property-service` | Property Spring Boot | 8080 |
 | `auth-db` | Auth PostgreSQL | 5433 |
 | `auth-service` | Auth Spring Boot | 8081 |
 | `post-db` | Post PostgreSQL | 5434 |
@@ -161,8 +161,8 @@ cd kong && ./docker-status.sh
 
 ### View Logs
 ```bash
-# Backend
-docker logs -f real-estate-backend
+# Property Service
+docker logs -f property-service
 
 # Auth Service
 docker logs -f auth-service
@@ -174,15 +174,15 @@ docker logs -f post-service
 docker logs -f kong-gateway
 
 # Database logs
-docker logs -f real-estate-postgres
+docker logs -f property-db
 docker logs -f auth-db
 docker logs -f post-db
 ```
 
 ### Restart a Service
 ```bash
-# Restart backend app only (keeps DB running)
-cd backend && docker compose restart backend
+# Restart property-service app only (keeps DB running)
+cd property-service && docker compose restart property-service
 
 # Restart auth-service app only
 cd auth-service && docker compose restart auth-service
@@ -194,7 +194,7 @@ cd post-service && docker compose restart post-service
 cd kong && docker compose restart
 
 # Rebuild and restart (after code changes)
-cd backend && docker compose up -d --build
+cd property-service && docker compose up -d --build
 ```
 
 ### Kong Gateway Management
@@ -257,7 +257,7 @@ cd frontend && npm run start
 # Choose option 4 and type DELETE
 
 # Or manually:
-cd backend && docker compose down -v
+cd property-service && docker compose down -v
 cd ../auth-service && docker compose down -v
 cd ../post-service && docker compose down -v
 cd ../kong && docker compose down
@@ -274,7 +274,7 @@ cd ../kong && docker compose down
 
 2. Check logs:
    ```bash
-   docker logs real-estate-backend
+   docker logs property-service
    docker logs auth-service
    docker logs post-service
    ```
@@ -288,7 +288,7 @@ cd ../kong && docker compose down
 
 4. Rebuild from scratch:
    ```bash
-   cd backend && docker compose down && docker compose up -d --build
+   cd property-service && docker compose down && docker compose up -d --build
    ```
 
 ### Kong Not Starting
@@ -318,7 +318,7 @@ cd ../kong && docker compose down
 
 2. Test database connection:
    ```bash
-   docker exec real-estate-postgres pg_isready -U postgres
+   docker exec property-db pg_isready -U postgres
    docker exec auth-db pg_isready -U postgres
    docker exec post-db pg_isready -U postgres
    ```

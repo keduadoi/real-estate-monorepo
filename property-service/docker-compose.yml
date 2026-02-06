@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   # PostgreSQL Database
-  postgres:
+  property-db:
     image: postgres:18-alpine
-    container_name: real-estate-postgres
+    container_name: property-db
     environment:
       POSTGRES_DB: realestatedb
       POSTGRES_USER: postgres
@@ -12,9 +12,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - property-db-data:/var/lib/postgresql/data
     networks:
-      - real-estate-network
+      - property-service-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -22,15 +22,15 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Spring Boot Backend
-  backend:
+  # Spring Boot Property Service
+  property-service:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: real-estate-backend
+    container_name: property-service
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_HOST: postgres
+      DB_HOST: property-db
       DB_PORT: 5432
       DB_NAME: realestatedb
       DB_USER: postgres
@@ -40,16 +40,16 @@ services:
     volumes:
       - ./uploads:/app/uploads
     depends_on:
-      postgres:
+      property-db:
         condition: service_healthy
     networks:
-      - real-estate-network
+      - property-service-network
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  property-db-data:
     driver: local
 
 networks:
-  real-estate-network:
+  property-service-network:
     driver: bridge
