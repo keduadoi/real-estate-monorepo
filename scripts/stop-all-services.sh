@@ -103,8 +103,8 @@ case $REPLY in
         if [[ $REPLY == "DELETE" ]]; then
             echo -e "${BLUE}━━━ Complete Reset ━━━${NC}"
 
-            echo "   Removing property-service containers and volumes..."
-            cd "$ROOT_DIR/property-service" && docker compose down -v 2>/dev/null
+            echo "   Removing property-service containers..."
+            cd "$ROOT_DIR/property-service" && docker compose down 2>/dev/null
 
             echo "   Removing auth-service containers and volumes..."
             cd "$ROOT_DIR/auth-service" && docker compose down -v 2>/dev/null
@@ -115,11 +115,17 @@ case $REPLY in
             echo "   Removing Kong Gateway..."
             cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
+            # Property DB uses an external volume — must be removed explicitly
+            echo "   Removing property DB external volume (backend_postgres_data)..."
+            docker volume rm backend_postgres_data 2>/dev/null
+
             echo ""
             echo -e "${GREEN}✅ Complete reset done${NC}"
             echo -e "${RED}⚠️  All data has been deleted!${NC}"
             echo ""
-            echo "To start fresh: ./scripts/start-all-services.sh"
+            echo "To start fresh, recreate the property DB volume first:"
+            echo "   docker volume create backend_postgres_data"
+            echo "Then run: ./scripts/start-all-services.sh"
         else
             echo "❌ Reset cancelled"
         fi

@@ -48,7 +48,8 @@ services:
 
 volumes:
   property-db-data:
-    driver: local
+    external: true
+    name: backend_postgres_data
 
 networks:
   property-service-network:

@@ -26,14 +26,14 @@ This guide explains how to start, stop, and manage all services for the Real Est
 │  │               MICROSERVICES (Docker Compose)                     │   │
 │  │                                                                   │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │
-│  │  │   Backend   │  │    Auth     │  │    Post     │              │   │
+│  │  │  Property   │  │    Auth     │  │    Post     │              │   │
 │  │  │   Service   │  │   Service   │  │   Service   │              │   │
 │  │  │  :8080      │  │  :8081      │  │  :8082      │              │   │
 │  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │   │
 │  │         │                │                │                       │   │
 │  │         ▼                ▼                ▼                       │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │
-│  │  │  Backend DB │  │   Auth DB   │  │   Post DB   │              │   │
+│  │  │ Property DB │  │   Auth DB   │  │   Post DB   │              │   │
 │  │  │ Port: 5432  │  │ Port: 5433  │  │ Port: 5434  │              │   │
 │  │  │ realestatedb│  │   authdb    │  │   postdb    │              │   │
 │  │  └─────────────┘  └─────────────┘  └─────────────┘              │   │
@@ -82,7 +82,7 @@ cd ../frontend && npm run dev
 |---------|-----|-------------|
 | Frontend | http://localhost:3000 | Next.js application |
 | Kong Gateway | http://localhost:8000 | API Gateway (routes all API traffic) |
-| Backend API | http://localhost:8080 | Property service (direct access) |
+| Property Service | http://localhost:8080 | Property service (direct access) |
 | Auth Service | http://localhost:8081 | Authentication service (direct access) |
 | Post Service | http://localhost:8082 | Social feed service (direct access) |
 | Kong Admin | http://localhost:8001 | Kong admin API |
@@ -91,13 +91,13 @@ cd ../frontend && npm run dev
 
 | Database | Host | Port | Database | User | Password |
 |----------|------|------|----------|------|----------|
-| Backend DB | localhost | 5432 | realestatedb | postgres | postgres |
+| Property DB | localhost | 5432 | realestatedb | postgres | postgres |
 | Auth DB | localhost | 5433 | authdb | postgres | postgres |
 | Post DB | localhost | 5434 | postdb | postgres | postgres |
 
 Connect with psql:
 ```bash
-# Backend DB
+# Property DB
 psql -h localhost -p 5432 -U postgres -d realestatedb
 
 # Auth DB

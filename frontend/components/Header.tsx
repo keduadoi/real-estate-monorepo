@@ -1,12 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 
 export default function Header() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="bg-white shadow-sm">
@@ -24,21 +42,24 @@ export default function Header() {
           <div className="hidden md:flex md:items-center md:space-x-4">
             <Link
               href="/"
-              className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
               Trang chủ
             </Link>
             <Link
               href="/feed"
-              className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/feed') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
               Bảng tin
             </Link>
             <Link
               href="/search"
-              className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+              className={`p-2 rounded-md ${isActive('/search') ? 'text-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
+              title="Tìm kiếm"
             >
-              Tìm kiếm
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
             </Link>
 
             {session ? (
@@ -49,16 +70,39 @@ export default function Header() {
                 >
                   Đăng tin
                 </Link>
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-700">
-                    {session.user?.name}
-                  </span>
+                <div
+                  className="relative"
+                  ref={userMenuRef}
+                  onMouseEnter={() => setUserMenuOpen(true)}
+                  onMouseLeave={() => setUserMenuOpen(false)}
+                >
                   <button
-                    onClick={() => signOut({ callbackUrl: '/' })}
-                    className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+                    className="flex items-center space-x-1 text-sm text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md font-medium"
                   >
-                    Đăng xuất
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>{session.user?.name}</span>
+                    <svg className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
+                  {userMenuOpen && (
+                    <div className="absolute right-0 mt-0 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100">
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          signOut({ callbackUrl: '/' });
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-primary-600 flex items-center space-x-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Đăng xuất</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -116,21 +160,21 @@ export default function Header() {
           <div className="md:hidden pb-3 pt-2 space-y-1">
             <Link
               href="/"
-              className="block text-gray-700 hover:text-primary-600 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
               Trang chủ
             </Link>
             <Link
               href="/feed"
-              className="block text-gray-700 hover:text-primary-600 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/feed') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
               Bảng tin
             </Link>
             <Link
               href="/search"
-              className="block text-gray-700 hover:text-primary-600 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/search') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
               Tìm kiếm

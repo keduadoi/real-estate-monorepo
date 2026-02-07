@@ -22,4 +22,5 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
+    external: true
+    name: backend_postgres_data
