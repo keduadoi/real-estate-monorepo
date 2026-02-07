@@ -51,12 +51,55 @@ server:
     include-message: always
     include-stacktrace: on-param
 
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      s3Storage:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      database:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    instances:
+      s3Storage:
+        max-attempts: 3
+        wait-duration: 1s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - software.amazon.awssdk.services.s3.model.S3Exception
+          - java.io.IOException
+        ignore-exceptions:
+          - com.realestate.backend.exception.InvalidFileException
+  timelimiter:
+    instances:
+      s3Storage:
+        timeout-duration: 10s
+  ratelimiter:
+    instances:
+      propertySearch:
+        limit-for-period: 50
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+
 # Actuator Configuration
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,circuitbreakers,circuitbreaker-events,ratelimiters,retries
   endpoint:
     health:
       show-details: when-authorized

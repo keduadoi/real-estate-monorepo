@@ -29,11 +29,33 @@ logging:
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      database:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+  ratelimiter:
+    instances:
+      postSearch:
+        limit-for-period: 50
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+      postFeed:
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,metrics
+        include: health,info,prometheus,metrics,circuitbreakers,circuitbreaker-events,ratelimiters
   endpoint:
     health:
       show-details: always

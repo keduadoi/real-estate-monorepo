@@ -7,11 +7,14 @@ import com.realestate.post.entity.Like;
 import com.realestate.post.entity.Post;
 import com.realestate.post.exception.ForbiddenException;
 import com.realestate.post.exception.PostNotFoundException;
+import com.realestate.post.exception.ServiceUnavailableException;
 import com.realestate.post.exception.UnauthorizedException;
 import com.realestate.post.repository.LikeRepository;
 import com.realestate.post.repository.PostRepository;
 import com.realestate.post.security.UserContext;
 import com.realestate.post.security.UserInfo;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -56,6 +59,8 @@ public class PostService {
      * Get paginated feed (all posts, newest first)
      */
     @Transactional(readOnly = true)
+    @CircuitBreaker(name = "database", fallbackMethod = "getFeedFallback")
+    @RateLimiter(name = "postFeed")
     public PageResponse<PostResponse> getFeed(int page, int size) {
         String currentUserId = UserContext.getCurrentUserId().orElse(null);
 
@@ -77,6 +82,7 @@ public class PostService {
      * Get single post by ID
      */
     @Transactional(readOnly = true)
+    @CircuitBreaker(name = "database", fallbackMethod = "getPostFallback")
     public PostResponse getPost(UUID postId) {
         String currentUserId = UserContext.getCurrentUserId().orElse(null);
 
@@ -93,6 +99,7 @@ public class PostService {
      * Get posts by user ID
      */
     @Transactional(readOnly = true)
+    @CircuitBreaker(name = "database", fallbackMethod = "getPostsByUserFallback")
     public PageResponse<PostResponse> getPostsByUser(String userId, int page, int size) {
         String currentUserId = UserContext.getCurrentUserId().orElse(null);
 
@@ -188,6 +195,8 @@ public class PostService {
      * Search posts by content
      */
     @Transactional(readOnly = true)
+    @CircuitBreaker(name = "database", fallbackMethod = "searchPostsFallback")
+    @RateLimiter(name = "postSearch")
     public PageResponse<PostResponse> searchPosts(String query, int page, int size) {
         String currentUserId = UserContext.getCurrentUserId().orElse(null);
 
@@ -203,6 +212,28 @@ public class PostService {
                 posts.getSize(),
                 posts.getTotalPages()
         );
+    }
+
+    // Resilience4j fallback methods
+
+    private PageResponse<PostResponse> getFeedFallback(int page, int size, Throwable t) {
+        log.error("Database circuit breaker open — getFeed fallback: {}", t.getMessage());
+        throw new ServiceUnavailableException("Post feed is temporarily unavailable. Please try again later.");
+    }
+
+    private PostResponse getPostFallback(UUID postId, Throwable t) {
+        log.error("Database circuit breaker open — getPost fallback for id {}: {}", postId, t.getMessage());
+        throw new ServiceUnavailableException("Post service is temporarily unavailable. Please try again later.");
+    }
+
+    private PageResponse<PostResponse> getPostsByUserFallback(String userId, int page, int size, Throwable t) {
+        log.error("Database circuit breaker open — getPostsByUser fallback for user {}: {}", userId, t.getMessage());
+        throw new ServiceUnavailableException("Post service is temporarily unavailable. Please try again later.");
+    }
+
+    private PageResponse<PostResponse> searchPostsFallback(String query, int page, int size, Throwable t) {
+        log.error("Database circuit breaker open — searchPosts fallback: {}", t.getMessage());
+        throw new ServiceUnavailableException("Post search is temporarily unavailable. Please try again later.");
     }
 
     /**

@@ -3,12 +3,15 @@ package com.realestate.backend.service;
 import com.realestate.backend.dto.*;
 import com.realestate.backend.entity.Property;
 import com.realestate.backend.exception.ForbiddenException;
+import com.realestate.backend.exception.ServiceUnavailableException;
 import com.realestate.backend.exception.UnauthorizedException;
 import com.realestate.backend.mapper.PropertyMapper;
 import com.realestate.backend.repository.PropertyRepository;
 import com.realestate.backend.security.UserContext;
 import com.realestate.backend.security.UserInfo;
 import com.realestate.backend.specification.PropertySpecification;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,6 +41,7 @@ public class PropertyService {
     /**
      * Get all properties with pagination
      */
+    @CircuitBreaker(name = "database", fallbackMethod = "getAllPropertiesFallback")
     public PageResponse<PropertyDTO> getAllProperties(int page, int size, String sortBy, String sortDirection) {
         log.debug("Getting all properties - page: {}, size: {}, sortBy: {}, sortDirection: {}",
                   page, size, sortBy, sortDirection);
@@ -52,6 +56,8 @@ public class PropertyService {
     /**
      * Search and filter properties with pagination
      */
+    @CircuitBreaker(name = "database", fallbackMethod = "searchPropertiesFallback")
+    @RateLimiter(name = "propertySearch")
     public PageResponse<PropertyDTO> searchProperties(PropertySearchRequest searchRequest, int page, int size) {
         log.debug("Searching properties with filters: {}", searchRequest);
 
@@ -70,6 +76,7 @@ public class PropertyService {
     /**
      * Get property by ID
      */
+    @CircuitBreaker(name = "database", fallbackMethod = "getPropertyByIdFallback")
     public PropertyDTO getPropertyById(Long id) {
         log.debug("Getting property by ID: {}", id);
 
@@ -206,6 +213,23 @@ public class PropertyService {
             log.warn("Invalid status value: {}", status);
             return 0;
         }
+    }
+
+    // Resilience4j fallback methods
+
+    private PageResponse<PropertyDTO> getAllPropertiesFallback(int page, int size, String sortBy, String sortDirection, Throwable t) {
+        log.error("Database circuit breaker open — getAllProperties fallback: {}", t.getMessage());
+        throw new ServiceUnavailableException("Property service is temporarily unavailable. Please try again later.");
+    }
+
+    private PageResponse<PropertyDTO> searchPropertiesFallback(PropertySearchRequest searchRequest, int page, int size, Throwable t) {
+        log.error("Database circuit breaker open — searchProperties fallback: {}", t.getMessage());
+        throw new ServiceUnavailableException("Property search is temporarily unavailable. Please try again later.");
+    }
+
+    private PropertyDTO getPropertyByIdFallback(Long id, Throwable t) {
+        log.error("Database circuit breaker open — getPropertyById fallback for id {}: {}", id, t.getMessage());
+        throw new ServiceUnavailableException("Property service is temporarily unavailable. Please try again later.");
     }
 
     // Helper methods

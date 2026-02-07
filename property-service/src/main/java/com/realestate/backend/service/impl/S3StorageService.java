@@ -3,6 +3,8 @@ package com.realestate.backend.service.impl;
 import com.realestate.backend.exception.FileStorageException;
 import com.realestate.backend.exception.InvalidFileException;
 import com.realestate.backend.service.StorageService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -73,6 +75,8 @@ public class S3StorageService implements StorageService {
     }
 
     @Override
+    @CircuitBreaker(name = "s3Storage", fallbackMethod = "storeFileFallback")
+    @Retry(name = "s3Storage")
     public String storeFile(Long propertyId, MultipartFile file) {
         validateFile(file);
 
@@ -166,6 +170,8 @@ public class S3StorageService implements StorageService {
     }
 
     @Override
+    @CircuitBreaker(name = "s3Storage", fallbackMethod = "deleteFileFallback")
+    @Retry(name = "s3Storage")
     public void deleteFile(String fileUrl) {
         if (fileUrl == null || fileUrl.isEmpty()) {
             return;
@@ -222,6 +228,18 @@ public class S3StorageService implements StorageService {
         if (filename == null || filename.contains("..")) {
             throw new InvalidFileException("Invalid filename: " + filename);
         }
+    }
+
+    // Resilience4j fallback methods
+
+    private String storeFileFallback(Long propertyId, MultipartFile file, Throwable t) {
+        log.error("S3 circuit breaker open — storeFile fallback for property {}: {}", propertyId, t.getMessage());
+        throw new FileStorageException("Storage service is temporarily unavailable. Please try again later.", t);
+    }
+
+    private void deleteFileFallback(String fileUrl, Throwable t) {
+        log.error("S3 circuit breaker open — deleteFile fallback for {}: {}", fileUrl, t.getMessage());
+        throw new FileStorageException("Storage service is temporarily unavailable. Please try again later.", t);
     }
 
     private String generateUniqueFilename(String originalFilename) {
