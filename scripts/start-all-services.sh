@@ -73,9 +73,22 @@ echo -e "${GREEN}✅ Post service started (DB: port 5434, App: port 8082)${NC}"
 echo ""
 
 # ============================================================================
-# STEP 5: Start Kong Gateway (Docker Compose)
+# STEP 5: Start Analytics Service (Docker Compose + Kafka)
 # ============================================================================
-echo -e "${BLUE}━━━ Step 5: Starting Kong Gateway (Docker Compose) ━━━${NC}"
+echo -e "${BLUE}━━━ Step 5: Starting Analytics Service (Docker Compose + Kafka) ━━━${NC}"
+cd "$ROOT_DIR/analytics-service"
+
+if docker ps --format '{{.Names}}' | grep -q "^analytics-service$"; then
+    echo "   Analytics service is already running, rebuilding..."
+fi
+docker compose up -d --build
+echo -e "${GREEN}✅ Analytics service started (Kafka: port 29092, App: port 8083)${NC}"
+echo ""
+
+# ============================================================================
+# STEP 6: Start Kong Gateway (Docker Compose)
+# ============================================================================
+echo -e "${BLUE}━━━ Step 6: Starting Kong Gateway (Docker Compose) ━━━${NC}"
 cd "$ROOT_DIR/kong"
 
 if docker ps --filter "name=kong-gateway" --format '{{.Status}}' 2>/dev/null | grep -q "Up"; then
@@ -101,9 +114,9 @@ fi
 echo ""
 
 # ============================================================================
-# STEP 6: Health Checks
+# STEP 7: Health Checks
 # ============================================================================
-echo -e "${BLUE}━━━ Step 6: Health Checks ━━━${NC}"
+echo -e "${BLUE}━━━ Step 7: Health Checks ━━━${NC}"
 
 check_health() {
     local name=$1
@@ -127,13 +140,14 @@ echo "   Waiting for services to be ready (first build may take a few minutes)..
 check_health "Property Service" "http://localhost:8080/actuator/health"
 check_health "Auth Service" "http://localhost:8081/actuator/health"
 check_health "Post Service" "http://localhost:8082/actuator/health"
+check_health "Analytics Service" "http://localhost:8083/actuator/health"
 check_health "Kong Gateway" "http://localhost:8001/status"
 echo ""
 
 # ============================================================================
-# STEP 7: Optional - Start Frontend
+# STEP 8: Optional - Start Frontend
 # ============================================================================
-echo -e "${BLUE}━━━ Step 7: Frontend ━━━${NC}"
+echo -e "${BLUE}━━━ Step 8: Frontend ━━━${NC}"
 echo ""
 read -p "Start frontend dev server? (y/N): " -n 1 -r
 echo ""
@@ -177,17 +191,19 @@ echo "   Kong Admin:    http://localhost:8001"
 echo "   Property API:  http://localhost:8080"
 echo "   Auth Service:  http://localhost:8081"
 echo "   Post Service:  http://localhost:8082"
+echo "   Analytics Svc: http://localhost:8083"
 echo ""
-echo "🐘 Databases (Docker):"
+echo "🐘 Databases & Kafka (Docker):"
 echo "   Property DB:   localhost:5432 (realestatedb)"
 echo "   Auth DB:       localhost:5433 (authdb)"
 echo "   Post DB:       localhost:5434 (postdb)"
+echo "   Kafka:         localhost:29092"
 echo ""
 echo "🔧 Commands:"
 echo "   Status:        $SCRIPT_DIR/status-all-services.sh"
 echo "   Stop:          $SCRIPT_DIR/stop-all-services.sh"
 echo "   Logs:          docker logs -f <container-name>"
-echo "                  (property-service | auth-service | post-service | kong-gateway)"
+echo "                  (property-service | auth-service | post-service | analytics-service | kong-gateway)"
 echo ""
 echo "🌐 Frontend Commands:"
 echo "   Start:   cd $ROOT_DIR/frontend && ./start-dev.sh"

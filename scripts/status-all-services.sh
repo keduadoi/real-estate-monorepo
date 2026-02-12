@@ -56,6 +56,22 @@ check_db "Post DB    " "post-db" "5434"
 echo ""
 
 # ============================================================================
+# Kafka Status (Docker)
+# ============================================================================
+echo -e "${BLUE}━━━ Kafka (Docker) ━━━${NC}"
+if docker ps --format '{{.Names}}' | grep -q "^analytics-kafka$"; then
+    KAFKA_STATUS=$(docker ps --filter "name=^analytics-kafka$" --format '{{.Status}}')
+    echo -e "Kafka:      ${GREEN}✅ Running (port 29092)${NC} ($KAFKA_STATUS)"
+else
+    if docker ps -a --format '{{.Names}}' | grep -q "^analytics-kafka$"; then
+        echo -e "Kafka:      ${YELLOW}⏸️  Stopped${NC}"
+    else
+        echo -e "Kafka:      ${RED}❌ Not found${NC}"
+    fi
+fi
+echo ""
+
+# ============================================================================
 # App Services Status (Docker)
 # ============================================================================
 echo -e "${BLUE}━━━ App Services (Docker) ━━━${NC}"
@@ -80,6 +96,7 @@ check_service() {
 check_service "Property   " "property-service" "8080"
 check_service "Auth       " "auth-service" "8081"
 check_service "Post       " "post-service" "8082"
+check_service "Analytics  " "analytics-service" "8083"
 echo ""
 
 # ============================================================================
@@ -121,6 +138,7 @@ check_health() {
 check_health "Property Svc " "http://localhost:8080/actuator/health"
 check_health "Auth Service " "http://localhost:8081/actuator/health"
 check_health "Post Service " "http://localhost:8082/actuator/health"
+check_health "Analytics Svc" "http://localhost:8083/actuator/health"
 # Kong health (Docker — direct access)
 if curl -s http://localhost:8001/status > /dev/null 2>&1; then
     echo -e "Kong Gateway:  ${GREEN}✅ Healthy${NC}"
@@ -138,6 +156,7 @@ echo "   Kong Gateway:  http://localhost:8000"
 echo "   Property Svc:  http://localhost:8080"
 echo "   Auth Service:  http://localhost:8081"
 echo "   Post Service:  http://localhost:8082"
+echo "   Analytics Svc: http://localhost:8083"
 echo ""
 echo "🔧 Commands:"
 echo "   Start all:  ./scripts/start-all-services.sh"

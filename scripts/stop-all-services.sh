@@ -40,11 +40,14 @@ case $REPLY in
         echo "   Stopping post-service app..."
         cd "$ROOT_DIR/post-service" && docker compose stop post-service 2>/dev/null
 
+        echo "   Stopping analytics-service app..."
+        cd "$ROOT_DIR/analytics-service" && docker compose stop analytics-service 2>/dev/null
+
         echo "   Stopping Kong Gateway..."
         cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
         echo ""
-        echo -e "${GREEN}✅ App services stopped (databases still running)${NC}"
+        echo -e "${GREEN}✅ App services stopped (databases/Kafka still running)${NC}"
         echo ""
         echo "To restart: ./scripts/start-all-services.sh"
         ;;
@@ -60,6 +63,9 @@ case $REPLY in
 
         echo "   Stopping post-service..."
         cd "$ROOT_DIR/post-service" && docker compose stop 2>/dev/null
+
+        echo "   Stopping analytics-service..."
+        cd "$ROOT_DIR/analytics-service" && docker compose stop 2>/dev/null
 
         echo "   Stopping Kong Gateway..."
         cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
@@ -81,6 +87,9 @@ case $REPLY in
 
         echo "   Removing post-service containers..."
         cd "$ROOT_DIR/post-service" && docker compose down 2>/dev/null
+
+        echo "   Removing analytics-service containers..."
+        cd "$ROOT_DIR/analytics-service" && docker compose down 2>/dev/null
 
         echo "   Removing Kong Gateway..."
         cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
@@ -111,6 +120,9 @@ case $REPLY in
 
             echo "   Removing post-service containers and volumes..."
             cd "$ROOT_DIR/post-service" && docker compose down -v 2>/dev/null
+
+            echo "   Removing analytics-service containers and volumes..."
+            cd "$ROOT_DIR/analytics-service" && docker compose down -v 2>/dev/null
 
             echo "   Removing Kong Gateway..."
             cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
@@ -157,7 +169,7 @@ done
 echo ""
 
 echo "🚀 App Services:"
-for svc in "property-service" "auth-service" "post-service"; do
+for svc in "property-service" "auth-service" "post-service" "analytics-service"; do
     if docker ps --format '{{.Names}}' | grep -q "^${svc}$"; then
         echo -e "   $svc: ${GREEN}Running${NC}"
     elif docker ps -a --format '{{.Names}}' | grep -q "^${svc}$"; then

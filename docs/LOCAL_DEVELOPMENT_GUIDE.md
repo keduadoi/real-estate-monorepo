@@ -5,41 +5,41 @@ This guide explains how to start, stop, and manage all services for the Real Est
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         LOCAL DEVELOPMENT SETUP                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                    FRONTEND (Host Machine)                       │   │
-│  │                 Next.js @ http://localhost:3000                  │   │
-│  └────────────────────────────┬────────────────────────────────────┘   │
-│                               │                                          │
-│                               ▼                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                    KONG GATEWAY (Docker)                         │   │
-│  │              DB-less mode, declarative config                    │   │
-│  │              Proxy: :8000    Admin: :8001                       │   │
-│  └────────────────────────────┬────────────────────────────────────┘   │
-│                               │ (via host.docker.internal)              │
-│                               ▼                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │               MICROSERVICES (Docker Compose)                     │   │
-│  │                                                                   │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │
-│  │  │  Property   │  │    Auth     │  │    Post     │              │   │
-│  │  │   Service   │  │   Service   │  │   Service   │              │   │
-│  │  │  :8080      │  │  :8081      │  │  :8082      │              │   │
-│  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │   │
-│  │         │                │                │                       │   │
-│  │         ▼                ▼                ▼                       │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │
-│  │  │ Property DB │  │   Auth DB   │  │   Post DB   │              │   │
-│  │  │ Port: 5432  │  │ Port: 5433  │  │ Port: 5434  │              │   │
-│  │  │ realestatedb│  │   authdb    │  │   postdb    │              │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘              │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          LOCAL DEVELOPMENT SETUP                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌────────────────────────────────────────────────────────────────────┐      │
+│  │                    FRONTEND (Host Machine)                          │      │
+│  │                 Next.js @ http://localhost:3000                     │      │
+│  └───────────────────────────┬────────────────────────────────────────┘      │
+│                              │                                                │
+│                              ▼                                                │
+│  ┌────────────────────────────────────────────────────────────────────┐      │
+│  │                    KONG GATEWAY (Docker)                            │      │
+│  │              DB-less mode, declarative config                       │      │
+│  │              Proxy: :8000    Admin: :8001                          │      │
+│  └───────────────────────────┬────────────────────────────────────────┘      │
+│                              │ (via host.docker.internal)                     │
+│                              ▼                                                │
+│  ┌────────────────────────────────────────────────────────────────────┐      │
+│  │                MICROSERVICES (Docker Compose)                       │      │
+│  │                                                                     │      │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐   │      │
+│  │  │  Property  │ │    Auth    │ │    Post    │ │  Analytics   │   │      │
+│  │  │  Service   │ │  Service   │ │  Service   │ │   Service    │   │      │
+│  │  │  :8080     │ │  :8081     │ │  :8082     │ │   :8083      │   │      │
+│  │  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └──────┬───────┘   │      │
+│  │        │              │              │               │             │      │
+│  │        ▼              ▼              ▼               ▼             │      │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐   │      │
+│  │  │Property DB │ │  Auth DB   │ │  Post DB   │ │    Kafka     │   │      │
+│  │  │ Port: 5432 │ │ Port: 5433 │ │ Port: 5434 │ │ Port: 29092  │   │      │
+│  │  │realestatedb│ │  authdb    │ │  postdb    │ │ (KRaft mode) │   │      │
+│  │  └────────────┘ └────────────┘ └────────────┘ └──────────────┘   │      │
+│  └────────────────────────────────────────────────────────────────────┘      │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Prerequisites
@@ -69,10 +69,13 @@ cd ../auth-service && docker compose up -d --build
 # 3. Start post-service (DB + app)
 cd ../post-service && docker compose up -d --build
 
-# 4. Start Kong Gateway
+# 4. Start analytics-service (Kafka + app)
+cd ../analytics-service && docker compose up -d --build
+
+# 5. Start Kong Gateway
 cd ../kong && docker compose up -d
 
-# 5. Start frontend
+# 6. Start frontend
 cd ../frontend && npm run dev
 ```
 
@@ -85,7 +88,9 @@ cd ../frontend && npm run dev
 | Property Service | http://localhost:8080 | Property service (direct access) |
 | Auth Service | http://localhost:8081 | Authentication service (direct access) |
 | Post Service | http://localhost:8082 | Social feed service (direct access) |
+| Analytics Service | http://localhost:8083 | Analytics service (direct access) |
 | Kong Admin | http://localhost:8001 | Kong admin API |
+| Kafka | localhost:29092 | Event broker (external listener) |
 
 ## Database Connections
 
@@ -117,6 +122,8 @@ psql -h localhost -p 5434 -U postgres -d postdb
 | `auth-service` | Auth Spring Boot | 8081 |
 | `post-db` | Post PostgreSQL | 5434 |
 | `post-service` | Post Spring Boot | 8082 |
+| `analytics-kafka` | Apache Kafka (KRaft) | 29092 |
+| `analytics-service` | Analytics Spring Boot | 8083 |
 | `kong-gateway` | Kong API Gateway | 8000, 8001 |
 
 ## Scripts Reference
@@ -170,13 +177,17 @@ docker logs -f auth-service
 # Post Service
 docker logs -f post-service
 
+# Analytics Service
+docker logs -f analytics-service
+
 # Kong
 docker logs -f kong-gateway
 
-# Database logs
+# Database / Kafka logs
 docker logs -f property-db
 docker logs -f auth-db
 docker logs -f post-db
+docker logs -f analytics-kafka
 ```
 
 ### Restart a Service
@@ -189,6 +200,9 @@ cd auth-service && docker compose restart auth-service
 
 # Restart post-service app only
 cd post-service && docker compose restart post-service
+
+# Restart analytics-service app only (keeps Kafka running)
+cd analytics-service && docker compose restart analytics-service
 
 # Restart Kong
 cd kong && docker compose restart
@@ -260,6 +274,7 @@ cd frontend && npm run start
 cd property-service && docker compose down -v
 cd ../auth-service && docker compose down -v
 cd ../post-service && docker compose down -v
+cd ../analytics-service && docker compose down -v
 cd ../kong && docker compose down
 ```
 
@@ -277,6 +292,7 @@ cd ../kong && docker compose down
    docker logs property-service
    docker logs auth-service
    docker logs post-service
+   docker logs analytics-service
    ```
 
 3. Check if port is in use:
@@ -284,6 +300,7 @@ cd ../kong && docker compose down
    lsof -i :8080
    lsof -i :8081
    lsof -i :8082
+   lsof -i :8083
    ```
 
 4. Rebuild from scratch:
@@ -382,8 +399,9 @@ curl http://localhost:8000/api/posts
 curl http://localhost:8080/actuator/health
 curl http://localhost:8081/actuator/health
 curl http://localhost:8082/actuator/health
+curl http://localhost:8083/actuator/health
 ```
 
 ---
 
-**Last Updated:** 2026-02-05
+**Last Updated:** 2026-02-12
