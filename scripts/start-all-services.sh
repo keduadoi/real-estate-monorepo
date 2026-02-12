@@ -82,7 +82,7 @@ if docker ps --format '{{.Names}}' | grep -q "^analytics-service$"; then
     echo "   Analytics service is already running, rebuilding..."
 fi
 docker compose up -d --build
-echo -e "${GREEN}✅ Analytics service started (Kafka: port 29092, App: port 8083)${NC}"
+echo -e "${GREEN}✅ Analytics service started (Kafka: port 29092, MongoDB: port 27017, App: port 8083)${NC}"
 echo ""
 
 # ============================================================================
@@ -193,11 +193,12 @@ echo "   Auth Service:  http://localhost:8081"
 echo "   Post Service:  http://localhost:8082"
 echo "   Analytics Svc: http://localhost:8083"
 echo ""
-echo "🐘 Databases & Kafka (Docker):"
+echo "🐘 Databases, Kafka & MongoDB (Docker):"
 echo "   Property DB:   localhost:5432 (realestatedb)"
 echo "   Auth DB:       localhost:5433 (authdb)"
 echo "   Post DB:       localhost:5434 (postdb)"
 echo "   Kafka:         localhost:29092"
+echo "   MongoDB:       localhost:27017 (analyticsdb)"
 echo ""
 echo "🔧 Commands:"
 echo "   Status:        $SCRIPT_DIR/status-all-services.sh"

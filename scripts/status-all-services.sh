@@ -58,7 +58,7 @@ echo ""
 # ============================================================================
 # Kafka Status (Docker)
 # ============================================================================
-echo -e "${BLUE}━━━ Kafka (Docker) ━━━${NC}"
+echo -e "${BLUE}━━━ Kafka & MongoDB (Docker) ━━━${NC}"
 if docker ps --format '{{.Names}}' | grep -q "^analytics-kafka$"; then
     KAFKA_STATUS=$(docker ps --filter "name=^analytics-kafka$" --format '{{.Status}}')
     echo -e "Kafka:      ${GREEN}✅ Running (port 29092)${NC} ($KAFKA_STATUS)"
@@ -67,6 +67,16 @@ else
         echo -e "Kafka:      ${YELLOW}⏸️  Stopped${NC}"
     else
         echo -e "Kafka:      ${RED}❌ Not found${NC}"
+    fi
+fi
+if docker ps --format '{{.Names}}' | grep -q "^analytics-mongo$"; then
+    MONGO_STATUS=$(docker ps --filter "name=^analytics-mongo$" --format '{{.Status}}')
+    echo -e "MongoDB:    ${GREEN}✅ Running (port 27017)${NC} ($MONGO_STATUS)"
+else
+    if docker ps -a --format '{{.Names}}' | grep -q "^analytics-mongo$"; then
+        echo -e "MongoDB:    ${YELLOW}⏸️  Stopped${NC}"
+    else
+        echo -e "MongoDB:    ${RED}❌ Not found${NC}"
     fi
 fi
 echo ""

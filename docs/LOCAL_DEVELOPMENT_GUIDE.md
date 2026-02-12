@@ -31,12 +31,18 @@ This guide explains how to start, stop, and manage all services for the Real Est
 │  │  │  :8080     │ │  :8081     │ │  :8082     │ │   :8083      │   │      │
 │  │  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └──────┬───────┘   │      │
 │  │        │              │              │               │             │      │
+│  │        │         Kafka events ───────┼───────────────▶│             │      │
+│  │        │              │              │               │             │      │
 │  │        ▼              ▼              ▼               ▼             │      │
 │  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐   │      │
 │  │  │Property DB │ │  Auth DB   │ │  Post DB   │ │    Kafka     │   │      │
 │  │  │ Port: 5432 │ │ Port: 5433 │ │ Port: 5434 │ │ Port: 29092  │   │      │
 │  │  │realestatedb│ │  authdb    │ │  postdb    │ │ (KRaft mode) │   │      │
-│  │  └────────────┘ └────────────┘ └────────────┘ └──────────────┘   │      │
+│  │  └────────────┘ └────────────┘ └────────────┘ ├──────────────┤   │      │
+│  │                                                │   MongoDB    │   │      │
+│  │                                                │ Port: 27017  │   │      │
+│  │                                                │ analyticsdb  │   │      │
+│  │                                                └──────────────┘   │      │
 │  └────────────────────────────────────────────────────────────────────┘      │
 │                                                                               │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -91,6 +97,7 @@ cd ../frontend && npm run dev
 | Analytics Service | http://localhost:8083 | Analytics service (direct access) |
 | Kong Admin | http://localhost:8001 | Kong admin API |
 | Kafka | localhost:29092 | Event broker (external listener) |
+| MongoDB | localhost:27017 | Analytics event store (analyticsdb) |
 
 ## Database Connections
 
@@ -99,6 +106,7 @@ cd ../frontend && npm run dev
 | Property DB | localhost | 5432 | realestatedb | postgres | postgres |
 | Auth DB | localhost | 5433 | authdb | postgres | postgres |
 | Post DB | localhost | 5434 | postdb | postgres | postgres |
+| MongoDB | localhost | 27017 | analyticsdb | (none) | (none) |
 
 Connect with psql:
 ```bash
@@ -110,6 +118,9 @@ psql -h localhost -p 5433 -U postgres -d authdb
 
 # Post DB
 psql -h localhost -p 5434 -U postgres -d postdb
+
+# MongoDB (Analytics)
+docker exec analytics-mongo mongosh analyticsdb
 ```
 
 ## Docker Containers
@@ -123,6 +134,7 @@ psql -h localhost -p 5434 -U postgres -d postdb
 | `post-db` | Post PostgreSQL | 5434 |
 | `post-service` | Post Spring Boot | 8082 |
 | `analytics-kafka` | Apache Kafka (KRaft) | 29092 |
+| `analytics-mongo` | MongoDB 7.0 | 27017 |
 | `analytics-service` | Analytics Spring Boot | 8083 |
 | `kong-gateway` | Kong API Gateway | 8000, 8001 |
 

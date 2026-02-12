@@ -60,6 +60,19 @@
 │  │ Port: 8081    │      │ Port: 8080    │      │ Port: 8082    │             │
 │  └───────┬───────┘      └───────┬───────┘      └───────┬───────┘             │
 │          │                      │                      │                      │
+│          │          Kafka events (user activity)        │                      │
+│          └──────────────────────┼──────────────────────┘                      │
+│                                 ▼                                             │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                    ANALYTICS PIPELINE                                    │ │
+│  │                                                                          │ │
+│  │  ┌──────────────┐      ┌──────────────────┐      ┌──────────────────┐  │ │
+│  │  │    Kafka     │─────▶│ ANALYTICS SERVICE│─────▶│    MongoDB       │  │ │
+│  │  │ (KRaft mode) │      │  (Spring Boot)   │      │  (analyticsdb)  │  │ │
+│  │  │ Port: 29092  │      │  Port: 8083      │      │  Port: 27017    │  │ │
+│  │  └──────────────┘      └──────────────────┘      └──────────────────┘  │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│          │                      │                      │                      │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │                          MONITORING STACK                                │ │
 │  │           Prometheus (9090) │ Grafana (3001) │ AlertManager              │ │
@@ -95,13 +108,15 @@
 ### Local Development (Minikube)
 - **Databases run in Docker containers** (external to Kubernetes)
 - **Connection method**: K8s services connect to databases using `host.docker.internal:PORT`
-- **Ports**: 5432 (backend), 5433 (auth), 5434 (post)
-- **Containers**: `property-db`, `auth-db`, `post-db`
+- **Ports**: 5432 (backend), 5433 (auth), 5434 (post), 27017 (analytics MongoDB)
+- **Containers**: `property-db`, `auth-db`, `post-db`, `analytics-mongo`
+- **Event streaming**: Kafka (KRaft mode) at port 29092, with a DOCKER listener on 29093 for cross-container communication
 - **Why external?**: Simpler development workflow, easier database access from host machine
 
 ### Production (AWS EKS)
-- **Databases run as AWS RDS** (managed PostgreSQL)
+- **Databases run as AWS RDS** (managed PostgreSQL) and **Amazon DocumentDB** (managed MongoDB)
 - **Connection method**: Private VPC endpoint (e.g., `mydb.abc123.us-east-1.rds.amazonaws.com:5432`)
+- **Event streaming**: Amazon MSK (managed Kafka) or self-hosted Kafka in EKS
 - **Features**: Multi-AZ deployment, automated backups, encryption at rest/transit
 - **Security**: Private subnets only, no public access
 
@@ -512,6 +527,7 @@ Content-Type: application/json
 | Auth Service | `auth-service.real-estate.svc.cluster.local` | 8081 | real-estate |
 | Backend Service | `real-estate-backend-backend.real-estate.svc.cluster.local` | 8080 | real-estate |
 | Post Service | `post-service.real-estate.svc.cluster.local` | 8082 | real-estate |
+| Analytics Service | `analytics-service.real-estate.svc.cluster.local` | 8083 | real-estate |
 
 ### Local Development Port Mapping
 
@@ -531,6 +547,7 @@ Content-Type: application/json
 | Property DB | property-db | 5432 | 5432 | realestatedb |
 | Auth DB | auth-db | 5433 | 5432 | authdb |
 | Post DB | post-db | 5434 | 5432 | postdb |
+| Analytics MongoDB | analytics-mongo | 27017 | 27017 | analyticsdb |
 
 ---
 
@@ -962,9 +979,12 @@ The Auth Service is a dedicated Spring Boot application handling:
 | Auth Service | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
 | Backend Service | K8s (Minikube) | K8s (EKS) | 3 | 3-15 (CPU 70%) | minAvailable: 2 |
 | Post Service | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
+| Analytics Service | Docker Compose | K8s (EKS) | 2 | 2-5 (CPU 70%) | minAvailable: 1 |
 | PostgreSQL (Auth) | Docker (auth-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Property) | Docker (property-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Post) | Docker (post-db) | RDS Multi-AZ | N/A | N/A | N/A |
+| MongoDB (Analytics) | Docker (analytics-mongo) | DocumentDB / MongoDB Atlas | N/A | N/A | N/A |
+| Kafka | Docker (analytics-kafka) | Amazon MSK / Self-hosted | N/A | N/A | N/A |
 
 **Key Differences:**
 - **Local Development**: Databases run in Docker containers, accessed via `host.docker.internal`
@@ -1186,6 +1206,7 @@ The Real Estate application now has:
 - **Auth Service**: Dedicated authentication microservice with key rotation
 - **Backend Service**: Property management, file uploads, and search
 - **Post Service**: Social feed functionality (posts, comments, likes)
+- **Analytics Service**: User activity tracking with Kafka event streaming and MongoDB persistence
 - **Monitoring Stack**: Prometheus, Grafana, AlertManager
 - **Production-ready Infrastructure**: HPA, PDB, network policies, TLS
 - **CI/CD Pipeline**: Automated build, test, and deployment
@@ -1198,6 +1219,8 @@ The Real Estate application now has:
 | API Gateway | Kong in Minikube | Kong in EKS |
 | Authentication | Stateless JWT with automatic key rotation | Same |
 | Database per Service | Docker PostgreSQL containers (external) | AWS RDS Multi-AZ PostgreSQL |
+| Analytics Store | Docker MongoDB (analytics-mongo) | Amazon DocumentDB / MongoDB Atlas |
+| Event Streaming | Docker Kafka KRaft (analytics-kafka) | Amazon MSK / Self-hosted Kafka |
 | Database Connection | `host.docker.internal:PORT` | Private VPC endpoint |
 | Service Discovery | Kubernetes DNS (*.svc.cluster.local) | Same |
 | Rate Limiting | Redis-backed distributed rate limiting | Same |
@@ -1278,8 +1301,15 @@ curl http://localhost:8000/api/properties/user \
 
 ---
 
-**Version:** 3.1.0
-**Last Updated:** 2026-02-01
+**Version:** 3.2.0
+**Last Updated:** 2026-02-12
+**Changes in v3.2.0:**
+- **ADDED**: Analytics Service with Kafka event pipeline and MongoDB persistence to architecture diagram
+- **ADDED**: MongoDB (analyticsdb) to database tables and connection references
+- **ADDED**: Kafka DOCKER listener for cross-container communication
+- **UPDATED**: High Availability table with Analytics Service, MongoDB, and Kafka entries
+- **UPDATED**: Summary and Architecture Highlights with analytics pipeline components
+
 **Changes in v3.1.0:**
 - **CORRECTED**: Architecture diagram now accurately shows databases running in Docker containers (external to K8s)
 - **ADDED**: Database Architecture Notes section explaining local vs production setup
