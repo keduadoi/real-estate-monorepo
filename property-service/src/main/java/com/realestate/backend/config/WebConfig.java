@@ -1,9 +1,12 @@
 package com.realestate.backend.config;
 
+import com.realestate.backend.analytics.ActivityTrackingInterceptor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -15,7 +18,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  */
 @Configuration
 @Slf4j
+@RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
+
+    private final ActivityTrackingInterceptor activityTrackingInterceptor;
 
     @Value("${cors.enabled:true}")
     private boolean corsEnabled;
@@ -40,6 +46,13 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(activityTrackingInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/actuator/**");
     }
 
     @Override

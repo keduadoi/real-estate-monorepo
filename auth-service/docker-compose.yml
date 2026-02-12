@@ -29,6 +29,7 @@ services:
       DB_NAME: authdb
       DB_USER: postgres
       DB_PASSWORD: postgres
+      KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:29093
     depends_on:
       auth-db:
         condition: service_healthy

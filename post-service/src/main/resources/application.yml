@@ -19,6 +19,14 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: 1
+      properties:
+        spring.json.add.type.headers: false
 
 server:
   port: 8082
@@ -65,3 +73,21 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+# Analytics Configuration
+analytics:
+  kafka:
+    enabled: ${ANALYTICS_ENABLED:true}
+    topic: user-activity-events
+  service-name: post-service
+  event-mappings:
+    "[GET /api/posts]": BROWSE_FEED
+    "[GET /api/posts/{id}]": VIEW_POST
+    "[POST /api/posts]": CREATE_POST
+    "[PUT /api/posts/{id}]": UPDATE_POST
+    "[DELETE /api/posts/{id}]": DELETE_POST
+    "[POST /api/posts/{id}/like]": TOGGLE_LIKE
+    "[GET /api/posts/search]": SEARCH_POSTS
+    "[GET /api/posts/me]": VIEW_MY_POSTS
+    "[GET /api/posts/user/{userId}]": VIEW_USER_POSTS
+    "[HEAD /api/posts/{id}]": CHECK_POST_EXISTS
