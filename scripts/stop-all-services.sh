@@ -16,6 +16,24 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Stop frontend if running
+stop_frontend() {
+    if [ -f "$ROOT_DIR/frontend/.frontend.pid" ]; then
+        local pid
+        pid=$(cat "$ROOT_DIR/frontend/.frontend.pid")
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "   Stopping frontend (PID: $pid)..."
+            kill "$pid" 2>/dev/null
+            rm -f "$ROOT_DIR/frontend/.frontend.pid"
+            echo -e "   ${GREEN}✅ Frontend stopped${NC}"
+        else
+            rm -f "$ROOT_DIR/frontend/.frontend.pid"
+        fi
+    fi
+    # Also kill any Next.js process on port 3000
+    lsof -ti:3000 | xargs kill -9 2>/dev/null
+}
+
 # Ask for confirmation
 echo -e "${YELLOW}What do you want to stop?${NC}"
 echo "1) Stop app services only (keep databases running)"
@@ -30,6 +48,8 @@ echo ""
 case $REPLY in
     1)
         echo -e "${BLUE}━━━ Stopping App Services (keeping DBs) ━━━${NC}"
+
+        stop_frontend
 
         echo "   Stopping property-service app..."
         cd "$ROOT_DIR/property-service" && docker compose stop property-service 2>/dev/null
@@ -55,6 +75,8 @@ case $REPLY in
     2)
         echo -e "${BLUE}━━━ Stopping All Services ━━━${NC}"
 
+        stop_frontend
+
         echo "   Stopping property-service..."
         cd "$ROOT_DIR/property-service" && docker compose stop 2>/dev/null
 
@@ -78,6 +100,8 @@ case $REPLY in
 
     3)
         echo -e "${BLUE}━━━ Full Cleanup (Preserving Data Volumes) ━━━${NC}"
+
+        stop_frontend
 
         echo "   Removing property-service containers..."
         cd "$ROOT_DIR/property-service" && docker compose down 2>/dev/null
@@ -111,6 +135,8 @@ case $REPLY in
 
         if [[ $REPLY == "DELETE" ]]; then
             echo -e "${BLUE}━━━ Complete Reset ━━━${NC}"
+
+            stop_frontend
 
             echo "   Removing property-service containers..."
             cd "$ROOT_DIR/property-service" && docker compose down 2>/dev/null
@@ -185,6 +211,16 @@ if docker ps --format '{{.Names}}' | grep -q "^kong-gateway$"; then
     echo -e "   kong-gateway: ${GREEN}Running${NC}"
 else
     echo -e "   kong-gateway: ${RED}Stopped${NC}"
+fi
+echo ""
+
+echo "🌐 Frontend:"
+if [ -f "$ROOT_DIR/frontend/.frontend.pid" ] && kill -0 "$(cat "$ROOT_DIR/frontend/.frontend.pid")" 2>/dev/null; then
+    echo -e "   Next.js: ${GREEN}Running (PID: $(cat "$ROOT_DIR/frontend/.frontend.pid"))${NC}"
+elif lsof -ti:3000 > /dev/null 2>&1; then
+    echo -e "   Next.js: ${GREEN}Running (port 3000)${NC}"
+else
+    echo -e "   Next.js: ${RED}Stopped${NC}"
 fi
 echo ""
 

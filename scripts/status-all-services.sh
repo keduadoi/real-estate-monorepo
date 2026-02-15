@@ -158,10 +158,34 @@ fi
 echo ""
 
 # ============================================================================
+# Frontend Status
+# ============================================================================
+echo -e "${BLUE}━━━ Frontend ━━━${NC}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+if [ -f "$ROOT_DIR/frontend/.frontend.pid" ] && kill -0 "$(cat "$ROOT_DIR/frontend/.frontend.pid")" 2>/dev/null; then
+    echo -e "Next.js:    ${GREEN}✅ Running (PID: $(cat "$ROOT_DIR/frontend/.frontend.pid"))${NC}"
+elif lsof -ti:3000 > /dev/null 2>&1; then
+    echo -e "Next.js:    ${GREEN}✅ Running (port 3000)${NC}"
+else
+    echo -e "Next.js:    ${RED}❌ Not running${NC}"
+fi
+
+if curl -s http://localhost:3000 > /dev/null 2>&1; then
+    echo -e "Health:     ${GREEN}✅ Responding at http://localhost:3000${NC}"
+else
+    echo -e "Health:     ${RED}❌ Not responding${NC}"
+fi
+echo ""
+
+# ============================================================================
 # Summary
 # ============================================================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📍 Service URLs:"
+echo "   Frontend:      http://localhost:3000"
 echo "   Kong Gateway:  http://localhost:8000"
 echo "   Property Svc:  http://localhost:8080"
 echo "   Auth Service:  http://localhost:8081"

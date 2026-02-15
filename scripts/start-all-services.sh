@@ -1,6 +1,10 @@
 #!/bin/bash
 # Master script to start all Real Estate services
-# Services: All microservices + databases via Docker Compose + Kong Gateway (Docker)
+# Services: All microservices + databases via Docker Compose + Kong Gateway (Docker) + Frontend
+#
+# Usage:
+#   ./start-all-services.sh                # Start everything (backend + frontend)
+#   ./start-all-services.sh --no-frontend  # Start backend only, skip frontend
 
 echo "🚀 Starting Real Estate Platform - All Services"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -12,6 +16,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
+
+# Parse arguments
+SKIP_FRONTEND=false
+for arg in "$@"; do
+    case $arg in
+        --no-frontend) SKIP_FRONTEND=true ;;
+    esac
+done
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -145,35 +157,65 @@ check_health "Kong Gateway" "http://localhost:8001/status"
 echo ""
 
 # ============================================================================
-# STEP 8: Optional - Start Frontend
+# STEP 8: Start Frontend
 # ============================================================================
 echo -e "${BLUE}━━━ Step 8: Frontend ━━━${NC}"
-echo ""
-read -p "Start frontend dev server? (y/N): " -n 1 -r
-echo ""
 
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "   Starting frontend in new terminal..."
-
-    # Check OS and open appropriate terminal
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        osascript -e "tell app \"Terminal\" to do script \"cd $ROOT_DIR/frontend && ./start-dev.sh\""
-        echo -e "${GREEN}✅ Frontend started in new Terminal window${NC}"
+if [ "$SKIP_FRONTEND" = true ]; then
+    echo -e "${YELLOW}ℹ️  Skipping frontend (--no-frontend flag).${NC}"
+    echo "   Start manually: cd $ROOT_DIR/frontend && ./start-dev.sh"
+else
+    # Check Node.js
+    if ! command -v node &> /dev/null; then
+        echo -e "${RED}❌ Node.js not found. Skipping frontend.${NC}"
+        echo "   Install from: https://nodejs.org/"
     else
-        # Linux - try common terminals
-        if command -v gnome-terminal &> /dev/null; then
-            gnome-terminal -- bash -c "cd $ROOT_DIR/frontend && ./start-dev.sh; bash"
-        elif command -v xterm &> /dev/null; then
-            xterm -e "cd $ROOT_DIR/frontend && ./start-dev.sh" &
-        else
-            echo -e "${YELLOW}⚠️  Could not open new terminal. Start manually:${NC}"
-            echo "   cd $ROOT_DIR/frontend && ./start-dev.sh"
+        cd "$ROOT_DIR/frontend"
+
+        # Install dependencies if needed
+        if [ ! -d "node_modules" ]; then
+            echo "   Installing frontend dependencies..."
+            npm install --silent
+        fi
+
+        # Create .env.local if missing
+        if [ ! -f ".env.local" ]; then
+            echo "   Creating default .env.local..."
+            cat > .env.local << 'ENVEOF'
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here-change-in-production-min-32-characters-long
+NEXT_PUBLIC_KONG_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
+NEXT_PUBLIC_AUTH_API_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_MAX_IMAGE_SIZE=10485760
+NEXT_PUBLIC_MAX_IMAGES_PER_PROPERTY=10
+ENVEOF
+        fi
+
+        # Kill any existing Next.js dev server on port 3000
+        lsof -ti:3000 | xargs kill -9 2>/dev/null
+
+        # Start frontend in background
+        echo "   Starting Next.js dev server on port 3000..."
+        nohup npm run dev > "$ROOT_DIR/frontend/.frontend.log" 2>&1 &
+        FRONTEND_PID=$!
+        echo "$FRONTEND_PID" > "$ROOT_DIR/frontend/.frontend.pid"
+
+        # Wait for frontend to be ready
+        RETRY=0
+        while [ $RETRY -lt 30 ]; do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+                echo -e "   ${GREEN}✅ Frontend running at http://localhost:3000 (PID: $FRONTEND_PID)${NC}"
+                break
+            fi
+            RETRY=$((RETRY + 1))
+            sleep 2
+        done
+        if [ $RETRY -eq 30 ]; then
+            echo -e "   ${YELLOW}⚠️  Frontend may still be starting. Check logs:${NC}"
+            echo "      tail -f $ROOT_DIR/frontend/.frontend.log"
         fi
     fi
-else
-    echo -e "${YELLOW}ℹ️  Skipping frontend. Start manually when needed:${NC}"
-    echo "   cd $ROOT_DIR/frontend && ./start-dev.sh"
 fi
 echo ""
 
