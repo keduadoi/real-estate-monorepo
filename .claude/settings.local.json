@@ -40,7 +40,16 @@
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
       "Bash(docker volume:*)",
-      "Bash(kubectl scale:*)"
+      "Bash(kubectl scale:*)",
+      "Bash(docker ps:*)",
+      "Bash(bash scripts/stop-all-services.sh)",
+      "Bash(docker rm:*)",
+      "Bash(bash /Users/ducnt/Working/real-estate-monorepo/scripts/start-all-services.sh)",
+      "Bash(bash /Users/ducnt/Working/real-estate-monorepo/scripts/stop-all-services.sh)",
+      "Bash(bash /Users/ducnt/Working/real-estate-monorepo/scripts/status-all-services.sh)",
+      "Bash(jar tf:*)",
+      "Bash(bash scripts/start-all-services.sh --no-frontend)",
+      "Bash(docker compose:*)"
     ]
   }
 }

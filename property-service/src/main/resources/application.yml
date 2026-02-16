@@ -51,6 +51,13 @@ spring:
       max-request-size: 50MB
       enabled: true
 
+# gRPC Client Configuration
+grpc:
+  client:
+    price-service:
+      address: static://${PRICE_SERVICE_GRPC_HOST:localhost}:${PRICE_SERVICE_GRPC_PORT:9090}
+      negotiation-type: plaintext
+
 # Server Configuration
 server:
   port: ${SERVER_PORT:8080}
@@ -80,6 +87,14 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 60s
         permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+      priceService:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
         automatic-transition-from-open-to-half-open-enabled: true
   retry:
     instances:

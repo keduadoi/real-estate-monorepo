@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package com.realestate.grpc.price;
+
+option java_multiple_files = true;
+option java_package = "com.realestate.grpc.price";
+option java_outer_classname = "PriceServiceProto";
+
+// Request/Response messages
+
+message PropertyId {
+  int64 property_id = 1;
+}
+
+message Price {
+  int64 property_id = 1;
+  string current_price = 2; // BigDecimal as string for precision
+  string currency = 3;
+  string last_updated_by = 4;
+  string updated_at = 5;
+}
+
+message PricePoint {
+  string old_price = 1; // nullable - empty string for first entry
+  string new_price = 2;
+  string changed_by = 3;
+  string changed_at = 4;
+  string reason = 5;
+}
+
+message PriceHistory {
+  int64 property_id = 1;
+  repeated PricePoint price_points = 2;
+}
+
+message UpdatePriceRequest {
+  int64 property_id = 1;
+  string new_price = 2; // BigDecimal as string
+  string currency = 3;
+  string changed_by = 4;
+  string reason = 5;
+}
+
+message BatchGetPricesRequest {
+  repeated int64 property_ids = 1;
+}
+
+message BatchGetPricesResponse {
+  repeated Price prices = 1;
+}
+
+message GetPriceHistoryRequest {
+  int64 property_id = 1;
+}
+
+// Service definition
+
+service PriceService {
+  rpc GetCurrentPrice (PropertyId) returns (Price);
+  rpc GetPriceHistory (GetPriceHistoryRequest) returns (PriceHistory);
+  rpc UpdatePrice (UpdatePriceRequest) returns (Price);
+  rpc BatchGetPrices (BatchGetPricesRequest) returns (BatchGetPricesResponse);
+}

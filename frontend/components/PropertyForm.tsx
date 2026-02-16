@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { PropertyType, PropertyStatus, Property } from '@/types';
 import ImageUpload from './ImageUpload';
 import { useImageUpload } from '@/hooks/useImageUpload';
@@ -20,6 +21,7 @@ export default function PropertyForm({
   propertyId,
 }: PropertyFormProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -180,6 +182,14 @@ export default function PropertyForm({
           status: mapUiPropertyStatusToApi(formData.status),
           features: selectedFeatures,
           images: allImages,
+        }, {
+          accessToken: session?.accessToken,
+          user: session?.user ? {
+            id: session.user.id as string,
+            email: session.user.email,
+            name: session.user.name,
+            roles: ['ROLE_USER'],
+          } : undefined,
         });
 
         // Success - redirect to property detail page

@@ -26,6 +26,13 @@ services:
     read_timeout: 60000
     retries: 3
 
+  - name: price-service
+    url: http://host.docker.internal:8084
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
 # ============================================================================
 # GLOBAL PLUGINS
 # ============================================================================
@@ -215,6 +222,26 @@ routes:
       - /api/posts/me
     strip_path: false
 
+  # --- Price Service: Public routes ---
+  - name: prices-public-get
+    service: price-service
+    paths:
+      - /api/prices
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  # --- Price Service: Protected routes (JWT required) ---
+  - name: prices-protected
+    service: price-service
+    paths:
+      - /api/prices
+    methods:
+      - PUT
+      - OPTIONS
+    strip_path: false
+
   # --- Backend: Static uploads ---
   - name: uploads
     service: property-service
@@ -239,6 +266,15 @@ routes:
     service: post-service
     paths:
       - /api/posts/actuator/health
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: health-price-service
+    service: price-service
+    paths:
+      - /api/prices/actuator/health
     methods:
       - GET
       - OPTIONS

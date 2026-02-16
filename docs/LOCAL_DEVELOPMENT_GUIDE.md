@@ -25,24 +25,27 @@ This guide explains how to start, stop, and manage all services for the Real Est
 │  ┌────────────────────────────────────────────────────────────────────┐      │
 │  │                MICROSERVICES (Docker Compose)                       │      │
 │  │                                                                     │      │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐   │      │
-│  │  │  Property  │ │    Auth    │ │    Post    │ │  Analytics   │   │      │
-│  │  │  Service   │ │  Service   │ │  Service   │ │   Service    │   │      │
-│  │  │  :8080     │ │  :8081     │ │  :8082     │ │   :8083      │   │      │
-│  │  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └──────┬───────┘   │      │
-│  │        │              │              │               │             │      │
-│  │        │         Kafka events ───────┼───────────────▶│             │      │
-│  │        │              │              │               │             │      │
-│  │        ▼              ▼              ▼               ▼             │      │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐   │      │
-│  │  │Property DB │ │  Auth DB   │ │  Post DB   │ │    Kafka     │   │      │
-│  │  │ Port: 5432 │ │ Port: 5433 │ │ Port: 5434 │ │ Port: 29092  │   │      │
-│  │  │realestatedb│ │  authdb    │ │  postdb    │ │ (KRaft mode) │   │      │
-│  │  └────────────┘ └────────────┘ └────────────┘ ├──────────────┤   │      │
-│  │                                                │   MongoDB    │   │      │
-│  │                                                │ Port: 27017  │   │      │
-│  │                                                │ analyticsdb  │   │      │
-│  │                                                └──────────────┘   │      │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │      │
+│  │  │ Property │ │   Auth   │ │   Post   │ │Analytics │ │  Price   │ │      │
+│  │  │ Service  │ │ Service  │ │ Service  │ │ Service  │ │ Service  │ │      │
+│  │  │  :8080   │ │  :8081   │ │  :8082   │ │  :8083   │ │  :8084   │ │      │
+│  │  │          │ │          │ │          │ │          │ │gRPC:9090 │ │      │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │      │
+│  │       │            │            │             │            │       │      │
+│  │       │       Kafka events ─────┼─────────────▶│◀───────────┘       │      │
+│  │       │   gRPC ─────────────────┼─────────────────────────▶│       │      │
+│  │       │            │            │             │            │       │      │
+│  │       ▼            ▼            ▼             ▼            ▼       │      │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │      │
+│  │  │Property  │ │ Auth DB  │ │ Post DB  │ │  Kafka   │ │ Price DB │ │      │
+│  │  │DB :5432  │ │  :5433   │ │  :5434   │ │  :29092  │ │  :5435   │ │      │
+│  │  │realestate│ │  authdb  │ │  postdb  │ │(KRaft)   │ │ pricedb  │ │      │
+│  │  │db        │ │          │ │          │ ├──────────┤ │          │ │      │
+│  │  └──────────┘ └──────────┘ └──────────┘ │ MongoDB  │ └──────────┘ │      │
+│  │                                          │  :27017  │             │      │
+│  │                                          │analytics │             │      │
+│  │                                          │db        │             │      │
+│  │                                          └──────────┘             │      │
 │  └────────────────────────────────────────────────────────────────────┘      │
 │                                                                               │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -75,13 +78,16 @@ cd ../auth-service && docker compose up -d --build
 # 3. Start post-service (DB + app)
 cd ../post-service && docker compose up -d --build
 
-# 4. Start analytics-service (Kafka + app)
+# 4. Start analytics-service (Kafka + MongoDB + app)
 cd ../analytics-service && docker compose up -d --build
 
-# 5. Start Kong Gateway
+# 5. Start price-service (DB + app + gRPC)
+cd ../price-service && docker compose up -d --build
+
+# 6. Start Kong Gateway
 cd ../kong && docker compose up -d
 
-# 6. Start frontend
+# 7. Start frontend
 cd ../frontend && npm run dev
 ```
 
@@ -95,6 +101,8 @@ cd ../frontend && npm run dev
 | Auth Service | http://localhost:8081 | Authentication service (direct access) |
 | Post Service | http://localhost:8082 | Social feed service (direct access) |
 | Analytics Service | http://localhost:8083 | Analytics service (direct access) |
+| Price Service | http://localhost:8084 | Price service (direct access) |
+| Price Service gRPC | localhost:9090 | gRPC endpoint (used by property-service) |
 | Kong Admin | http://localhost:8001 | Kong admin API |
 | Kafka | localhost:29092 | Event broker (external listener) |
 | MongoDB | localhost:27017 | Analytics event store (analyticsdb) |
@@ -106,6 +114,7 @@ cd ../frontend && npm run dev
 | Property DB | localhost | 5432 | realestatedb | postgres | postgres |
 | Auth DB | localhost | 5433 | authdb | postgres | postgres |
 | Post DB | localhost | 5434 | postdb | postgres | postgres |
+| Price DB | localhost | 5435 | pricedb | postgres | postgres |
 | MongoDB | localhost | 27017 | analyticsdb | (none) | (none) |
 
 Connect with psql:
@@ -118,6 +127,9 @@ psql -h localhost -p 5433 -U postgres -d authdb
 
 # Post DB
 psql -h localhost -p 5434 -U postgres -d postdb
+
+# Price DB
+psql -h localhost -p 5435 -U postgres -d pricedb
 
 # MongoDB (Analytics)
 docker exec analytics-mongo mongosh analyticsdb
@@ -136,6 +148,8 @@ docker exec analytics-mongo mongosh analyticsdb
 | `analytics-kafka` | Apache Kafka (KRaft) | 29092 |
 | `analytics-mongo` | MongoDB 7.0 | 27017 |
 | `analytics-service` | Analytics Spring Boot | 8083 |
+| `price-db` | Price PostgreSQL | 5435 |
+| `price-service` | Price Spring Boot | 8084, 9090 (gRPC) |
 | `kong-gateway` | Kong API Gateway | 8000, 8001 |
 
 ## Scripts Reference
@@ -192,6 +206,9 @@ docker logs -f post-service
 # Analytics Service
 docker logs -f analytics-service
 
+# Price Service
+docker logs -f price-service
+
 # Kong
 docker logs -f kong-gateway
 
@@ -215,6 +232,9 @@ cd post-service && docker compose restart post-service
 
 # Restart analytics-service app only (keeps Kafka running)
 cd analytics-service && docker compose restart analytics-service
+
+# Restart price-service app only (keeps DB running)
+cd price-service && docker compose restart price-service
 
 # Restart Kong
 cd kong && docker compose restart
@@ -287,6 +307,7 @@ cd property-service && docker compose down -v
 cd ../auth-service && docker compose down -v
 cd ../post-service && docker compose down -v
 cd ../analytics-service && docker compose down -v
+cd ../price-service && docker compose down -v
 cd ../kong && docker compose down
 ```
 
@@ -305,6 +326,7 @@ cd ../kong && docker compose down
    docker logs auth-service
    docker logs post-service
    docker logs analytics-service
+   docker logs price-service
    ```
 
 3. Check if port is in use:
@@ -313,6 +335,7 @@ cd ../kong && docker compose down
    lsof -i :8081
    lsof -i :8082
    lsof -i :8083
+   lsof -i :8084
    ```
 
 4. Rebuild from scratch:
@@ -350,6 +373,7 @@ cd ../kong && docker compose down
    docker exec property-db pg_isready -U postgres
    docker exec auth-db pg_isready -U postgres
    docker exec post-db pg_isready -U postgres
+   docker exec price-db pg_isready -U postgres
    ```
 
 ### Frontend API Errors
@@ -412,8 +436,9 @@ curl http://localhost:8080/actuator/health
 curl http://localhost:8081/actuator/health
 curl http://localhost:8082/actuator/health
 curl http://localhost:8083/actuator/health
+curl http://localhost:8084/actuator/health
 ```
 
 ---
 
-**Last Updated:** 2026-02-12
+**Last Updated:** 2026-02-16

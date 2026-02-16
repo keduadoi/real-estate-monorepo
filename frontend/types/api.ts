@@ -94,3 +94,32 @@ export interface ImageUploadResponse {
 export interface ImageDeleteRequest {
   imageUrls: string[];
 }
+
+// Price Service types
+
+export interface PriceResponse {
+  propertyId: number;
+  currentPrice: number;
+  currency: string;
+  lastUpdatedBy: string;
+  updatedAt: string;
+}
+
+export interface PricePointResponse {
+  oldPrice: number | null;
+  newPrice: number;
+  changedBy: string;
+  changedAt: string;
+  reason: string;
+}
+
+export interface PriceHistoryResponse {
+  propertyId: number;
+  pricePoints: PricePointResponse[];
+}
+
+export interface UpdatePriceRequest {
+  newPrice: number;
+  currency?: string;
+  reason?: string;
+}

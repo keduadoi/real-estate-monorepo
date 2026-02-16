@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ImageGallery from '@/components/ImageGallery';
 import PropertyActionButtons from '@/components/PropertyActionButtons';
+import PriceHistory from '@/components/PriceHistory';
 import { propertyApi } from '@/lib/api/propertyApi';
 import { mapApiPropertyToUi } from '@/lib/api/mapper';
 import { formatPrice, formatArea } from '@/lib/utils';
@@ -246,6 +247,9 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
               </div>
             )}
           </div>
+
+          {/* Price History */}
+          <PriceHistory propertyId={Number(property.id)} />
         </div>
 
         {/* Right Column - Contact Card */}

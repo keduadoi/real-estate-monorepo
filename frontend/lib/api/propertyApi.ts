@@ -9,10 +9,21 @@ import {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 /**
+ * User info for microservice authentication headers
+ */
+interface UserInfo {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  roles?: string[];
+}
+
+/**
  * Options for API requests
  */
 interface RequestOptions {
   accessToken?: string;
+  user?: UserInfo;
 }
 
 /**
@@ -38,6 +49,20 @@ class PropertyApi {
 
     if (options?.accessToken) {
       headers['Authorization'] = `Bearer ${options.accessToken}`;
+    }
+
+    // Add X-User-* headers for microservice authentication
+    if (options?.user) {
+      headers['X-User-Id'] = options.user.id;
+      if (options.user.email) {
+        headers['X-User-Email'] = options.user.email;
+      }
+      if (options.user.name) {
+        headers['X-User-Name'] = options.user.name;
+      }
+      if (options.user.roles?.length) {
+        headers['X-User-Roles'] = options.user.roles.join(',');
+      }
     }
 
     return headers;

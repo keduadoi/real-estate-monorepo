@@ -63,6 +63,9 @@ case $REPLY in
         echo "   Stopping analytics-service app..."
         cd "$ROOT_DIR/analytics-service" && docker compose stop analytics-service 2>/dev/null
 
+        echo "   Stopping price-service app..."
+        cd "$ROOT_DIR/price-service" && docker compose stop price-service 2>/dev/null
+
         echo "   Stopping Kong Gateway..."
         cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
@@ -89,6 +92,9 @@ case $REPLY in
         echo "   Stopping analytics-service..."
         cd "$ROOT_DIR/analytics-service" && docker compose stop 2>/dev/null
 
+        echo "   Stopping price-service..."
+        cd "$ROOT_DIR/price-service" && docker compose stop 2>/dev/null
+
         echo "   Stopping Kong Gateway..."
         cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
@@ -114,6 +120,9 @@ case $REPLY in
 
         echo "   Removing analytics-service containers..."
         cd "$ROOT_DIR/analytics-service" && docker compose down 2>/dev/null
+
+        echo "   Removing price-service containers..."
+        cd "$ROOT_DIR/price-service" && docker compose down 2>/dev/null
 
         echo "   Removing Kong Gateway..."
         cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
@@ -150,6 +159,9 @@ case $REPLY in
             echo "   Removing analytics-service containers and volumes..."
             cd "$ROOT_DIR/analytics-service" && docker compose down -v 2>/dev/null
 
+            echo "   Removing price-service containers and volumes..."
+            cd "$ROOT_DIR/price-service" && docker compose down -v 2>/dev/null
+
             echo "   Removing Kong Gateway..."
             cd "$ROOT_DIR/kong" && docker compose down 2>/dev/null
 
@@ -183,7 +195,7 @@ echo "📊 Current Status:"
 echo ""
 
 echo "🐘 Databases:"
-for db in "property-db" "auth-db" "post-db"; do
+for db in "property-db" "auth-db" "post-db" "price-db"; do
     if docker ps --format '{{.Names}}' | grep -q "^${db}$"; then
         echo -e "   $db: ${GREEN}Running${NC}"
     elif docker ps -a --format '{{.Names}}' | grep -q "^${db}$"; then
@@ -195,7 +207,7 @@ done
 echo ""
 
 echo "🚀 App Services:"
-for svc in "property-service" "auth-service" "post-service" "analytics-service"; do
+for svc in "property-service" "auth-service" "post-service" "analytics-service" "price-service"; do
     if docker ps --format '{{.Names}}' | grep -q "^${svc}$"; then
         echo -e "   $svc: ${GREEN}Running${NC}"
     elif docker ps -a --format '{{.Names}}' | grep -q "^${svc}$"; then

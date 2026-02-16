@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { propertyApi } from '@/lib/api/propertyApi';
 
 interface DeleteConfirmDialogProps {
@@ -18,6 +19,7 @@ export default function DeleteConfirmDialog({
   propertyTitle,
 }: DeleteConfirmDialogProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -45,7 +47,15 @@ export default function DeleteConfirmDialog({
     setError('');
 
     try {
-      await propertyApi.delete(Number(propertyId));
+      await propertyApi.delete(Number(propertyId), {
+        accessToken: session?.accessToken,
+        user: session?.user ? {
+          id: session.user.id as string,
+          email: session.user.email,
+          name: session.user.name,
+          roles: ['ROLE_USER'],
+        } : undefined,
+      });
       router.push('/');
       router.refresh();
     } catch (err) {

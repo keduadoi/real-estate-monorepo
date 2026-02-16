@@ -5,6 +5,7 @@ import com.realestate.backend.entity.Property;
 import com.realestate.backend.exception.ForbiddenException;
 import com.realestate.backend.exception.ServiceUnavailableException;
 import com.realestate.backend.exception.UnauthorizedException;
+import com.realestate.backend.grpc.PriceGrpcClient;
 import com.realestate.backend.mapper.PropertyMapper;
 import com.realestate.backend.repository.PropertyRepository;
 import com.realestate.backend.security.UserContext;
@@ -22,7 +23,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +41,7 @@ public class PropertyService {
     private final PropertyRepository propertyRepository;
     private final PropertyMapper propertyMapper;
     private final StorageService storageService;
+    private final PriceGrpcClient priceGrpcClient;
 
     /**
      * Get all properties with pagination
@@ -50,7 +55,9 @@ public class PropertyService {
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<Property> propertyPage = propertyRepository.findAll(pageable);
 
-        return buildPageResponse(propertyPage);
+        PageResponse<PropertyDTO> response = buildPageResponse(propertyPage);
+        enrichWithFreshPrices(response.getData());
+        return response;
     }
 
     /**
@@ -70,7 +77,9 @@ public class PropertyService {
         Specification<Property> spec = PropertySpecification.withFilters(searchRequest);
         Page<Property> propertyPage = propertyRepository.findAll(spec, pageable);
 
-        return buildPageResponse(propertyPage);
+        PageResponse<PropertyDTO> response = buildPageResponse(propertyPage);
+        enrichWithFreshPrices(response.getData());
+        return response;
     }
 
     /**
@@ -83,7 +92,13 @@ public class PropertyService {
         Property property = propertyRepository.findById(id)
                 .orElseThrow(() -> new PropertyNotFoundException("Property not found with ID: " + id));
 
-        return propertyMapper.toDTO(property);
+        PropertyDTO dto = propertyMapper.toDTO(property);
+
+        // Attempt to get fresh price from price-service, fallback to cached
+        Optional<BigDecimal> freshPrice = priceGrpcClient.getCurrentPrice(id);
+        freshPrice.ifPresent(dto::setPrice);
+
+        return dto;
     }
 
     /**
@@ -134,6 +149,19 @@ public class PropertyService {
         Property property = propertyMapper.toEntity(request);
         Property savedProperty = propertyRepository.save(property);
 
+        // Sync initial price to price-service
+        try {
+            priceGrpcClient.updatePrice(
+                    savedProperty.getId(),
+                    savedProperty.getPrice(),
+                    savedProperty.getUserId(),
+                    "Initial price on property creation"
+            );
+        } catch (Exception e) {
+            log.warn("Failed to sync initial price to price-service for property {}: {}",
+                    savedProperty.getId(), e.getMessage());
+        }
+
         log.info("Property created successfully with ID: {} by user: {}",
                 savedProperty.getId(), savedProperty.getUserId());
         return propertyMapper.toDTO(savedProperty);
@@ -153,8 +181,24 @@ public class PropertyService {
         // Validate ownership
         validateOwnership(property);
 
+        BigDecimal oldPrice = property.getPrice();
         propertyMapper.updateEntity(property, request);
         Property updatedProperty = propertyRepository.save(property);
+
+        // Sync price change to price-service if price was updated
+        if (request.getPrice() != null && request.getPrice().compareTo(oldPrice) != 0) {
+            try {
+                priceGrpcClient.updatePrice(
+                        id,
+                        request.getPrice(),
+                        UserContext.getCurrentUserId().orElse("unknown"),
+                        "Price updated via property update"
+                );
+            } catch (Exception e) {
+                log.warn("Failed to sync price change to price-service for property {}: {}",
+                        id, e.getMessage());
+            }
+        }
 
         log.info("Property updated successfully with ID: {} by user: {}",
                 id, UserContext.getCurrentUserId().orElse("unknown"));
@@ -212,6 +256,29 @@ public class PropertyService {
         } catch (IllegalArgumentException e) {
             log.warn("Invalid status value: {}", status);
             return 0;
+        }
+    }
+
+    /**
+     * Enrich property DTOs with fresh prices from price-service via batch gRPC call.
+     * Falls back to cached prices if price-service is unavailable.
+     */
+    private void enrichWithFreshPrices(List<PropertyDTO> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return;
+        }
+        List<Long> propertyIds = properties.stream()
+                .map(PropertyDTO::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, BigDecimal> freshPrices = priceGrpcClient.batchGetPrices(propertyIds);
+        if (!freshPrices.isEmpty()) {
+            properties.forEach(dto -> {
+                BigDecimal freshPrice = freshPrices.get(dto.getId());
+                if (freshPrice != null) {
+                    dto.setPrice(freshPrice);
+                }
+            });
         }
     }
 

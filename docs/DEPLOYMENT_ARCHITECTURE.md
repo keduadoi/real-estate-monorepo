@@ -45,23 +45,23 @@
 │  │  • /.well-known/jwks.json → Auth Service (public keys for JWT)          │ │
 │  └──────────────────────────────┬───────────────────────────────────────────┘ │
 │                                 │                                             │
-│     ┌───────────────────────────┼───────────────────────────┐                 │
-│     │                           │                           │                 │
-│     ▼                           ▼                           ▼                 │
-│  ┌───────────────┐      ┌───────────────┐      ┌───────────────┐             │
-│  │ AUTH SERVICE  │      │    BACKEND    │      │ POST SERVICE  │             │
-│  │ (Spring Boot) │      │ (Spring Boot) │      │ (Spring Boot) │             │
-│  │               │      │               │      │               │             │
-│  │ • User Mgmt   │      │ • Properties  │      │ • Posts/Feed  │             │
-│  │ • JWT Issue   │      │ • File Upload │      │ • Comments    │             │
-│  │ • Key Rotate  │      │ • Search      │      │ • Likes       │             │
-│  │ • JWKS        │      │ • Admin       │      │               │             │
-│  │               │      │               │      │               │             │
-│  │ Port: 8081    │      │ Port: 8080    │      │ Port: 8082    │             │
-│  └───────┬───────┘      └───────┬───────┘      └───────┬───────┘             │
-│          │                      │                      │                      │
-│          │          Kafka events (user activity)        │                      │
-│          └──────────────────────┼──────────────────────┘                      │
+│     ┌──────────┬──────────┼──────────┬──────────┐                              │
+│     │          │          │          │          │                              │
+│     ▼          ▼          ▼          ▼          ▼                              │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                │
+│  │  AUTH   │ │PROPERTY │ │  POST   │ │ANALYTICS│ │  PRICE  │                │
+│  │ SERVICE │ │ SERVICE │ │ SERVICE │ │ SERVICE │ │ SERVICE │                │
+│  │         │ │         │ │         │ │         │ │         │                │
+│  │• Users  │ │• Props  │ │• Posts  │ │• Events │ │• Prices │                │
+│  │• JWT    │ │• Upload │ │• Likes  │ │• Metrics│ │• History│                │
+│  │• JWKS   │ │• Search │ │• Feed   │ │         │ │• gRPC   │                │
+│  │         │ │         │ │         │ │         │ │         │                │
+│  │Port:8081│ │Port:8080│ │Port:8082│ │Port:8083│ │Port:8084│                │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘                │
+│       │           │           │            │           │                      │
+│       │   Kafka events (user activity / price changes) │                      │
+│       └───────────┼───────────┼────────────┤───────────┘                      │
+│                   │    gRPC ──────────────────────────▶│                      │
 │                                 ▼                                             │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │                    ANALYTICS PIPELINE                                    │ │
@@ -86,15 +86,15 @@
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │                     DATABASES (Docker Containers - External)                  │
 │                                                                               │
-│  ┌───────────────┐      ┌───────────────┐      ┌───────────────┐             │
-│  │   Auth DB     │      │  Property DB  │      │   Post DB     │             │
-│  │  PostgreSQL   │      │  PostgreSQL   │      │  PostgreSQL   │             │
-│  │ Container:    │      │ Container:    │      │ Container:    │             │
-│  │   auth-db     │      │  property-db  │      │   post-db     │             │
-│  │               │      │               │      │               │             │
-│  │ Host: 5433    │      │ Host: 5432    │      │ Host: 5434    │             │
-│  │ DB: authdb    │      │ DB: realestate│      │ DB: postdb    │             │
-│  └───────────────┘      └───────────────┘      └───────────────┘             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │  Auth DB    │  │ Property DB │  │  Post DB    │  │  Price DB   │         │
+│  │ PostgreSQL  │  │ PostgreSQL  │  │ PostgreSQL  │  │ PostgreSQL  │         │
+│  │ Container:  │  │ Container:  │  │ Container:  │  │ Container:  │         │
+│  │  auth-db    │  │ property-db │  │  post-db    │  │  price-db   │         │
+│  │             │  │             │  │             │  │             │         │
+│  │ Host: 5433  │  │ Host: 5432  │  │ Host: 5434  │  │ Host: 5435  │         │
+│  │ DB: authdb  │  │ DB: realestate│ │ DB: postdb  │  │ DB: pricedb │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘         │
 │                                                                               │
 │  Note: Services in K8s connect via host.docker.internal:PORT                 │
 │  Production: Replace with managed RDS PostgreSQL (Multi-AZ)                  │
@@ -108,8 +108,8 @@
 ### Local Development (Minikube)
 - **Databases run in Docker containers** (external to Kubernetes)
 - **Connection method**: K8s services connect to databases using `host.docker.internal:PORT`
-- **Ports**: 5432 (backend), 5433 (auth), 5434 (post), 27017 (analytics MongoDB)
-- **Containers**: `property-db`, `auth-db`, `post-db`, `analytics-mongo`
+- **Ports**: 5432 (property), 5433 (auth), 5434 (post), 5435 (price), 27017 (analytics MongoDB)
+- **Containers**: `property-db`, `auth-db`, `post-db`, `price-db`, `analytics-mongo`
 - **Event streaming**: Kafka (KRaft mode) at port 29092, with a DOCKER listener on 29093 for cross-container communication
 - **Why external?**: Simpler development workflow, easier database access from host machine
 
@@ -511,6 +511,9 @@ Content-Type: application/json
 | posts-user | `/api/posts/user` | GET | post-service | 8082 | No | 100/min |
 | posts-search | `/api/posts/search` | GET | post-service | 8082 | No | 100/min |
 | posts-like | `/api/posts/{id}/like` | POST | post-service | 8082 | JWT | 100/min |
+| **Prices** |
+| prices-public-get | `/api/prices` | GET | price-service | 8084 | No | 100/min |
+| prices-protected | `/api/prices` | PUT | price-service | 8084 | JWT | 100/min |
 | **File Upload** |
 | upload-routes | `/api/upload/*` | POST | property-service | 8080 | JWT | 50/min |
 | uploads-static | `/uploads/*` | GET | property-service | 8080 | No | 200/min |
@@ -528,6 +531,7 @@ Content-Type: application/json
 | Backend Service | `real-estate-backend-backend.real-estate.svc.cluster.local` | 8080 | real-estate |
 | Post Service | `post-service.real-estate.svc.cluster.local` | 8082 | real-estate |
 | Analytics Service | `analytics-service.real-estate.svc.cluster.local` | 8083 | real-estate |
+| Price Service | `price-service.real-estate.svc.cluster.local` | 8084 | real-estate |
 
 ### Local Development Port Mapping
 
@@ -539,6 +543,7 @@ Content-Type: application/json
 | Backend | `http://localhost:8080` | `kubectl port-forward svc/real-estate-backend-backend 8080:8080 -n real-estate` |
 | Auth Service | `http://localhost:8081` | `kubectl port-forward svc/auth-service 8081:8081 -n real-estate` |
 | Post Service | `http://localhost:8082` | `kubectl port-forward svc/post-service 8082:8082 -n real-estate` |
+| Price Service | `http://localhost:8084` | `kubectl port-forward svc/price-service 8084:8084 -n real-estate` |
 
 ### Database Connections (Docker)
 
@@ -547,6 +552,7 @@ Content-Type: application/json
 | Property DB | property-db | 5432 | 5432 | realestatedb |
 | Auth DB | auth-db | 5433 | 5432 | authdb |
 | Post DB | post-db | 5434 | 5432 | postdb |
+| Price DB | price-db | 5435 | 5432 | pricedb |
 | Analytics MongoDB | analytics-mongo | 27017 | 27017 | analyticsdb |
 
 ---
@@ -610,6 +616,7 @@ Kong Gateway serves as the central entry point for all API traffic, providing:
 │  auth-service       │ auth-service.real-estate.svc            │ 8081 │ HTTP │
 │  property-service   │ real-estate-backend-backend.real-estate │ 8080 │ HTTP │
 │  post-service       │ post-service.real-estate.svc            │ 8082 │ HTTP │
+│  price-service      │ price-service.real-estate.svc           │ 8084 │ HTTP │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -647,6 +654,10 @@ Kong Gateway serves as the central entry point for all API traffic, providing:
 │  posts-search           │ /api/posts/search               │ No              │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
 │  posts-like             │ /api/posts/{id}/like            │ Yes (JWT)       │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  prices-public-get      │ /api/prices (GET)               │ No              │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  prices-protected       │ /api/prices (PUT)               │ Yes (JWT)       │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
 │  admin-routes           │ /api/admin/*                    │ Yes (JWT+Admin) │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
@@ -980,9 +991,11 @@ The Auth Service is a dedicated Spring Boot application handling:
 | Backend Service | K8s (Minikube) | K8s (EKS) | 3 | 3-15 (CPU 70%) | minAvailable: 2 |
 | Post Service | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
 | Analytics Service | Docker Compose | K8s (EKS) | 2 | 2-5 (CPU 70%) | minAvailable: 1 |
+| Price Service | Docker Compose | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
 | PostgreSQL (Auth) | Docker (auth-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Property) | Docker (property-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Post) | Docker (post-db) | RDS Multi-AZ | N/A | N/A | N/A |
+| PostgreSQL (Price) | Docker (price-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | MongoDB (Analytics) | Docker (analytics-mongo) | DocumentDB / MongoDB Atlas | N/A | N/A | N/A |
 | Kafka | Docker (analytics-kafka) | Amazon MSK / Self-hosted | N/A | N/A | N/A |
 
@@ -1147,9 +1160,10 @@ minikube start --memory 8192 --cpus 4
 cd property-service && docker-compose -f docker-compose-db.yml up -d
 cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
 cd ../post-service && docker-compose -f docker-compose-db.yml up -d
+cd ../price-service && docker-compose -f docker-compose-db.yml up -d
 
 # Verify databases are running
-docker ps | grep -E "postgres|auth-db|post-db"
+docker ps | grep -E "postgres|auth-db|post-db|price-db"
 
 # 3. Deploy Kong API Gateway
 cd ../kong
@@ -1206,6 +1220,7 @@ The Real Estate application now has:
 - **Auth Service**: Dedicated authentication microservice with key rotation
 - **Backend Service**: Property management, file uploads, and search
 - **Post Service**: Social feed functionality (posts, comments, likes)
+- **Price Service**: Price management, price history, gRPC integration, circuit breaker resilience
 - **Analytics Service**: User activity tracking with Kafka event streaming and MongoDB persistence
 - **Monitoring Stack**: Prometheus, Grafana, AlertManager
 - **Production-ready Infrastructure**: HPA, PDB, network policies, TLS
@@ -1237,12 +1252,14 @@ The Real Estate application now has:
 cd property-service && docker-compose -f docker-compose-db.yml up -d
 cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
 cd ../post-service && docker-compose -f docker-compose-db.yml up -d
+cd ../price-service && docker-compose -f docker-compose-db.yml up -d
 
 # Verify databases are accessible
-docker ps | grep -E "postgres|auth-db|post-db"
+docker ps | grep -E "postgres|auth-db|post-db|price-db"
 psql -h localhost -p 5432 -U postgres -d realestatedb -c "SELECT 1"  # Backend DB
 psql -h localhost -p 5433 -U postgres -d authdb -c "SELECT 1"         # Auth DB
 psql -h localhost -p 5434 -U postgres -d postdb -c "SELECT 1"         # Post DB
+psql -h localhost -p 5435 -U postgres -d pricedb -c "SELECT 1"        # Price DB
 
 # 2. Ensure Kubernetes services are deployed (one-time setup)
 # If not already deployed, run:
@@ -1272,11 +1289,13 @@ cd frontend && npm run dev
 curl http://localhost:8000/api/properties          # Backend via Kong
 curl http://localhost:8000/auth/login              # Auth via Kong (POST)
 curl http://localhost:8000/api/posts               # Posts via Kong
+curl http://localhost:8000/api/prices/1            # Prices via Kong
 
 # Direct service access (bypass Kong)
 curl http://localhost:8080/actuator/health         # Backend direct
 curl http://localhost:8081/actuator/health         # Auth direct
 curl http://localhost:8082/actuator/health         # Posts direct
+curl http://localhost:8084/actuator/health         # Prices direct
 
 # Get JWT token
 TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
@@ -1301,8 +1320,15 @@ curl http://localhost:8000/api/properties/user \
 
 ---
 
-**Version:** 3.2.0
-**Last Updated:** 2026-02-12
+**Version:** 3.3.0
+**Last Updated:** 2026-02-16
+**Changes in v3.3.0:**
+- **ADDED**: Price Service (port 8084, gRPC 9090) to architecture diagram, route tables, and all references
+- **ADDED**: Price DB (PostgreSQL, port 5435, pricedb) to database tables and connection references
+- **ADDED**: Price Service Kong routes (prices-public-get, prices-protected) to route tables
+- **ADDED**: Price Service to High Availability table and Quick Start commands
+- **UPDATED**: Architecture diagram to show gRPC communication between property-service and price-service
+
 **Changes in v3.2.0:**
 - **ADDED**: Analytics Service with Kafka event pipeline and MongoDB persistence to architecture diagram
 - **ADDED**: MongoDB (analyticsdb) to database tables and connection references

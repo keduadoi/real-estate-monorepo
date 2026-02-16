@@ -11,6 +11,12 @@ COPY .mvn .mvn
 COPY mvnw .
 COPY mvnw.cmd .
 
+# Copy grpc-proto jar (local dependency not in Maven Central)
+COPY grpc-proto-0.0.1-SNAPSHOT.jar /tmp/grpc-proto.jar
+RUN mvn install:install-file -Dfile=/tmp/grpc-proto.jar \
+    -DgroupId=com.realestate -DartifactId=grpc-proto \
+    -Dversion=0.0.1-SNAPSHOT -Dpackaging=jar -q
+
 # Download dependencies (this layer will be cached if pom.xml doesn't change)
 RUN mvn dependency:go-offline -B
 

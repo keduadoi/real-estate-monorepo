@@ -53,6 +53,7 @@ check_db() {
 check_db "Property DB" "property-db" "5432"
 check_db "Auth DB    " "auth-db" "5433"
 check_db "Post DB    " "post-db" "5434"
+check_db "Price DB   " "price-db" "5435"
 echo ""
 
 # ============================================================================
@@ -107,6 +108,7 @@ check_service "Property   " "property-service" "8080"
 check_service "Auth       " "auth-service" "8081"
 check_service "Post       " "post-service" "8082"
 check_service "Analytics  " "analytics-service" "8083"
+check_service "Price      " "price-service" "8084"
 echo ""
 
 # ============================================================================
@@ -149,6 +151,7 @@ check_health "Property Svc " "http://localhost:8080/actuator/health"
 check_health "Auth Service " "http://localhost:8081/actuator/health"
 check_health "Post Service " "http://localhost:8082/actuator/health"
 check_health "Analytics Svc" "http://localhost:8083/actuator/health"
+check_health "Price Service" "http://localhost:8084/actuator/health"
 # Kong health (Docker — direct access)
 if curl -s http://localhost:8001/status > /dev/null 2>&1; then
     echo -e "Kong Gateway:  ${GREEN}✅ Healthy${NC}"
@@ -191,6 +194,7 @@ echo "   Property Svc:  http://localhost:8080"
 echo "   Auth Service:  http://localhost:8081"
 echo "   Post Service:  http://localhost:8082"
 echo "   Analytics Svc: http://localhost:8083"
+echo "   Price Service: http://localhost:8084 (gRPC: 9090)"
 echo ""
 echo "🔧 Commands:"
 echo "   Start all:  ./scripts/start-all-services.sh"
