@@ -1,0 +1,410 @@
+{
+  "brand": {
+    "name": "BĐS Vietnam",
+    "tagline": "Vietnam's leading real estate marketplace"
+  },
+  "nav": {
+    "buy": "Buy",
+    "rent": "Rent",
+    "feed": "Feed",
+    "news": "News",
+    "search": "Search",
+    "admin": "Admin",
+    "postListing": "Post listing"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out"
+  },
+  "language": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "footer": {
+    "copyright": "© {year} BĐS Vietnam. All rights reserved."
+  },
+  "common": {
+    "all": "All",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "back": "Back",
+    "backToHome": "Back to home",
+    "loading": "Loading...",
+    "saving": "Saving…",
+    "perMonth": "/month",
+    "page": "Page {current} / {total}",
+    "previous": "← Previous",
+    "next": "Next →",
+    "close": "Close",
+    "noImage": "No image",
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "priceLow": "Price: low to high",
+      "priceHigh": "Price: high to low"
+    },
+    "propertyType": {
+      "house": "House",
+      "apartment": "Apartment",
+      "villa": "Villa",
+      "townhouse": "Townhouse"
+    },
+    "propertyStatus": {
+      "forSale": "For sale",
+      "forRent": "For rent"
+    },
+    "newsCategories": {
+      "Thị trường": "Market",
+      "Phân tích": "Analysis",
+      "Chính sách": "Policy",
+      "Dự án": "Projects",
+      "Đầu tư": "Investment",
+      "Phong thủy": "Feng shui"
+    }
+  },
+  "metadata": {
+    "rootTitle": "BĐS Vietnam - Buy, sell & rent real estate",
+    "rootDescription": "Vietnam's leading real estate marketplace. Browse hundreds of houses, apartments, and villas.",
+    "buyTitle": "Properties for sale | BĐS Vietnam",
+    "buyDescription": "Browse properties currently for sale across Vietnam.",
+    "rentTitle": "Properties for rent | BĐS Vietnam",
+    "rentDescription": "Browse properties currently for rent — prices per month.",
+    "newsTitle": "Real estate news | BĐS Vietnam",
+    "newsDescription": "Latest real estate news, analysis, and market trends.",
+    "feedTitle": "Community feed | BĐS Vietnam",
+    "feedDescription": "Share and discuss real estate with the community",
+    "adminNewsTitle": "News administration | BĐS Vietnam",
+    "adminNewsCreateTitle": "Create new article | News administration",
+    "adminNewsEditTitle": "Edit article | News administration"
+  },
+  "buy": {
+    "heading": "Properties for sale",
+    "subheading": "Discover hundreds of properties for sale — townhouses, apartments, and villas — across Vietnam.",
+    "sectionHeading": "Properties for sale",
+    "showing": "Showing {shown} of {total} properties",
+    "sortPrefix": "Sort:"
+  },
+  "rent": {
+    "heading": "Properties for rent",
+    "subheading": "Find houses, apartments, and villas for long-term rent — prices shown per month.",
+    "sectionHeading": "Properties for rent",
+    "showing": "Showing {shown} of {total} properties — prices per month",
+    "sortPrefix": "Sort:"
+  },
+  "search": {
+    "backToHome": "Back to home",
+    "heading": "Search results",
+    "searchingFor": "Searching for: \"{query}\"",
+    "noResults": "No results found",
+    "showing": "Showing {from} - {to} of {total} results",
+    "clearFilters": "Clear filters and view all properties",
+    "filters": {
+      "keyword": "Keyword: {value}",
+      "city": "City: {value}",
+      "type": "Type: {value}",
+      "status": "Status: {value}",
+      "price": "Price: {min} - {max} million",
+      "priceUnlimited": "∞",
+      "bedrooms": "{count}+ bedrooms",
+      "sortPrefix": "Sort:"
+    }
+  },
+  "news": {
+    "heading": "Real estate news",
+    "subheading": "Market analysis, new policies and standout projects.",
+    "errorLoading": "Couldn't load news right now. Please try again later.",
+    "empty": "No articles yet.",
+    "total": "Total {count} articles",
+    "defaultAuthor": "BĐS Vietnam",
+    "noImage": "No image",
+    "detail": {
+      "back": "← Back to news",
+      "author": "Author: {name}"
+    }
+  },
+  "feed": {
+    "heading": "Community feed",
+    "subheading": "Share experiences, tips, and discussions about the real estate market",
+    "loginPrompt": {
+      "title": "Sign in to post",
+      "description": "You need to sign in to create posts and engage with the community",
+      "button": "Sign in"
+    },
+    "refreshing": "Loading new posts...",
+    "loadMoreError": "Couldn't load more posts. Please try again.",
+    "likeError": "Action failed. Please try again.",
+    "closeError": "Close"
+  },
+  "login": {
+    "heading": "Sign in",
+    "subheading": "Sign in to post property listings",
+    "registeredSuccess": "Registration successful! Please sign in.",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password",
+    "invalidCredentials": "Invalid email or password",
+    "generalError": "An error occurred. Please try again.",
+    "submitting": "Signing in...",
+    "submit": "Sign in",
+    "noAccount": "Don't have an account? ",
+    "signUpLink": "Sign up",
+    "backHome": "Back to home"
+  },
+  "register": {
+    "heading": "Create an account",
+    "subheading": "Create an account to post property listings",
+    "lastName": "Last name",
+    "firstName": "First name",
+    "lastNamePlaceholder": "Nguyễn",
+    "firstNamePlaceholder": "Văn A",
+    "email": "Email",
+    "phone": "Phone",
+    "phonePlaceholder": "0901234567",
+    "password": "Password",
+    "passwordPlaceholder": "At least 8 characters",
+    "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Re-enter password",
+    "passwordMismatch": "Passwords don't match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "generalError": "An error occurred. Please try again.",
+    "submit": "Sign up",
+    "submitting": "Signing up...",
+    "haveAccount": "Already have an account? ",
+    "signInLink": "Sign in"
+  },
+  "properties": {
+    "new": {
+      "heading": "Post a property listing",
+      "subheading": "Fill in the details of your property"
+    },
+    "editPage": {
+      "back": "Back to listing",
+      "heading": "Edit listing",
+      "subheading": "Update your property information"
+    },
+    "notFound": {
+      "title": "Property not found",
+      "message": "The property you're looking for doesn't exist or has been deleted.",
+      "back": "Back to home"
+    },
+    "detail": {
+      "back": "Back to listings",
+      "stats": {
+        "bedrooms": "Bedrooms",
+        "bathrooms": "Bathrooms",
+        "type": "Type"
+      },
+      "description": "Description",
+      "features": "Features",
+      "contact": {
+        "heading": "Contact",
+        "call": "Call",
+        "message": "Send message",
+        "infoHeading": "Additional information",
+        "id": "Listing ID:",
+        "city": "City:",
+        "postedAt": "Posted on:",
+        "footer": "Contact us for detailed advice and an in-person viewing"
+      }
+    },
+    "form": {
+      "title": "Title",
+      "titlePlaceholder": "e.g. 2-story villa in Hanoi",
+      "titleCounter": "{current}/255 characters (min 10)",
+      "description": "Description",
+      "descriptionPlaceholder": "Detailed description of the property...",
+      "descriptionCounter": "{current}/5000 characters (min 20)",
+      "type": "Type",
+      "status": "Status",
+      "price": "Price (VND)",
+      "priceHelp": "Price must be greater than 0 VND",
+      "address": "Address",
+      "addressPlaceholder": "123 Nguyen Hue",
+      "addressCounter": "{current}/255 characters",
+      "city": "City",
+      "selectCity": "Select city",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "roomRange": "0-50 rooms",
+      "area": "Area (m²)",
+      "areaRange": "1-100,000 m²",
+      "features": "Features",
+      "featuresList": {
+        "Bãi đậu xe": "Parking",
+        "Sân vườn": "Garden",
+        "Hồ bơi": "Swimming pool",
+        "Phòng gym": "Gym",
+        "An ninh 24/7": "24/7 security",
+        "Thang máy": "Elevator",
+        "Sân thượng": "Rooftop",
+        "Ban công": "Balcony",
+        "Phòng giặt": "Laundry room",
+        "Phòng làm việc": "Office"
+      },
+      "create": "Post listing",
+      "creating": "Posting...",
+      "update": "Update listing",
+      "updating": "Updating...",
+      "cancel": "Cancel",
+      "errors": {
+        "required": "Please fill in all required fields",
+        "titleLength": "Title must be between 10 and 255 characters",
+        "descriptionLength": "Description must be between 20 and 5000 characters",
+        "addressLength": "Address must not exceed 255 characters",
+        "bedroomsRange": "Bedrooms must be between 0 and 50",
+        "bathroomsRange": "Bathrooms must be between 0 and 50",
+        "areaRange": "Area must be between 1 and 100,000 m²",
+        "pricePositive": "Price must be greater than 0",
+        "uploadFailed": "Failed to upload images. Please try again.",
+        "general": "An error occurred. Please try again."
+      }
+    },
+    "card": {
+      "bedShort": "{count} bed",
+      "bathShort": "{count} bath"
+    },
+    "grid": {
+      "emptyTitle": "No properties found",
+      "emptyDescription": "Try adjusting your search filters"
+    },
+    "actions": {
+      "edit": "Edit listing",
+      "delete": "Delete listing"
+    },
+    "deleteDialog": {
+      "title": "Confirm delete listing",
+      "message": "Are you sure you want to delete the listing",
+      "warning": "This action cannot be undone. All associated images will also be deleted.",
+      "cancel": "Cancel",
+      "confirm": "Delete listing",
+      "deleting": "Deleting...",
+      "errorGeneric": "Couldn't delete the listing. Please try again."
+    },
+    "priceHistory": {
+      "heading": "Price history",
+      "errorLoading": "Failed to load price history"
+    }
+  },
+  "admin": {
+    "news": {
+      "list": {
+        "heading": "News administration",
+        "summary": "Total {total} articles — Page {page}/{totalPages}",
+        "newButton": "+ New article",
+        "table": {
+          "id": "ID",
+          "title": "Title",
+          "category": "Category",
+          "author": "Author",
+          "postedAt": "Posted at",
+          "actions": "Actions"
+        },
+        "view": "View",
+        "edit": "Edit",
+        "delete": "Delete",
+        "deleting": "Deleting…",
+        "empty": "No articles.",
+        "deleteConfirm": "Delete article \"{title}\"?",
+        "deleteError": "Delete failed",
+        "emptyDate": "—"
+      },
+      "create": {
+        "back": "← Back to list",
+        "heading": "Create a new article"
+      },
+      "edit": {
+        "back": "← Back to list",
+        "heading": "Edit: {title}"
+      },
+      "form": {
+        "title": "Title *",
+        "summary": "Summary *",
+        "summaryCounter": "{current}/500",
+        "content": "Content *",
+        "author": "Author",
+        "category": "Category",
+        "imageUrl": "Cover image URL",
+        "publishedAt": "Published at",
+        "publishedAtHelp": "Leave empty to use the current time (when creating).",
+        "create": "Create article",
+        "saveChanges": "Save changes",
+        "submitting": "Saving…",
+        "cancel": "Cancel",
+        "errorGeneric": "Save failed"
+      }
+    }
+  },
+  "components": {
+    "searchBar": {
+      "queryPlaceholder": "Search by name, address...",
+      "sortPlaceholder": "Sort",
+      "showFilters": "Show filters",
+      "hideFilters": "Hide filters",
+      "submit": "Search",
+      "city": "City",
+      "type": "Type",
+      "status": "Status",
+      "minPrice": "Min price (million)",
+      "minPricePlaceholder": "0",
+      "maxPrice": "Max price (million)",
+      "maxPricePlaceholder": "No limit",
+      "bedrooms": "Min bedrooms"
+    },
+    "pagination": {
+      "previous": "← Previous",
+      "next": "Next →",
+      "page": "Page {current} / {total}"
+    },
+    "imageUpload": {
+      "label": "Property images",
+      "counter": "{current} / {max} images",
+      "dismiss": "Dismiss",
+      "dropzonePrimary": "Click to upload",
+      "dropzoneSecondary": " or drag and drop",
+      "dropzoneHint": "PNG, JPG, WebP up to 10MB (max {remaining} more)",
+      "uploading": "Uploading...",
+      "newImagesHeading": "New images ({count})",
+      "clearAll": "Clear all",
+      "existingHeading": "Existing images ({count})",
+      "removeImage": "Remove image"
+    },
+    "imageGallery": {
+      "previous": "Previous image",
+      "next": "Next image",
+      "altImage": "{title} - Image {index}",
+      "altThumb": "{title} - Thumbnail {index}"
+    },
+    "postForm": {
+      "heading": "Create post",
+      "placeholder": "What are you thinking about the real estate market?",
+      "submit": "Post",
+      "submitting": "Posting...",
+      "cancel": "Cancel",
+      "loginRequired": "Please sign in to post",
+      "generalError": "An error occurred. Please try again."
+    },
+    "postCard": {
+      "anonymous": "Anonymous user",
+      "justNow": "Just now",
+      "minutesAgo": "{count} minutes ago",
+      "hoursAgo": "{count} hours ago",
+      "daysAgo": "{count} days ago"
+    },
+    "postFeed": {
+      "emptyTitle": "No posts yet",
+      "emptyDescription": "Be the first to share your thoughts!",
+      "loadingMore": "Loading more posts...",
+      "end": "You've reached the end"
+    },
+    "likeButton": {
+      "loginRequired": "Sign in to like",
+      "unlike": "Unlike",
+      "like": "Like"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Post } from '@/types';
 import PostCard from './PostCard';
 
@@ -19,10 +20,10 @@ export default function PostFeed({
   onLikeToggle,
   isAuthenticated,
 }: PostFeedProps) {
+  const t = useTranslations('components.postFeed');
   const [isLoading, setIsLoading] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  // Load more posts with loading state
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
 
@@ -34,7 +35,6 @@ export default function PostFeed({
     }
   }, [isLoading, hasMore, onLoadMore]);
 
-  // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -57,7 +57,6 @@ export default function PostFeed({
     };
   }, [loadMore, hasMore, isLoading]);
 
-  // Empty state
   if (posts.length === 0 && !isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-12 text-center">
@@ -76,10 +75,10 @@ export default function PostFeed({
           />
         </svg>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Chưa có bài viết nào
+          {t('emptyTitle')}
         </h3>
         <p className="text-sm text-gray-500">
-          Hãy là người đầu tiên chia sẻ ý kiến của bạn!
+          {t('emptyDescription')}
         </p>
       </div>
     );
@@ -96,24 +95,21 @@ export default function PostFeed({
         />
       ))}
 
-      {/* Loading indicator */}
       {isLoading && (
         <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="text-gray-600 mt-2">Đang tải thêm bài viết...</p>
+          <p className="text-gray-600 mt-2">{t('loadingMore')}</p>
         </div>
       )}
 
-      {/* Intersection observer target */}
       {hasMore && !isLoading && (
         <div ref={observerTarget} className="h-10" />
       )}
 
-      {/* End of feed message */}
       {!hasMore && posts.length > 0 && (
         <div className="text-center py-8">
           <p className="text-gray-500 text-sm">
-            Bạn đã xem hết tất cả bài viết
+            {t('end')}
           </p>
         </div>
       )}

@@ -4,10 +4,12 @@ import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,13 +31,13 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('Email hoặc mật khẩu không đúng');
+        setError(t('invalidCredentials'));
       } else {
         router.push(callbackUrl);
         router.refresh();
       }
     } catch (err) {
-      setError('Đã có lỗi xảy ra. Vui lòng thử lại.');
+      setError(t('generalError'));
     } finally {
       setLoading(false);
     }
@@ -46,17 +48,17 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Đăng nhập
+            {t('heading')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Đăng nhập để đăng tin bất động sản
+            {t('subheading')}
           </p>
         </div>
 
         {registered && (
           <div className="rounded-md bg-green-50 p-4">
             <p className="text-sm text-green-800">
-              Đăng ký thành công! Vui lòng đăng nhập.
+              {t('registeredSuccess')}
             </p>
           </div>
         )}
@@ -65,7 +67,7 @@ export default function LoginPage() {
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
-                Email
+                {t('emailPlaceholder')}
               </label>
               <input
                 id="email"
@@ -76,12 +78,12 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Email"
+                placeholder={t('emailPlaceholder')}
               />
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
-                Mật khẩu
+                {t('passwordPlaceholder')}
               </label>
               <input
                 id="password"
@@ -92,7 +94,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Mật khẩu"
+                placeholder={t('passwordPlaceholder')}
               />
             </div>
           </div>
@@ -109,18 +111,18 @@ export default function LoginPage() {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              {loading ? t('submitting') : t('submit')}
             </button>
           </div>
 
           <div className="text-center space-y-2">
             <div>
-              <span className="text-sm text-gray-600">Chưa có tài khoản? </span>
+              <span className="text-sm text-gray-600">{t('noAccount')}</span>
               <Link
                 href="/register"
                 className="text-sm text-primary-600 hover:text-primary-500 font-medium"
               >
-                Đăng ký
+                {t('signUpLink')}
               </Link>
             </div>
             <div>
@@ -128,7 +130,7 @@ export default function LoginPage() {
                 href="/"
                 className="text-sm text-primary-600 hover:text-primary-500"
               >
-                Quay lại trang chủ
+                {t('backHome')}
               </Link>
             </div>
           </div>

@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Property } from '@/types';
 import { formatPrice, formatArea, fixImageUrl } from '@/lib/utils';
 
@@ -8,19 +11,16 @@ interface PropertyCardProps {
 }
 
 export default function PropertyCard({ property }: PropertyCardProps) {
-  const statusText =
-    property.status === 'for-sale' ? 'Cần bán' : 'Cho thuê';
+  const t = useTranslations();
+
+  const statusKey = property.status === 'for-sale' ? 'forSale' : 'forRent';
+  const statusText = t(`common.propertyStatus.${statusKey}`);
   const statusColor =
     property.status === 'for-sale'
       ? 'bg-green-100 text-green-800'
       : 'bg-blue-100 text-blue-800';
 
-  const typeText = {
-    house: 'Nhà',
-    apartment: 'Căn hộ',
-    villa: 'Biệt thự',
-    townhouse: 'Nhà phố',
-  }[property.propertyType];
+  const typeText = t(`common.propertyType.${property.propertyType}`);
 
   return (
     <Link href={`/properties/${property.id}`}>
@@ -50,7 +50,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           <p className="text-2xl font-bold text-primary-600 mb-2">
             {formatPrice(property.price)}
             {property.status === 'for-rent' && (
-              <span className="text-sm font-normal text-gray-500">/tháng</span>
+              <span className="text-sm font-normal text-gray-500">{t('common.perMonth')}</span>
             )}
           </p>
 
@@ -92,7 +92,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
                   d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
                 />
               </svg>
-              <span>{property.bedrooms} PN</span>
+              <span>{t('properties.card.bedShort', { count: property.bedrooms })}</span>
             </div>
             <div className="flex items-center">
               <svg
@@ -108,7 +108,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
                   d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
                 />
               </svg>
-              <span>{property.bathrooms} WC</span>
+              <span>{t('properties.card.bathShort', { count: property.bathrooms })}</span>
             </div>
             <div className="flex items-center">
               <svg

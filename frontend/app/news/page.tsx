@@ -1,13 +1,18 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { newsApi } from '@/lib/api/newsApi';
 import Pagination from '@/components/Pagination';
 import { NewsArticleSummary } from '@/types/api';
+import { toIntlLocale } from '@/lib/i18n/intlLocale';
 
-export const metadata = {
-  title: 'Tin tức bất động sản | BĐS Vietnam',
-  description: 'Cập nhật tin tức, phân tích và xu hướng thị trường bất động sản mới nhất',
-};
+export async function generateMetadata() {
+  const t = await getTranslations('metadata');
+  return {
+    title: t('newsTitle'),
+    description: t('newsDescription'),
+  };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +25,10 @@ interface NewsPageProps {
 
 const PER_PAGE = 12;
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: string): string {
   if (!value) return '';
   try {
-    return new Date(value).toLocaleDateString('vi-VN', {
+    return new Date(value).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -33,7 +38,11 @@ function formatDate(value: string | null): string {
   }
 }
 
+const CATEGORY_KEYS = ['Thị trường', 'Phân tích', 'Chính sách', 'Dự án', 'Đầu tư', 'Phong thủy'];
+
 export default async function NewsPage({ searchParams }: NewsPageProps) {
+  const t = await getTranslations();
+  const locale = toIntlLocale(await getLocale());
   const currentPage = Math.max(1, Number(searchParams.page) || 1);
   const category = searchParams.category;
 
@@ -49,19 +58,17 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
     total = response.total;
   } catch (err) {
     console.error('Failed to load news:', err);
-    errorMessage = 'Không thể tải tin tức ngay lúc này. Vui lòng thử lại sau.';
+    errorMessage = t('news.errorLoading');
   }
-
-  const categories = ['Thị trường', 'Phân tích', 'Chính sách', 'Dự án', 'Đầu tư', 'Phong thủy'];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-          Tin tức bất động sản
+          {t('news.heading')}
         </h1>
         <p className="text-gray-600">
-          Phân tích thị trường, chính sách mới và các dự án nổi bật.
+          {t('news.subheading')}
         </p>
       </div>
 
@@ -74,9 +81,9 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
               : 'bg-white text-gray-700 border-gray-300 hover:border-primary-600'
           }`}
         >
-          Tất cả
+          {t('common.all')}
         </Link>
-        {categories.map((cat) => (
+        {CATEGORY_KEYS.map((cat) => (
           <Link
             key={cat}
             href={`/news?category=${encodeURIComponent(cat)}`}
@@ -86,7 +93,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
                 : 'bg-white text-gray-700 border-gray-300 hover:border-primary-600'
             }`}
           >
-            {cat}
+            {t(`common.newsCategories.${cat}` as any)}
           </Link>
         ))}
       </div>
@@ -96,11 +103,11 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
           {errorMessage}
         </div>
       ) : articles.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">Chưa có bài viết nào.</div>
+        <div className="text-center py-16 text-gray-500">{t('news.empty')}</div>
       ) : (
         <>
           <div className="mb-4 text-sm text-gray-600">
-            Tổng {total} bài viết
+            {t('news.total', { count: total })}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((article) => (
@@ -121,7 +128,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      No image
+                      {t('news.noImage')}
                     </div>
                   )}
                   {article.category && (
@@ -138,8 +145,8 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
                     {article.summary}
                   </p>
                   <div className="flex items-center justify-between text-xs text-gray-500 mt-auto">
-                    <span>{article.author ?? 'BĐS Vietnam'}</span>
-                    <span>{formatDate(article.publishedAt)}</span>
+                    <span>{article.author ?? t('news.defaultAuthor')}</span>
+                    <span>{formatDate(article.publishedAt, locale)}</span>
                   </div>
                 </div>
               </Link>

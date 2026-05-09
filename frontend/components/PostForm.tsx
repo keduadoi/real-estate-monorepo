@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { postApi } from '@/lib/api/postApi';
 
 interface PostFormProps {
@@ -12,6 +13,7 @@ const MAX_CHARACTERS = 5000;
 
 export default function PostForm({ onPostCreated }: PostFormProps) {
   const { data: session } = useSession();
+  const t = useTranslations('components.postForm');
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
 
     const accessToken = session?.accessToken as string | undefined;
     if (!accessToken) {
-      setError('Vui lòng đăng nhập để đăng bài viết');
+      setError(t('loginRequired'));
       return;
     }
 
@@ -48,13 +50,10 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
         }
       );
 
-      // Clear form on success
       setContent('');
-
-      // Notify parent component
       onPostCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+      setError(err instanceof Error ? err.message : t('generalError'));
     } finally {
       setIsLoading(false);
     }
@@ -68,16 +67,15 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Tạo bài viết
+        {t('heading')}
       </h2>
 
       <form onSubmit={handleSubmit}>
-        {/* Textarea */}
         <div className="mb-4">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Bạn đang nghĩ gì về thị trường bất động sản?"
+            placeholder={t('placeholder')}
             rows={4}
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none ${
               isOverLimit ? 'border-red-500' : 'border-gray-300'
@@ -85,7 +83,6 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
             disabled={isLoading}
           />
 
-          {/* Character Counter */}
           <div className="flex justify-end mt-2">
             <span
               className={`text-sm ${
@@ -101,21 +98,19 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-4 bg-red-50 text-red-800 p-4 rounded-md text-sm">
             {error}
           </div>
         )}
 
-        {/* Buttons */}
         <div className="flex gap-3">
           <button
             type="submit"
             disabled={!isValid || isLoading}
             className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
           >
-            {isLoading ? 'Đang đăng...' : 'Đăng'}
+            {isLoading ? t('submitting') : t('submit')}
           </button>
 
           {content && !isLoading && (
@@ -124,7 +119,7 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
               onClick={handleCancel}
               className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors duration-200"
             >
-              Hủy
+              {t('cancel')}
             </button>
           )}
         </div>

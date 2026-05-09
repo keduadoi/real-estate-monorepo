@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function Header() {
   const { data: session } = useSession();
@@ -11,6 +13,7 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations();
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -35,7 +38,7 @@ export default function Header() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
               <span className="text-2xl font-bold text-primary-600">
-                BĐS Vietnam
+                {t('brand.name')}
               </span>
             </Link>
           </div>
@@ -46,30 +49,30 @@ export default function Header() {
               href="/buy"
               className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/buy') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
-              Mua
+              {t('nav.buy')}
             </Link>
             <Link
               href="/rent"
               className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/rent') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
-              Thuê
+              {t('nav.rent')}
             </Link>
             <Link
               href="/feed"
               className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/feed') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
-              Bảng tin
+              {t('nav.feed')}
             </Link>
             <Link
               href="/news"
               className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/news') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
-              Tin tức
+              {t('nav.news')}
             </Link>
             <Link
               href="/search"
               className={`p-2 rounded-md ${isActive('/search') ? 'text-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
-              title="Tìm kiếm"
+              title={t('nav.search')}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -83,14 +86,14 @@ export default function Header() {
                     href="/admin/news"
                     className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/admin') ? 'text-amber-600 border-b-2 border-amber-600' : 'text-amber-700 hover:text-amber-800'}`}
                   >
-                    Quản trị
+                    {t('nav.admin')}
                   </Link>
                 )}
                 <Link
                   href="/properties/new"
                   className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
                 >
-                  Đăng tin
+                  {t('nav.postListing')}
                 </Link>
                 <div
                   className="relative"
@@ -121,7 +124,7 @@ export default function Header() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        <span>Đăng xuất</span>
+                        <span>{t('auth.signOut')}</span>
                       </button>
                     </div>
                   )}
@@ -133,16 +136,18 @@ export default function Header() {
                   href="/register"
                   className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Đăng ký
+                  {t('auth.signUp')}
                 </Link>
                 <Link
                   href="/login"
                   className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
                 >
-                  Đăng nhập
+                  {t('auth.signIn')}
                 </Link>
               </div>
             )}
+
+            <LanguageSwitcher />
           </div>
 
           {/* Mobile menu button */}
@@ -185,35 +190,35 @@ export default function Header() {
               className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/buy') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Mua
+              {t('nav.buy')}
             </Link>
             <Link
               href="/rent"
               className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/rent') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Thuê
+              {t('nav.rent')}
             </Link>
             <Link
               href="/feed"
               className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/feed') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Bảng tin
+              {t('nav.feed')}
             </Link>
             <Link
               href="/news"
               className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/news') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Tin tức
+              {t('nav.news')}
             </Link>
             <Link
               href="/search"
               className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/search') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Tìm kiếm
+              {t('nav.search')}
             </Link>
 
             {session ? (
@@ -224,7 +229,7 @@ export default function Header() {
                     className="block text-amber-700 hover:bg-amber-50 px-3 py-2 rounded-md text-base font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Quản trị
+                    {t('nav.admin')}
                   </Link>
                 )}
                 <Link
@@ -232,7 +237,7 @@ export default function Header() {
                   className="block text-primary-600 hover:bg-primary-50 px-3 py-2 rounded-md text-base font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Đăng tin
+                  {t('nav.postListing')}
                 </Link>
                 <div className="px-3 py-2 text-sm text-gray-700">
                   {session.user?.name}
@@ -244,7 +249,7 @@ export default function Header() {
                   }}
                   className="block w-full text-left text-gray-700 hover:text-primary-600 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
                 >
-                  Đăng xuất
+                  {t('auth.signOut')}
                 </button>
               </>
             ) : (
@@ -254,17 +259,21 @@ export default function Header() {
                   className="block text-gray-700 hover:text-primary-600 hover:bg-gray-50 px-3 py-2 rounded-md text-base font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Đăng ký
+                  {t('auth.signUp')}
                 </Link>
                 <Link
                   href="/login"
                   className="block text-primary-600 hover:bg-primary-50 px-3 py-2 rounded-md text-base font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Đăng nhập
+                  {t('auth.signIn')}
                 </Link>
               </>
             )}
+
+            <div className="px-3 py-2">
+              <LanguageSwitcher />
+            </div>
           </div>
         )}
       </nav>

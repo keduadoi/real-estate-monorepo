@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { PropertyType, PropertyStatus, Property } from '@/types';
 import ImageUpload from './ImageUpload';
 import { useImageUpload } from '@/hooks/useImageUpload';
@@ -15,6 +16,19 @@ interface PropertyFormProps {
   propertyId?: string;
 }
 
+const FEATURE_KEYS = [
+  'Bãi đậu xe',
+  'Sân vườn',
+  'Hồ bơi',
+  'Phòng gym',
+  'An ninh 24/7',
+  'Thang máy',
+  'Sân thượng',
+  'Ban công',
+  'Phòng giặt',
+  'Phòng làm việc',
+];
+
 export default function PropertyForm({
   mode = 'create',
   initialData,
@@ -22,6 +36,7 @@ export default function PropertyForm({
 }: PropertyFormProps) {
   const router = useRouter();
   const { data: session } = useSession();
+  const t = useTranslations();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,7 +57,6 @@ export default function PropertyForm({
     initialData?.features || []
   );
 
-  // For edit mode, track existing images separately
   const [existingImages, setExistingImages] = useState<string[]>(
     initialData?.images || []
   );
@@ -60,19 +74,6 @@ export default function PropertyForm({
     'Huế',
     'Biên Hòa',
     'Thủ Đức',
-  ];
-
-  const availableFeatures = [
-    'Bãi đậu xe',
-    'Sân vườn',
-    'Hồ bơi',
-    'Phòng gym',
-    'An ninh 24/7',
-    'Thang máy',
-    'Sân thượng',
-    'Ban công',
-    'Phòng giặt',
-    'Phòng làm việc',
   ];
 
   const handleFeatureToggle = (feature: string) => {
@@ -93,82 +94,74 @@ export default function PropertyForm({
     setLoading(true);
 
     try {
-      // Validate form
       if (!formData.title || !formData.description || !formData.price ||
           !formData.address || !formData.city || !formData.area) {
-        setError('Vui lòng điền đầy đủ thông tin bắt buộc');
+        setError(t('properties.form.errors.required'));
         setLoading(false);
         return;
       }
 
-      // Validate title length
       if (formData.title.length < 10 || formData.title.length > 255) {
-        setError('Tiêu đề phải có từ 10 đến 255 ký tự');
+        setError(t('properties.form.errors.titleLength'));
         setLoading(false);
         return;
       }
 
-      // Validate description length
       if (formData.description.length < 20 || formData.description.length > 5000) {
-        setError('Mô tả phải có từ 20 đến 5000 ký tự');
+        setError(t('properties.form.errors.descriptionLength'));
         setLoading(false);
         return;
       }
 
-      // Validate address length
       if (formData.address.length > 255) {
-        setError('Địa chỉ không được vượt quá 255 ký tự');
+        setError(t('properties.form.errors.addressLength'));
         setLoading(false);
         return;
       }
 
-      // Validate numeric ranges
       const bedrooms = Number(formData.bedrooms);
       const bathrooms = Number(formData.bathrooms);
       const area = Number(formData.area);
       const price = Number(formData.price);
 
       if (bedrooms < 0 || bedrooms > 50) {
-        setError('Số phòng ngủ phải từ 0 đến 50');
+        setError(t('properties.form.errors.bedroomsRange'));
         setLoading(false);
         return;
       }
 
       if (bathrooms < 0 || bathrooms > 50) {
-        setError('Số phòng tắm phải từ 0 đến 50');
+        setError(t('properties.form.errors.bathroomsRange'));
         setLoading(false);
         return;
       }
 
       if (area < 1 || area > 100000) {
-        setError('Diện tích phải từ 1 đến 100,000 m²');
+        setError(t('properties.form.errors.areaRange'));
         setLoading(false);
         return;
       }
 
       if (price <= 0) {
-        setError('Giá phải lớn hơn 0');
+        setError(t('properties.form.errors.pricePositive'));
         setLoading(false);
         return;
       }
 
-      // Upload new images if any
       let newImageUrls: string[] = [];
       if (imageUpload.images.length > 0) {
         try {
           newImageUrls = await imageUpload.uploadImages();
         } catch (uploadError) {
-          setError('Không thể tải lên hình ảnh. Vui lòng thử lại.');
+          setError(t('properties.form.errors.uploadFailed'));
           setLoading(false);
           return;
         }
       }
 
-      // Combine existing images with new uploads
       const allImages = [...existingImages, ...newImageUrls];
 
       if (mode === 'edit' && propertyId) {
-        // Update existing property
         await propertyApi.update(Number(propertyId), {
           title: formData.title,
           description: formData.description,
@@ -192,11 +185,9 @@ export default function PropertyForm({
           } : undefined,
         });
 
-        // Success - redirect to property detail page
         router.push(`/properties/${propertyId}`);
         router.refresh();
       } else {
-        // Create new property
         const response = await fetch('/api/properties', {
           method: 'POST',
           headers: {
@@ -212,17 +203,16 @@ export default function PropertyForm({
         const data = await response.json();
 
         if (!response.ok) {
-          setError(data.error || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+          setError(data.error || t('properties.form.errors.general'));
           setLoading(false);
           return;
         }
 
-        // Success - redirect to home page
         router.push('/');
         router.refresh();
       }
     } catch (err) {
-      setError('Đã có lỗi xảy ra. Vui lòng thử lại.');
+      setError(t('properties.form.errors.general'));
       setLoading(false);
     }
   };
@@ -237,7 +227,7 @@ export default function PropertyForm({
 
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Tiêu đề <span className="text-red-500">*</span>
+          {t('properties.form.title')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -248,16 +238,16 @@ export default function PropertyForm({
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          placeholder="VD: Villa 2 tầng tại Hà Nội"
+          placeholder={t('properties.form.titlePlaceholder')}
         />
         <p className="mt-1 text-sm text-gray-500">
-          {formData.title.length}/255 ký tự (tối thiểu 10 ký tự)
+          {t('properties.form.titleCounter', { current: formData.title.length })}
         </p>
       </div>
 
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-          Mô tả <span className="text-red-500">*</span>
+          {t('properties.form.description')} <span className="text-red-500">*</span>
         </label>
         <textarea
           id="description"
@@ -268,17 +258,17 @@ export default function PropertyForm({
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          placeholder="Mô tả chi tiết về bất động sản..."
+          placeholder={t('properties.form.descriptionPlaceholder')}
         />
         <p className="mt-1 text-sm text-gray-500">
-          {formData.description.length}/5000 ký tự (tối thiểu 20 ký tự)
+          {t('properties.form.descriptionCounter', { current: formData.description.length })}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label htmlFor="propertyType" className="block text-sm font-medium text-gray-700">
-            Loại hình <span className="text-red-500">*</span>
+            {t('properties.form.type')} <span className="text-red-500">*</span>
           </label>
           <select
             id="propertyType"
@@ -289,16 +279,16 @@ export default function PropertyForm({
             }
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="house">Nhà</option>
-            <option value="apartment">Căn hộ</option>
-            <option value="villa">Biệt thự</option>
-            <option value="townhouse">Nhà phố</option>
+            <option value="house">{t('common.propertyType.house')}</option>
+            <option value="apartment">{t('common.propertyType.apartment')}</option>
+            <option value="villa">{t('common.propertyType.villa')}</option>
+            <option value="townhouse">{t('common.propertyType.townhouse')}</option>
           </select>
         </div>
 
         <div>
           <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-            Trạng thái <span className="text-red-500">*</span>
+            {t('properties.form.status')} <span className="text-red-500">*</span>
           </label>
           <select
             id="status"
@@ -309,15 +299,15 @@ export default function PropertyForm({
             }
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="for-sale">Cần bán</option>
-            <option value="for-rent">Cho thuê</option>
+            <option value="for-sale">{t('common.propertyStatus.forSale')}</option>
+            <option value="for-rent">{t('common.propertyStatus.forRent')}</option>
           </select>
         </div>
       </div>
 
       <div>
         <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-          Giá (VND) <span className="text-red-500">*</span>
+          {t('properties.form.price')} <span className="text-red-500">*</span>
         </label>
         <input
           type="number"
@@ -330,13 +320,13 @@ export default function PropertyForm({
           placeholder="5000000000"
         />
         <p className="mt-1 text-sm text-gray-500">
-          Giá phải lớn hơn 0 VND
+          {t('properties.form.priceHelp')}
         </p>
       </div>
 
       <div>
         <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-          Địa chỉ <span className="text-red-500">*</span>
+          {t('properties.form.address')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -346,16 +336,16 @@ export default function PropertyForm({
           value={formData.address}
           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          placeholder="123 Nguyễn Huệ"
+          placeholder={t('properties.form.addressPlaceholder')}
         />
         <p className="mt-1 text-sm text-gray-500">
-          {formData.address.length}/255 ký tự
+          {t('properties.form.addressCounter', { current: formData.address.length })}
         </p>
       </div>
 
       <div>
         <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-          Thành phố <span className="text-red-500">*</span>
+          {t('properties.form.city')} <span className="text-red-500">*</span>
         </label>
         <select
           id="city"
@@ -364,7 +354,7 @@ export default function PropertyForm({
           onChange={(e) => setFormData({ ...formData, city: e.target.value })}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
         >
-          <option value="">Chọn thành phố</option>
+          <option value="">{t('properties.form.selectCity')}</option>
           {cities.map((city) => (
             <option key={city} value={city}>
               {city}
@@ -376,7 +366,7 @@ export default function PropertyForm({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <label htmlFor="bedrooms" className="block text-sm font-medium text-gray-700">
-            Số phòng ngủ <span className="text-red-500">*</span>
+            {t('properties.form.bedrooms')} <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
@@ -389,13 +379,13 @@ export default function PropertyForm({
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
           <p className="mt-1 text-sm text-gray-500">
-            0-50 phòng
+            {t('properties.form.roomRange')}
           </p>
         </div>
 
         <div>
           <label htmlFor="bathrooms" className="block text-sm font-medium text-gray-700">
-            Số phòng tắm <span className="text-red-500">*</span>
+            {t('properties.form.bathrooms')} <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
@@ -408,13 +398,13 @@ export default function PropertyForm({
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
           <p className="mt-1 text-sm text-gray-500">
-            0-50 phòng
+            {t('properties.form.roomRange')}
           </p>
         </div>
 
         <div>
           <label htmlFor="area" className="block text-sm font-medium text-gray-700">
-            Diện tích (m²) <span className="text-red-500">*</span>
+            {t('properties.form.area')} <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
@@ -427,17 +417,17 @@ export default function PropertyForm({
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
           <p className="mt-1 text-sm text-gray-500">
-            1-100,000 m²
+            {t('properties.form.areaRange')}
           </p>
         </div>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tiện ích
+          {t('properties.form.features')}
         </label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {availableFeatures.map((feature) => (
+          {FEATURE_KEYS.map((feature) => (
             <label key={feature} className="flex items-center">
               <input
                 type="checkbox"
@@ -445,7 +435,9 @@ export default function PropertyForm({
                 onChange={() => handleFeatureToggle(feature)}
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
               />
-              <span className="ml-2 text-sm text-gray-700">{feature}</span>
+              <span className="ml-2 text-sm text-gray-700">
+                {t(`properties.form.featuresList.${feature}` as any)}
+              </span>
             </label>
           ))}
         </div>
@@ -465,18 +457,18 @@ export default function PropertyForm({
         >
           {loading
             ? mode === 'edit'
-              ? 'Đang cập nhật...'
-              : 'Đang đăng tin...'
+              ? t('properties.form.updating')
+              : t('properties.form.creating')
             : mode === 'edit'
-            ? 'Cập nhật tin'
-            : 'Đăng tin'}
+            ? t('properties.form.update')
+            : t('properties.form.create')}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
           className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
-          Hủy
+          {t('properties.form.cancel')}
         </button>
       </div>
     </form>

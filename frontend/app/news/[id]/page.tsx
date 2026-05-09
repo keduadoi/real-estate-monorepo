@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { newsApi } from '@/lib/api/newsApi';
+import { toIntlLocale } from '@/lib/i18n/intlLocale';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +11,10 @@ interface NewsDetailProps {
   params: { id: string };
 }
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: string): string {
   if (!value) return '';
   try {
-    return new Date(value).toLocaleDateString('vi-VN', {
+    return new Date(value).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -25,6 +27,9 @@ function formatDate(value: string | null): string {
 }
 
 export default async function NewsDetailPage({ params }: NewsDetailProps) {
+  const t = await getTranslations();
+  const locale = toIntlLocale(await getLocale());
+
   const id = Number(params.id);
   if (!Number.isFinite(id) || id <= 0) {
     notFound();
@@ -45,7 +50,7 @@ export default async function NewsDetailPage({ params }: NewsDetailProps) {
           href="/news"
           className="text-sm text-primary-600 hover:underline inline-flex items-center"
         >
-          ← Quay lại danh sách tin tức
+          {t('news.detail.back')}
         </Link>
       </div>
 
@@ -60,9 +65,9 @@ export default async function NewsDetailPage({ params }: NewsDetailProps) {
       </h1>
 
       <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
-        <span>Tác giả: {article.author ?? 'BĐS Vietnam'}</span>
+        <span>{t('news.detail.author', { name: article.author ?? t('news.defaultAuthor') })}</span>
         <span>•</span>
-        <span>{formatDate(article.publishedAt)}</span>
+        <span>{formatDate(article.publishedAt, locale)}</span>
       </div>
 
       {article.imageUrl && (

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { newsApi } from '@/lib/api/newsApi';
 import { NewsArticleResponse } from '@/types/api';
 
@@ -16,7 +17,7 @@ interface Props {
   accessToken?: string;
 }
 
-const CATEGORY_OPTIONS = [
+const CATEGORY_KEYS = [
   'Thị trường',
   'Phân tích',
   'Chính sách',
@@ -38,13 +39,14 @@ function toLocalInput(value?: string | null): string {
 
 export default function NewsArticleForm({ initial, currentUser, accessToken }: Props) {
   const router = useRouter();
+  const t = useTranslations();
   const isEdit = !!initial;
 
   const [title, setTitle] = useState(initial?.title ?? '');
   const [summary, setSummary] = useState(initial?.summary ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [author, setAuthor] = useState(initial?.author ?? '');
-  const [category, setCategory] = useState(initial?.category ?? CATEGORY_OPTIONS[0]);
+  const [category, setCategory] = useState(initial?.category ?? CATEGORY_KEYS[0]);
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? '');
   const [publishedAt, setPublishedAt] = useState(toLocalInput(initial?.publishedAt));
   const [submitting, setSubmitting] = useState(false);
@@ -74,7 +76,7 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
       router.refresh();
       return saved;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lưu không thành công');
+      setError(e instanceof Error ? e.message : t('admin.news.form.errorGeneric'));
     } finally {
       setSubmitting(false);
     }
@@ -89,7 +91,9 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề *</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('admin.news.form.title')}
+        </label>
         <input
           type="text"
           required
@@ -101,7 +105,9 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tóm tắt *</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('admin.news.form.summary')}
+        </label>
         <textarea
           required
           maxLength={500}
@@ -110,11 +116,15 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
           onChange={(e) => setSummary(e.target.value)}
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
-        <div className="text-xs text-gray-500 mt-1">{summary.length}/500</div>
+        <div className="text-xs text-gray-500 mt-1">
+          {t('admin.news.form.summaryCounter', { current: summary.length })}
+        </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung *</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('admin.news.form.content')}
+        </label>
         <textarea
           required
           rows={10}
@@ -126,7 +136,9 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tác giả</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('admin.news.form.author')}
+          </label>
           <input
             type="text"
             maxLength={100}
@@ -137,15 +149,17 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('admin.news.form.category')}
+          </label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            {CATEGORY_OPTIONS.map((c) => (
+            {CATEGORY_KEYS.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {t(`common.newsCategories.${c}` as any)}
               </option>
             ))}
           </select>
@@ -153,7 +167,9 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">URL ảnh đại diện</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('admin.news.form.imageUrl')}
+        </label>
         <input
           type="url"
           maxLength={1000}
@@ -165,14 +181,18 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Thời điểm đăng</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('admin.news.form.publishedAt')}
+        </label>
         <input
           type="datetime-local"
           value={publishedAt}
           onChange={(e) => setPublishedAt(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
-        <p className="text-xs text-gray-500 mt-1">Bỏ trống để dùng thời điểm hiện tại (khi tạo mới).</p>
+        <p className="text-xs text-gray-500 mt-1">
+          {t('admin.news.form.publishedAtHelp')}
+        </p>
       </div>
 
       <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
@@ -181,14 +201,18 @@ export default function NewsArticleForm({ initial, currentUser, accessToken }: P
           disabled={submitting}
           className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-md text-sm font-medium disabled:opacity-50"
         >
-          {submitting ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Tạo bài viết'}
+          {submitting
+            ? t('admin.news.form.submitting')
+            : isEdit
+            ? t('admin.news.form.saveChanges')
+            : t('admin.news.form.create')}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/news')}
           className="px-5 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          Hủy
+          {t('admin.news.form.cancel')}
         </button>
       </div>
     </form>

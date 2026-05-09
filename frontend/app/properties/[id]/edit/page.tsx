@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
+import { getTranslations } from 'next-intl/server';
 import { authOptions } from '@/lib/auth';
 import PropertyForm from '@/components/PropertyForm';
 import { propertyApi } from '@/lib/api/propertyApi';
@@ -14,6 +15,7 @@ interface EditPropertyPageProps {
 
 export default async function EditPropertyPage({ params }: EditPropertyPageProps) {
   const session = await getServerSession(authOptions);
+  const t = await getTranslations('properties.editPage');
 
   if (!session) {
     redirect(`/login?callbackUrl=/properties/${params.id}/edit`);
@@ -28,14 +30,12 @@ export default async function EditPropertyPage({ params }: EditPropertyPageProps
     notFound();
   }
 
-  // Check if user is the owner
   if (property.userId !== session.user?.id) {
     redirect(`/properties/${params.id}`);
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb */}
       <div className="mb-6">
         <Link
           href={`/properties/${params.id}`}
@@ -54,16 +54,16 @@ export default async function EditPropertyPage({ params }: EditPropertyPageProps
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Quay lại chi tiết
+          {t('back')}
         </Link>
       </div>
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Chỉnh sửa tin đăng
+          {t('heading')}
         </h1>
         <p className="text-gray-600">
-          Cập nhật thông tin bất động sản của bạn
+          {t('subheading')}
         </p>
       </div>
 

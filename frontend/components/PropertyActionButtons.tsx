@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 
 interface PropertyActionButtonsProps {
@@ -17,9 +18,9 @@ export default function PropertyActionButtons({
   propertyTitle,
 }: PropertyActionButtonsProps) {
   const { data: session } = useSession();
+  const t = useTranslations('properties.actions');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Only show buttons if user is logged in and is the owner
   const isOwner = session?.user?.id === propertyUserId;
 
   if (!isOwner) {
@@ -46,7 +47,7 @@ export default function PropertyActionButtons({
               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
             />
           </svg>
-          Sửa tin
+          {t('edit')}
         </Link>
         <button
           onClick={() => setShowDeleteDialog(true)}
@@ -65,7 +66,7 @@ export default function PropertyActionButtons({
               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
             />
           </svg>
-          Xóa tin
+          {t('delete')}
         </button>
       </div>
 

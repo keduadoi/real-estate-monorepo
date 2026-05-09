@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { fixImageUrl } from '@/lib/utils';
 
 interface ImageGalleryProps {
@@ -10,6 +11,7 @@ interface ImageGalleryProps {
 }
 
 export default function ImageGallery({ images, title }: ImageGalleryProps) {
+  const t = useTranslations('components.imageGallery');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const goToPrevious = () => {
@@ -22,22 +24,20 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
 
   return (
     <div className="space-y-4">
-      {/* Main Image */}
       <div className="relative w-full h-96 md:h-[500px] bg-gray-200 rounded-lg overflow-hidden group">
         <Image
           src={fixImageUrl(images[selectedIndex])}
-          alt={`${title} - Image ${selectedIndex + 1}`}
+          alt={t('altImage', { title, index: selectedIndex + 1 })}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
           priority
         />
 
-        {/* Navigation Arrows */}
         <button
           onClick={goToPrevious}
           className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="Previous image"
+          aria-label={t('previous')}
         >
           <svg
             className="w-6 h-6"
@@ -57,7 +57,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
         <button
           onClick={goToNext}
           className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="Next image"
+          aria-label={t('next')}
         >
           <svg
             className="w-6 h-6"
@@ -74,13 +74,11 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
           </svg>
         </button>
 
-        {/* Image Counter */}
         <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
           {selectedIndex + 1} / {images.length}
         </div>
       </div>
 
-      {/* Thumbnail Strip */}
       <div className="grid grid-cols-5 gap-2">
         {images.map((image, index) => (
           <button
@@ -94,7 +92,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
           >
             <Image
               src={fixImageUrl(image)}
-              alt={`${title} - Thumbnail ${index + 1}`}
+              alt={t('altThumb', { title, index: index + 1 })}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 20vw, 10vw"

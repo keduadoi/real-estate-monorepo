@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import Image from 'next/image';
 
@@ -17,6 +18,7 @@ export default function ImageUpload({
   existingImages = [],
   onRemoveExisting,
 }: ImageUploadProps) {
+  const t = useTranslations('components.imageUpload');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     images,
@@ -60,10 +62,10 @@ export default function ImageUpload({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="block text-sm font-medium text-gray-700">
-          Hình ảnh bất động sản
+          {t('label')}
         </label>
         <span className="text-sm text-gray-500">
-          {totalImages} / {MAX_IMAGES} images
+          {t('counter', { current: totalImages, max: MAX_IMAGES })}
         </span>
       </div>
 
@@ -86,7 +88,7 @@ export default function ImageUpload({
               onClick={resetError}
               className="text-xs text-red-600 hover:text-red-800 mt-1"
             >
-              Dismiss
+              {t('dismiss')}
             </button>
           </div>
         </div>
@@ -121,10 +123,10 @@ export default function ImageUpload({
             />
           </svg>
           <p className="mt-2 text-sm text-gray-600">
-            <span className="font-semibold">Click to upload</span> or drag and drop
+            <span className="font-semibold">{t('dropzonePrimary')}</span>{t('dropzoneSecondary')}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            PNG, JPG, WebP up to 10MB (max {MAX_IMAGES - totalImages} more)
+            {t('dropzoneHint', { remaining: MAX_IMAGES - totalImages })}
           </p>
         </div>
       )}
@@ -132,7 +134,7 @@ export default function ImageUpload({
       {uploading && (
         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-blue-900">Uploading...</span>
+            <span className="text-sm font-medium text-blue-900">{t('uploading')}</span>
             <span className="text-sm text-blue-700">{progress}%</span>
           </div>
           <div className="w-full bg-blue-200 rounded-full h-2">
@@ -148,14 +150,14 @@ export default function ImageUpload({
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-gray-700">
-              Hình ảnh mới ({images.length})
+              {t('newImagesHeading', { count: images.length })}
             </h3>
             {!uploading && (
               <button
                 onClick={clearAll}
                 className="text-xs text-red-600 hover:text-red-800"
               >
-                Clear All
+                {t('clearAll')}
               </button>
             )}
           </div>
@@ -173,7 +175,7 @@ export default function ImageUpload({
                   onClick={() => removeFile(image.id)}
                   disabled={uploading}
                   className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                  aria-label="Remove image"
+                  aria-label={t('removeImage')}
                 >
                   <svg
                     className="w-4 h-4"
@@ -198,7 +200,7 @@ export default function ImageUpload({
       {existingImages.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-3">
-            Hình ảnh hiện có ({existingImages.length})
+            {t('existingHeading', { count: existingImages.length })}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {existingImages.map((url, index) => (
@@ -219,7 +221,7 @@ export default function ImageUpload({
                     type="button"
                     onClick={() => onRemoveExisting(url)}
                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Remove image"
+                    aria-label={t('removeImage')}
                   >
                     <svg
                       className="w-4 h-4"

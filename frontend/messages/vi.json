@@ -1,0 +1,410 @@
+{
+  "brand": {
+    "name": "BĐS Vietnam",
+    "tagline": "Nền tảng mua bán & cho thuê bất động sản hàng đầu"
+  },
+  "nav": {
+    "buy": "Mua",
+    "rent": "Thuê",
+    "feed": "Bảng tin",
+    "news": "Tin tức",
+    "search": "Tìm kiếm",
+    "admin": "Quản trị",
+    "postListing": "Đăng tin"
+  },
+  "auth": {
+    "signIn": "Đăng nhập",
+    "signUp": "Đăng ký",
+    "signOut": "Đăng xuất"
+  },
+  "language": {
+    "label": "Ngôn ngữ",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "footer": {
+    "copyright": "© {year} BĐS Vietnam. Đã đăng ký bản quyền."
+  },
+  "common": {
+    "all": "Tất cả",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "view": "Xem",
+    "back": "Quay lại",
+    "backToHome": "Quay lại trang chủ",
+    "loading": "Đang tải...",
+    "saving": "Đang lưu…",
+    "perMonth": "/tháng",
+    "page": "Trang {current} / {total}",
+    "previous": "← Trước",
+    "next": "Tiếp →",
+    "close": "Đóng",
+    "noImage": "Không có ảnh",
+    "sort": {
+      "label": "Sắp xếp",
+      "newest": "Mới nhất",
+      "oldest": "Cũ nhất",
+      "priceLow": "Giá thấp - cao",
+      "priceHigh": "Giá cao - thấp"
+    },
+    "propertyType": {
+      "house": "Nhà",
+      "apartment": "Căn hộ",
+      "villa": "Biệt thự",
+      "townhouse": "Nhà phố"
+    },
+    "propertyStatus": {
+      "forSale": "Cần bán",
+      "forRent": "Cho thuê"
+    },
+    "newsCategories": {
+      "Thị trường": "Thị trường",
+      "Phân tích": "Phân tích",
+      "Chính sách": "Chính sách",
+      "Dự án": "Dự án",
+      "Đầu tư": "Đầu tư",
+      "Phong thủy": "Phong thủy"
+    }
+  },
+  "metadata": {
+    "rootTitle": "BĐS Vietnam - Mua bán & Cho thuê Bất động sản",
+    "rootDescription": "Nền tảng mua bán và cho thuê bất động sản hàng đầu Việt Nam. Tìm kiếm hàng trăm bất động sản từ nhà phố, căn hộ đến biệt thự.",
+    "buyTitle": "Nhà đất bán | BĐS Vietnam",
+    "buyDescription": "Danh sách bất động sản đang rao bán trên toàn quốc.",
+    "rentTitle": "Nhà đất cho thuê | BĐS Vietnam",
+    "rentDescription": "Danh sách bất động sản đang cho thuê — giá tính theo tháng.",
+    "newsTitle": "Tin tức bất động sản | BĐS Vietnam",
+    "newsDescription": "Cập nhật tin tức, phân tích và xu hướng thị trường bất động sản mới nhất",
+    "feedTitle": "Bảng tin cộng đồng | BĐS Vietnam",
+    "feedDescription": "Chia sẻ và thảo luận về bất động sản cùng cộng đồng",
+    "adminNewsTitle": "Quản trị tin tức | BĐS Vietnam",
+    "adminNewsCreateTitle": "Tạo bài viết mới | Quản trị tin tức",
+    "adminNewsEditTitle": "Chỉnh sửa bài viết | Quản trị tin tức"
+  },
+  "buy": {
+    "heading": "Nhà đất bán",
+    "subheading": "Khám phá hàng trăm bất động sản đang rao bán — nhà phố, căn hộ, biệt thự — trên khắp Việt Nam.",
+    "sectionHeading": "Bất động sản đang bán",
+    "showing": "Hiển thị {shown} trong tổng số {total} bất động sản",
+    "sortPrefix": "Sắp xếp:"
+  },
+  "rent": {
+    "heading": "Nhà đất cho thuê",
+    "subheading": "Tìm nhà thuê, căn hộ, biệt thự cho thuê dài hạn — giá hiển thị tính theo tháng.",
+    "sectionHeading": "Bất động sản cho thuê",
+    "showing": "Hiển thị {shown} trong tổng số {total} bất động sản — giá theo tháng",
+    "sortPrefix": "Sắp xếp:"
+  },
+  "search": {
+    "backToHome": "Quay lại trang chủ",
+    "heading": "Kết quả tìm kiếm",
+    "searchingFor": "Tìm kiếm cho: \"{query}\"",
+    "noResults": "Không tìm thấy kết quả",
+    "showing": "Hiển thị {from} - {to} trong tổng số {total} kết quả",
+    "clearFilters": "Xóa bộ lọc và xem tất cả bất động sản",
+    "filters": {
+      "keyword": "Từ khóa: {value}",
+      "city": "Thành phố: {value}",
+      "type": "Loại: {value}",
+      "status": "Trạng thái: {value}",
+      "price": "Giá: {min} - {max} triệu",
+      "priceUnlimited": "∞",
+      "bedrooms": "{count}+ phòng ngủ",
+      "sortPrefix": "Sắp xếp:"
+    }
+  },
+  "news": {
+    "heading": "Tin tức bất động sản",
+    "subheading": "Phân tích thị trường, chính sách mới và các dự án nổi bật.",
+    "errorLoading": "Không thể tải tin tức ngay lúc này. Vui lòng thử lại sau.",
+    "empty": "Chưa có bài viết nào.",
+    "total": "Tổng {count} bài viết",
+    "defaultAuthor": "BĐS Vietnam",
+    "noImage": "Không có ảnh",
+    "detail": {
+      "back": "← Quay lại danh sách tin tức",
+      "author": "Tác giả: {name}"
+    }
+  },
+  "feed": {
+    "heading": "Bảng tin cộng đồng",
+    "subheading": "Chia sẻ kinh nghiệm, thông tin và thảo luận về thị trường bất động sản",
+    "loginPrompt": {
+      "title": "Đăng nhập để đăng bài viết",
+      "description": "Bạn cần đăng nhập để có thể tạo bài viết và tương tác với cộng đồng",
+      "button": "Đăng nhập"
+    },
+    "refreshing": "Đang tải bài viết mới...",
+    "loadMoreError": "Không thể tải thêm bài viết. Vui lòng thử lại.",
+    "likeError": "Không thể thực hiện thao tác. Vui lòng thử lại.",
+    "closeError": "Đóng"
+  },
+  "login": {
+    "heading": "Đăng nhập",
+    "subheading": "Đăng nhập để đăng tin bất động sản",
+    "registeredSuccess": "Đăng ký thành công! Vui lòng đăng nhập.",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Mật khẩu",
+    "invalidCredentials": "Email hoặc mật khẩu không đúng",
+    "generalError": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    "submitting": "Đang đăng nhập...",
+    "submit": "Đăng nhập",
+    "noAccount": "Chưa có tài khoản? ",
+    "signUpLink": "Đăng ký",
+    "backHome": "Quay lại trang chủ"
+  },
+  "register": {
+    "heading": "Đăng ký tài khoản",
+    "subheading": "Tạo tài khoản để đăng tin bất động sản",
+    "lastName": "Họ",
+    "firstName": "Tên",
+    "lastNamePlaceholder": "Nguyễn",
+    "firstNamePlaceholder": "Văn A",
+    "email": "Email",
+    "phone": "Số điện thoại",
+    "phonePlaceholder": "0901234567",
+    "password": "Mật khẩu",
+    "passwordPlaceholder": "Ít nhất 8 ký tự",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "confirmPasswordPlaceholder": "Nhập lại mật khẩu",
+    "passwordMismatch": "Mật khẩu xác nhận không khớp",
+    "passwordTooShort": "Mật khẩu phải có ít nhất 8 ký tự",
+    "generalError": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    "submit": "Đăng ký",
+    "submitting": "Đang đăng ký...",
+    "haveAccount": "Đã có tài khoản? ",
+    "signInLink": "Đăng nhập"
+  },
+  "properties": {
+    "new": {
+      "heading": "Đăng tin bất động sản",
+      "subheading": "Điền thông tin chi tiết về bất động sản của bạn"
+    },
+    "editPage": {
+      "back": "Quay lại chi tiết",
+      "heading": "Chỉnh sửa tin đăng",
+      "subheading": "Cập nhật thông tin bất động sản của bạn"
+    },
+    "notFound": {
+      "title": "Không tìm thấy bất động sản",
+      "message": "Bất động sản bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.",
+      "back": "Quay về trang chủ"
+    },
+    "detail": {
+      "back": "Quay lại danh sách",
+      "stats": {
+        "bedrooms": "Phòng ngủ",
+        "bathrooms": "Phòng tắm",
+        "type": "Loại hình"
+      },
+      "description": "Mô tả",
+      "features": "Tiện ích",
+      "contact": {
+        "heading": "Liên hệ",
+        "call": "Gọi điện thoại",
+        "message": "Gửi tin nhắn",
+        "infoHeading": "Thông tin bổ sung",
+        "id": "Mã tin:",
+        "city": "Thành phố:",
+        "postedAt": "Ngày đăng:",
+        "footer": "Liên hệ để được tư vấn chi tiết và xem trực tiếp bất động sản"
+      }
+    },
+    "form": {
+      "title": "Tiêu đề",
+      "titlePlaceholder": "VD: Villa 2 tầng tại Hà Nội",
+      "titleCounter": "{current}/255 ký tự (tối thiểu 10 ký tự)",
+      "description": "Mô tả",
+      "descriptionPlaceholder": "Mô tả chi tiết về bất động sản...",
+      "descriptionCounter": "{current}/5000 ký tự (tối thiểu 20 ký tự)",
+      "type": "Loại hình",
+      "status": "Trạng thái",
+      "price": "Giá (VND)",
+      "priceHelp": "Giá phải lớn hơn 0 VND",
+      "address": "Địa chỉ",
+      "addressPlaceholder": "123 Nguyễn Huệ",
+      "addressCounter": "{current}/255 ký tự",
+      "city": "Thành phố",
+      "selectCity": "Chọn thành phố",
+      "bedrooms": "Số phòng ngủ",
+      "bathrooms": "Số phòng tắm",
+      "roomRange": "0-50 phòng",
+      "area": "Diện tích (m²)",
+      "areaRange": "1-100,000 m²",
+      "features": "Tiện ích",
+      "featuresList": {
+        "Bãi đậu xe": "Bãi đậu xe",
+        "Sân vườn": "Sân vườn",
+        "Hồ bơi": "Hồ bơi",
+        "Phòng gym": "Phòng gym",
+        "An ninh 24/7": "An ninh 24/7",
+        "Thang máy": "Thang máy",
+        "Sân thượng": "Sân thượng",
+        "Ban công": "Ban công",
+        "Phòng giặt": "Phòng giặt",
+        "Phòng làm việc": "Phòng làm việc"
+      },
+      "create": "Đăng tin",
+      "creating": "Đang đăng tin...",
+      "update": "Cập nhật tin",
+      "updating": "Đang cập nhật...",
+      "cancel": "Hủy",
+      "errors": {
+        "required": "Vui lòng điền đầy đủ thông tin bắt buộc",
+        "titleLength": "Tiêu đề phải có từ 10 đến 255 ký tự",
+        "descriptionLength": "Mô tả phải có từ 20 đến 5000 ký tự",
+        "addressLength": "Địa chỉ không được vượt quá 255 ký tự",
+        "bedroomsRange": "Số phòng ngủ phải từ 0 đến 50",
+        "bathroomsRange": "Số phòng tắm phải từ 0 đến 50",
+        "areaRange": "Diện tích phải từ 1 đến 100,000 m²",
+        "pricePositive": "Giá phải lớn hơn 0",
+        "uploadFailed": "Không thể tải lên hình ảnh. Vui lòng thử lại.",
+        "general": "Đã có lỗi xảy ra. Vui lòng thử lại."
+      }
+    },
+    "card": {
+      "bedShort": "{count} PN",
+      "bathShort": "{count} WC"
+    },
+    "grid": {
+      "emptyTitle": "Không tìm thấy bất động sản",
+      "emptyDescription": "Thử thay đổi bộ lọc tìm kiếm của bạn"
+    },
+    "actions": {
+      "edit": "Sửa tin",
+      "delete": "Xóa tin"
+    },
+    "deleteDialog": {
+      "title": "Xác nhận xóa tin đăng",
+      "message": "Bạn có chắc chắn muốn xóa tin đăng",
+      "warning": "Hành động này không thể hoàn tác. Tất cả hình ảnh liên quan cũng sẽ bị xóa.",
+      "cancel": "Hủy",
+      "confirm": "Xóa tin đăng",
+      "deleting": "Đang xóa...",
+      "errorGeneric": "Không thể xóa tin đăng. Vui lòng thử lại."
+    },
+    "priceHistory": {
+      "heading": "Lịch sử giá",
+      "errorLoading": "Không thể tải lịch sử giá"
+    }
+  },
+  "admin": {
+    "news": {
+      "list": {
+        "heading": "Quản trị tin tức",
+        "summary": "Tổng {total} bài viết — Trang {page}/{totalPages}",
+        "newButton": "+ Tạo bài mới",
+        "table": {
+          "id": "ID",
+          "title": "Tiêu đề",
+          "category": "Danh mục",
+          "author": "Tác giả",
+          "postedAt": "Đăng lúc",
+          "actions": "Hành động"
+        },
+        "view": "Xem",
+        "edit": "Sửa",
+        "delete": "Xóa",
+        "deleting": "Đang xóa…",
+        "empty": "Không có bài viết nào.",
+        "deleteConfirm": "Xóa bài \"{title}\"?",
+        "deleteError": "Xóa không thành công",
+        "emptyDate": "—"
+      },
+      "create": {
+        "back": "← Quay lại danh sách",
+        "heading": "Tạo bài viết mới"
+      },
+      "edit": {
+        "back": "← Quay lại danh sách",
+        "heading": "Chỉnh sửa: {title}"
+      },
+      "form": {
+        "title": "Tiêu đề *",
+        "summary": "Tóm tắt *",
+        "summaryCounter": "{current}/500",
+        "content": "Nội dung *",
+        "author": "Tác giả",
+        "category": "Danh mục",
+        "imageUrl": "URL ảnh đại diện",
+        "publishedAt": "Thời điểm đăng",
+        "publishedAtHelp": "Bỏ trống để dùng thời điểm hiện tại (khi tạo mới).",
+        "create": "Tạo bài viết",
+        "saveChanges": "Lưu thay đổi",
+        "submitting": "Đang lưu…",
+        "cancel": "Hủy",
+        "errorGeneric": "Lưu không thành công"
+      }
+    }
+  },
+  "components": {
+    "searchBar": {
+      "queryPlaceholder": "Tìm kiếm theo tên, địa chỉ...",
+      "sortPlaceholder": "Sắp xếp",
+      "showFilters": "Hiện bộ lọc",
+      "hideFilters": "Ẩn bộ lọc",
+      "submit": "Tìm kiếm",
+      "city": "Thành phố",
+      "type": "Loại hình",
+      "status": "Trạng thái",
+      "minPrice": "Giá tối thiểu (triệu)",
+      "minPricePlaceholder": "0",
+      "maxPrice": "Giá tối đa (triệu)",
+      "maxPricePlaceholder": "Không giới hạn",
+      "bedrooms": "Số phòng ngủ tối thiểu"
+    },
+    "pagination": {
+      "previous": "← Trước",
+      "next": "Tiếp →",
+      "page": "Trang {current} / {total}"
+    },
+    "imageUpload": {
+      "label": "Hình ảnh bất động sản",
+      "counter": "{current} / {max} ảnh",
+      "dismiss": "Đóng",
+      "dropzonePrimary": "Bấm để tải lên",
+      "dropzoneSecondary": " hoặc kéo thả vào đây",
+      "dropzoneHint": "PNG, JPG, WebP tối đa 10MB (còn lại {remaining} ảnh)",
+      "uploading": "Đang tải lên...",
+      "newImagesHeading": "Hình ảnh mới ({count})",
+      "clearAll": "Xóa tất cả",
+      "existingHeading": "Hình ảnh hiện có ({count})",
+      "removeImage": "Xóa ảnh"
+    },
+    "imageGallery": {
+      "previous": "Ảnh trước",
+      "next": "Ảnh kế",
+      "altImage": "{title} - Ảnh {index}",
+      "altThumb": "{title} - Hình thu nhỏ {index}"
+    },
+    "postForm": {
+      "heading": "Tạo bài viết",
+      "placeholder": "Bạn đang nghĩ gì về thị trường bất động sản?",
+      "submit": "Đăng",
+      "submitting": "Đang đăng...",
+      "cancel": "Hủy",
+      "loginRequired": "Vui lòng đăng nhập để đăng bài viết",
+      "generalError": "Đã có lỗi xảy ra. Vui lòng thử lại."
+    },
+    "postCard": {
+      "anonymous": "Người dùng ẩn danh",
+      "justNow": "Vừa xong",
+      "minutesAgo": "{count} phút trước",
+      "hoursAgo": "{count} giờ trước",
+      "daysAgo": "{count} ngày trước"
+    },
+    "postFeed": {
+      "emptyTitle": "Chưa có bài viết nào",
+      "emptyDescription": "Hãy là người đầu tiên chia sẻ ý kiến của bạn!",
+      "loadingMore": "Đang tải thêm bài viết...",
+      "end": "Bạn đã xem hết tất cả bài viết"
+    },
+    "likeButton": {
+      "loginRequired": "Đăng nhập để thích",
+      "unlike": "Bỏ thích",
+      "like": "Thích"
+    }
+  }
+}

@@ -1,15 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { PriceHistoryResponse, PricePointResponse } from '@/types/api';
 import { formatPrice } from '@/lib/utils';
 import { priceApi } from '@/lib/api/priceApi';
+import { toIntlLocale } from '@/lib/i18n/intlLocale';
 
 interface PriceHistoryProps {
   propertyId: number;
 }
 
 export default function PriceHistory({ propertyId }: PriceHistoryProps) {
+  const t = useTranslations('properties.priceHistory');
+  const intlLocale = toIntlLocale(useLocale());
   const [history, setHistory] = useState<PriceHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,19 +24,19 @@ export default function PriceHistory({ propertyId }: PriceHistoryProps) {
         const data = await priceApi.getPriceHistory(propertyId);
         setHistory(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load price history');
+        setError(err instanceof Error ? err.message : t('errorLoading'));
       } finally {
         setLoading(false);
       }
     }
 
     fetchHistory();
-  }, [propertyId]);
+  }, [propertyId, t]);
 
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Lịch sử giá</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('heading')}</h2>
         <div className="animate-pulse space-y-3">
           <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -47,17 +51,30 @@ export default function PriceHistory({ propertyId }: PriceHistoryProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Lịch sử giá</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('heading')}</h2>
       <div className="space-y-4">
         {history.pricePoints.map((point, index) => (
-          <PriceChangeItem key={index} point={point} isFirst={index === 0} />
+          <PriceChangeItem
+            key={index}
+            point={point}
+            isFirst={index === 0}
+            intlLocale={intlLocale}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function PriceChangeItem({ point, isFirst }: { point: PricePointResponse; isFirst: boolean }) {
+function PriceChangeItem({
+  point,
+  isFirst,
+  intlLocale,
+}: {
+  point: PricePointResponse;
+  isFirst: boolean;
+  intlLocale: string;
+}) {
   const percentChange =
     point.oldPrice && point.oldPrice > 0
       ? ((point.newPrice - point.oldPrice) / point.oldPrice) * 100
@@ -68,7 +85,6 @@ function PriceChangeItem({ point, isFirst }: { point: PricePointResponse; isFirs
 
   return (
     <div className="flex items-start gap-3 relative">
-      {/* Timeline dot and line */}
       <div className="flex flex-col items-center pt-1">
         <div
           className={`w-3 h-3 rounded-full flex-shrink-0 ${
@@ -78,7 +94,6 @@ function PriceChangeItem({ point, isFirst }: { point: PricePointResponse; isFirs
         {!isFirst && <div className="w-0.5 h-full bg-gray-200 -mt-0" />}
       </div>
 
-      {/* Content */}
       <div className="flex-1 pb-4 border-b border-gray-100 last:border-0">
         <div className="flex items-center gap-2 flex-wrap">
           {point.oldPrice ? (
@@ -112,7 +127,7 @@ function PriceChangeItem({ point, isFirst }: { point: PricePointResponse; isFirs
         </div>
 
         <div className="mt-1 text-sm text-gray-500">
-          <span>{new Date(point.changedAt).toLocaleDateString('vi-VN', {
+          <span>{new Date(point.changedAt).toLocaleDateString(intlLocale, {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

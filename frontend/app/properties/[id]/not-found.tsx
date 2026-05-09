@@ -1,15 +1,18 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getTranslations('properties.notFound');
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div className="text-center">
         <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
         <h2 className="text-3xl font-semibold text-gray-700 mb-4">
-          Không tìm thấy bất động sản
+          {t('title')}
         </h2>
         <p className="text-gray-600 mb-8">
-          Bất động sản bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
+          {t('message')}
         </p>
         <Link
           href="/"
@@ -28,7 +31,7 @@ export default function NotFound() {
               d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
             />
           </svg>
-          Quay về trang chủ
+          {t('back')}
         </Link>
       </div>
     </div>

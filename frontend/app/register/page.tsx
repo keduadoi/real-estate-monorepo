@@ -3,10 +3,12 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { authApi } from '@/lib/api/authApi';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const t = useTranslations('register');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -27,12 +29,12 @@ export default function RegisterPage() {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError(t('passwordMismatch'));
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('Mật khẩu phải có ít nhất 8 ký tự');
+      setError(t('passwordTooShort'));
       return;
     }
 
@@ -49,7 +51,7 @@ export default function RegisterPage() {
 
       router.push('/login?registered=true');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+      setError(err instanceof Error ? err.message : t('generalError'));
     } finally {
       setLoading(false);
     }
@@ -60,10 +62,10 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Đăng ký tài khoản
+            {t('heading')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Tạo tài khoản để đăng tin bất động sản
+            {t('subheading')}
           </p>
         </div>
 
@@ -72,7 +74,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Họ
+                  {t('lastName')}
                 </label>
                 <input
                   id="lastName"
@@ -81,12 +83,12 @@ export default function RegisterPage() {
                   value={formData.lastName}
                   onChange={handleChange}
                   className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Nguyễn"
+                  placeholder={t('lastNamePlaceholder')}
                 />
               </div>
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  Tên
+                  {t('firstName')}
                 </label>
                 <input
                   id="firstName"
@@ -95,14 +97,14 @@ export default function RegisterPage() {
                   value={formData.firstName}
                   onChange={handleChange}
                   className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Văn A"
+                  placeholder={t('firstNamePlaceholder')}
                 />
               </div>
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email <span className="text-red-500">*</span>
+                {t('email')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="email"
@@ -119,7 +121,7 @@ export default function RegisterPage() {
 
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Số điện thoại
+                {t('phone')}
               </label>
               <input
                 id="phone"
@@ -128,13 +130,13 @@ export default function RegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="0901234567"
+                placeholder={t('phonePlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Mật khẩu <span className="text-red-500">*</span>
+                {t('password')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="password"
@@ -145,13 +147,13 @@ export default function RegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Ít nhất 8 ký tự"
+                placeholder={t('passwordPlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Xác nhận mật khẩu <span className="text-red-500">*</span>
+                {t('confirmPassword')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="confirmPassword"
@@ -162,7 +164,7 @@ export default function RegisterPage() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Nhập lại mật khẩu"
+                placeholder={t('confirmPasswordPlaceholder')}
               />
             </div>
           </div>
@@ -179,17 +181,17 @@ export default function RegisterPage() {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Đang đăng ký...' : 'Đăng ký'}
+              {loading ? t('submitting') : t('submit')}
             </button>
           </div>
 
           <div className="text-center">
-            <span className="text-sm text-gray-600">Đã có tài khoản? </span>
+            <span className="text-sm text-gray-600">{t('haveAccount')}</span>
             <Link
               href="/login"
               className="text-sm text-primary-600 hover:text-primary-500 font-medium"
             >
-              Đăng nhập
+              {t('signInLink')}
             </Link>
           </div>
         </form>

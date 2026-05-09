@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import SearchBar from '@/components/SearchBar';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
@@ -22,11 +23,18 @@ interface SearchPageProps {
   };
 }
 
+const SORT_KEYS: Record<SortOption, 'newest' | 'oldest' | 'priceLow' | 'priceHigh'> = {
+  newest: 'newest',
+  oldest: 'oldest',
+  'price-low': 'priceLow',
+  'price-high': 'priceHigh',
+};
+
 export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const t = await getTranslations();
   const currentPage = Number(searchParams.page) || 1;
   const perPage = 12;
 
-  // Map sort option to API parameters
   const getSortParams = (sort?: SortOption): { sortBy: string; sortDirection: 'asc' | 'desc' } => {
     switch (sort) {
       case 'newest':
@@ -44,7 +52,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   const { sortBy, sortDirection } = getSortParams(searchParams.sort);
 
-  // Build API search request
   const apiSearchRequest: PropertySearchRequest = {
     query: searchParams.query,
     city: searchParams.city,
@@ -57,24 +64,20 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     sortDirection,
   };
 
-  // Search properties via API (page is 0-indexed in backend)
   const apiResponse = await propertyApi.search(apiSearchRequest, currentPage - 1, perPage);
 
-  // Convert API properties to UI properties
   const paginatedResult = {
     data: apiResponse.data.map(mapApiPropertyToUi),
     total: apiResponse.total,
-    page: apiResponse.page + 1, // Convert back to 1-indexed for UI
+    page: apiResponse.page + 1,
     perPage: apiResponse.perPage,
     totalPages: apiResponse.totalPages,
   };
 
-  // Check if any filters or sort are active
   const hasFilters = Object.values(apiSearchRequest).some((value) => value !== undefined && value !== sortBy && value !== sortDirection);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Page Header */}
       <div className="mb-8">
         <Link
           href="/"
@@ -93,96 +96,79 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Quay lại trang chủ
+          {t('search.backToHome')}
         </Link>
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Kết quả tìm kiếm
+          {t('search.heading')}
         </h1>
         {searchParams.query && (
           <p className="text-gray-600">
-            Tìm kiếm cho: &quot;{searchParams.query}&quot;
+            {t('search.searchingFor', { query: searchParams.query })}
           </p>
         )}
       </div>
 
-      {/* Search Bar */}
       <SearchBar />
 
-      {/* Active Filters */}
       {hasFilters && (
         <div className="mb-6 flex flex-wrap gap-2">
           {searchParams.query && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
-              Từ khóa: {searchParams.query}
+              {t('search.filters.keyword', { value: searchParams.query })}
             </span>
           )}
           {searchParams.city && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
-              Thành phố: {searchParams.city}
+              {t('search.filters.city', { value: searchParams.city })}
             </span>
           )}
           {searchParams.propertyType && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
-              Loại:{' '}
-              {{
-                house: 'Nhà',
-                apartment: 'Căn hộ',
-                villa: 'Biệt thự',
-                townhouse: 'Nhà phố',
-              }[searchParams.propertyType]}
+              {t('search.filters.type', { value: t(`common.propertyType.${searchParams.propertyType}`) })}
             </span>
           )}
           {searchParams.status && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
-              Trạng thái:{' '}
-              {searchParams.status === 'for-sale' ? 'Cần bán' : 'Cho thuê'}
+              {t('search.filters.status', { value: t(`common.propertyStatus.${searchParams.status === 'for-sale' ? 'forSale' : 'forRent'}`) })}
             </span>
           )}
           {(searchParams.minPrice || searchParams.maxPrice) && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
-              Giá: {searchParams.minPrice || '0'} -{' '}
-              {searchParams.maxPrice || '∞'} triệu
+              {t('search.filters.price', {
+                min: searchParams.minPrice || '0',
+                max: searchParams.maxPrice || t('search.filters.priceUnlimited'),
+              })}
             </span>
           )}
           {searchParams.bedrooms && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
-              {searchParams.bedrooms}+ phòng ngủ
+              {t('search.filters.bedrooms', { count: searchParams.bedrooms })}
             </span>
           )}
           {searchParams.sort && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-              Sắp xếp:{' '}
-              {{
-                newest: 'Mới nhất',
-                oldest: 'Cũ nhất',
-                'price-low': 'Giá thấp - cao',
-                'price-high': 'Giá cao - thấp',
-              }[searchParams.sort]}
+              {t('search.filters.sortPrefix')}{' '}
+              {t(`common.sort.${SORT_KEYS[searchParams.sort]}`)}
             </span>
           )}
         </div>
       )}
 
-      {/* Results Info */}
       <div className="mb-6">
         <p className="text-gray-900 font-medium">
-          {paginatedResult.total > 0 ? (
-            <>
-              Hiển thị {(currentPage - 1) * perPage + 1} -{' '}
-              {Math.min(currentPage * perPage, paginatedResult.total)} trong
-              tổng số {paginatedResult.total} kết quả
-            </>
-          ) : (
-            'Không tìm thấy kết quả'
-          )}
+          {paginatedResult.total > 0
+            ? t('search.showing', {
+                from: (currentPage - 1) * perPage + 1,
+                to: Math.min(currentPage * perPage, paginatedResult.total),
+                total: paginatedResult.total,
+              })
+            : t('search.noResults')}
         </p>
       </div>
 
-      {/* Property Grid */}
       <PropertyGrid properties={paginatedResult.data} />
 
-      {/* Pagination */}
       {paginatedResult.totalPages > 1 && (
         <Pagination
           currentPage={paginatedResult.page}
@@ -190,14 +176,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         />
       )}
 
-      {/* No Results Message */}
       {paginatedResult.total === 0 && hasFilters && (
         <div className="text-center py-8">
           <Link
             href="/"
             className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium"
           >
-            Xóa bộ lọc và xem tất cả bất động sản
+            {t('search.clearFilters')}
             <svg
               className="w-5 h-5 ml-1"
               fill="none"

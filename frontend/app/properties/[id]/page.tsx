@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { getLocale, getTranslations } from 'next-intl/server';
 import ImageGallery from '@/components/ImageGallery';
 import PropertyActionButtons from '@/components/PropertyActionButtons';
 import PriceHistory from '@/components/PriceHistory';
 import { propertyApi } from '@/lib/api/propertyApi';
 import { mapApiPropertyToUi } from '@/lib/api/mapper';
 import { formatPrice, formatArea } from '@/lib/utils';
+import { toIntlLocale } from '@/lib/i18n/intlLocale';
 
 interface PropertyDetailPageProps {
   params: {
@@ -14,6 +16,9 @@ interface PropertyDetailPageProps {
 }
 
 export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
+  const t = await getTranslations();
+  const intlLocale = toIntlLocale(await getLocale());
+
   let property;
 
   try {
@@ -23,23 +28,17 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     notFound();
   }
 
-  const statusText =
-    property.status === 'for-sale' ? 'Cần bán' : 'Cho thuê';
+  const statusKey = property.status === 'for-sale' ? 'forSale' : 'forRent';
+  const statusText = t(`common.propertyStatus.${statusKey}`);
   const statusColor =
     property.status === 'for-sale'
       ? 'bg-green-100 text-green-800'
       : 'bg-blue-100 text-blue-800';
 
-  const typeText = {
-    house: 'Nhà',
-    apartment: 'Căn hộ',
-    villa: 'Biệt thự',
-    townhouse: 'Nhà phố',
-  }[property.propertyType];
+  const typeText = t(`common.propertyType.${property.propertyType}`);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb and Actions */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Link
           href="/"
@@ -58,10 +57,9 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Quay lại danh sách
+          {t('properties.detail.back')}
         </Link>
 
-        {/* Edit/Delete buttons (visible only to owner) */}
         <PropertyActionButtons
           propertyId={property.id}
           propertyUserId={property.userId}
@@ -70,12 +68,9 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Images and Details */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Image Gallery */}
           <ImageGallery images={property.images} title={property.title} />
 
-          {/* Property Details */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -112,19 +107,17 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
               </span>
             </div>
 
-            {/* Price */}
             <div className="mb-6 pb-6 border-b">
               <p className="text-4xl font-bold text-primary-600">
                 {formatPrice(property.price)}
                 {property.status === 'for-rent' && (
                   <span className="text-lg font-normal text-gray-500">
-                    /tháng
+                    {t('common.perMonth')}
                   </span>
                 )}
               </p>
             </div>
 
-            {/* Key Features */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b">
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <svg
@@ -143,7 +136,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                 <p className="text-2xl font-bold text-gray-900">
                   {property.bedrooms}
                 </p>
-                <p className="text-sm text-gray-600">Phòng ngủ</p>
+                <p className="text-sm text-gray-600">{t('properties.detail.stats.bedrooms')}</p>
               </div>
 
               <div className="text-center p-4 bg-gray-50 rounded-lg">
@@ -163,7 +156,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                 <p className="text-2xl font-bold text-gray-900">
                   {property.bathrooms}
                 </p>
-                <p className="text-sm text-gray-600">Phòng tắm</p>
+                <p className="text-sm text-gray-600">{t('properties.detail.stats.bathrooms')}</p>
               </div>
 
               <div className="text-center p-4 bg-gray-50 rounded-lg">
@@ -201,25 +194,23 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                   />
                 </svg>
                 <p className="text-lg font-bold text-gray-900">{typeText}</p>
-                <p className="text-sm text-gray-600">Loại hình</p>
+                <p className="text-sm text-gray-600">{t('properties.detail.stats.type')}</p>
               </div>
             </div>
 
-            {/* Description */}
             <div className="mb-6 pb-6 border-b">
               <h2 className="text-xl font-semibold text-gray-900 mb-3">
-                Mô tả
+                {t('properties.detail.description')}
               </h2>
               <p className="text-gray-700 leading-relaxed whitespace-pre-line">
                 {property.description}
               </p>
             </div>
 
-            {/* Features */}
             {property.features.length > 0 && (
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-3">
-                  Tiện ích
+                  {t('properties.detail.features')}
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {property.features.map((feature) => (
@@ -240,7 +231,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                           d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      {feature}
+                      {t(`properties.form.featuresList.${feature}` as any) || feature}
                     </div>
                   ))}
                 </div>
@@ -248,48 +239,46 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
             )}
           </div>
 
-          {/* Price History */}
           <PriceHistory propertyId={Number(property.id)} />
         </div>
 
-        {/* Right Column - Contact Card */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              Liên hệ
+              {t('properties.detail.contact.heading')}
             </h3>
 
             <div className="space-y-4">
               <button className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors font-medium">
-                Gọi điện thoại
+                {t('properties.detail.contact.call')}
               </button>
               <button className="w-full bg-white border-2 border-primary-600 text-primary-600 py-3 px-4 rounded-lg hover:bg-primary-50 transition-colors font-medium">
-                Gửi tin nhắn
+                {t('properties.detail.contact.message')}
               </button>
             </div>
 
             <div className="mt-6 pt-6 border-t">
               <h4 className="font-semibold text-gray-900 mb-3">
-                Thông tin bổ sung
+                {t('properties.detail.contact.infoHeading')}
               </h4>
               <div className="space-y-2 text-sm text-gray-600">
                 <p>
-                  <span className="font-medium">Mã tin:</span> {property.id}
+                  <span className="font-medium">{t('properties.detail.contact.id')}</span> {property.id}
                 </p>
                 <p>
-                  <span className="font-medium">Thành phố:</span>{' '}
+                  <span className="font-medium">{t('properties.detail.contact.city')}</span>{' '}
                   {property.city}
                 </p>
                 <p>
-                  <span className="font-medium">Ngày đăng:</span>{' '}
-                  {new Date(property.createdAt).toLocaleDateString('vi-VN')}
+                  <span className="font-medium">{t('properties.detail.contact.postedAt')}</span>{' '}
+                  {new Date(property.createdAt).toLocaleDateString(intlLocale)}
                 </p>
               </div>
             </div>
 
             <div className="mt-6 pt-6 border-t">
               <p className="text-xs text-gray-500 text-center">
-                Liên hệ để được tư vấn chi tiết và xem trực tiếp bất động sản
+                {t('properties.detail.contact.footer')}
               </p>
             </div>
           </div>

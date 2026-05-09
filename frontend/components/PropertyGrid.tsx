@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { Property } from '@/types';
 import PropertyCard from './PropertyCard';
 
@@ -6,6 +9,8 @@ interface PropertyGridProps {
 }
 
 export default function PropertyGrid({ properties }: PropertyGridProps) {
+  const t = useTranslations('properties.grid');
+
   if (properties.length === 0) {
     return (
       <div className="text-center py-12">
@@ -23,10 +28,10 @@ export default function PropertyGrid({ properties }: PropertyGridProps) {
           />
         </svg>
         <h3 className="mt-2 text-sm font-medium text-gray-900">
-          Không tìm thấy bất động sản
+          {t('emptyTitle')}
         </h3>
         <p className="mt-1 text-sm text-gray-500">
-          Thử thay đổi bộ lọc tìm kiếm của bạn
+          {t('emptyDescription')}
         </p>
       </div>
     );

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Post } from '@/types';
 import { postApi } from '@/lib/api/postApi';
 import PostForm from '@/components/PostForm';
@@ -22,6 +23,7 @@ export default function FeedPageClient({
   isAuthenticated,
 }: FeedPageClientProps) {
   const { data: session } = useSession();
+  const t = useTranslations('feed');
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [total, setTotal] = useState(initialTotal);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -34,14 +36,12 @@ export default function FeedPageClient({
   const pathname = usePathname();
   const lastRefreshRef = useRef<number>(0);
 
-  // Sync with server props when they change
   useEffect(() => {
     setPosts(initialPosts);
     setTotal(initialTotal);
     setHasMore(initialHasMore);
   }, [initialPosts, initialTotal, initialHasMore]);
 
-  // Refresh posts from server
   const refreshPosts = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
@@ -67,12 +67,9 @@ export default function FeedPageClient({
     }
   }, [accessToken]);
 
-  // Refresh posts on mount and when navigating back
   useEffect(() => {
-    // Initial refresh
     refreshPosts();
 
-    // Handle browser back/forward navigation
     const handlePopState = () => {
       refreshPosts();
     };
@@ -85,7 +82,6 @@ export default function FeedPageClient({
   }, [refreshPosts]);
 
   const handlePostCreated = async () => {
-    // Refresh posts after creating a new post
     await refreshPosts();
   };
 
@@ -109,21 +105,19 @@ export default function FeedPageClient({
       setHasMore(nextPage < response.totalPages - 1);
     } catch (err) {
       console.error('Error loading more posts:', err);
-      setError('Không thể tải thêm bài viết. Vui lòng thử lại.');
+      setError(t('loadMoreError'));
     }
   };
 
   const handleLikeToggle = async (postId: string) => {
     if (!isAuthenticated || !accessToken) return;
 
-    // Find the post
     const postIndex = posts.findIndex(p => p.id === postId);
     if (postIndex === -1) return;
 
     const post = posts[postIndex];
     const previousPosts = [...posts];
 
-    // Optimistic update
     const updatedPosts = [...posts];
     updatedPosts[postIndex] = {
       ...post,
@@ -143,7 +137,6 @@ export default function FeedPageClient({
         } : undefined,
       });
 
-      // Update with actual server response
       const finalPosts = [...posts];
       finalPosts[postIndex] = {
         ...finalPosts[postIndex],
@@ -152,36 +145,33 @@ export default function FeedPageClient({
       };
       setPosts(finalPosts);
     } catch (err) {
-      // Revert on error
       setPosts(previousPosts);
       console.error('Error toggling like:', err);
-      alert('Không thể thực hiện thao tác. Vui lòng thử lại.');
+      alert(t('likeError'));
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Post Form - Only shown when authenticated */}
       {isAuthenticated ? (
         <PostForm onPostCreated={handlePostCreated} />
       ) : (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
           <p className="text-blue-800 font-medium mb-2">
-            Đăng nhập để đăng bài viết
+            {t('loginPrompt.title')}
           </p>
           <p className="text-blue-600 text-sm">
-            Bạn cần đăng nhập để có thể tạo bài viết và tương tác với cộng đồng
+            {t('loginPrompt.description')}
           </p>
           <a
             href="/login"
             className="inline-block mt-4 px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200"
           >
-            Đăng nhập
+            {t('loginPrompt.button')}
           </a>
         </div>
       )}
 
-      {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
           <p className="text-red-800">{error}</p>
@@ -189,16 +179,15 @@ export default function FeedPageClient({
             onClick={() => setError(null)}
             className="mt-2 text-red-600 underline text-sm"
           >
-            Đóng
+            {t('closeError')}
           </button>
         </div>
       )}
 
-      {/* Post Feed */}
       {isRefreshing ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-gray-600">Đang tải bài viết mới...</p>
+          <p className="mt-4 text-gray-600">{t('refreshing')}</p>
         </div>
       ) : (
         <PostFeed

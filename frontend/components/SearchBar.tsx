@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { PropertyType, PropertyStatus } from '@/types';
 import { SortOption } from '@/lib/utils';
 
@@ -9,6 +10,7 @@ export default function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const t = useTranslations();
 
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
@@ -35,20 +37,13 @@ export default function SearchBar() {
 
   const handleSortChange = (newSort: SortOption | '') => {
     setSortBy(newSort);
-
-    // Build URL with current params
     const params = new URLSearchParams(searchParams.toString());
-
     if (newSort) {
       params.set('sort', newSort);
     } else {
       params.delete('sort');
     }
-
-    // Reset to page 1 when sort changes
     params.delete('page');
-
-    // Navigate to current path with updated sort
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -76,7 +71,7 @@ export default function SearchBar() {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên, địa chỉ..."
+              placeholder={t('components.searchBar.queryPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -88,11 +83,11 @@ export default function SearchBar() {
               onChange={(e) => handleSortChange(e.target.value as SortOption)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">Sắp xếp</option>
-              <option value="newest">Mới nhất</option>
-              <option value="oldest">Cũ nhất</option>
-              <option value="price-low">Giá thấp - cao</option>
-              <option value="price-high">Giá cao - thấp</option>
+              <option value="">{t('components.searchBar.sortPlaceholder')}</option>
+              <option value="newest">{t('common.sort.newest')}</option>
+              <option value="oldest">{t('common.sort.oldest')}</option>
+              <option value="price-low">{t('common.sort.priceLow')}</option>
+              <option value="price-high">{t('common.sort.priceHigh')}</option>
             </select>
           </div>
           <button
@@ -100,13 +95,13 @@ export default function SearchBar() {
             onClick={() => setShowFilters(!showFilters)}
             className="md:w-auto px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            {showFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
+            {showFilters ? t('components.searchBar.hideFilters') : t('components.searchBar.showFilters')}
           </button>
           <button
             type="submit"
             className="md:w-auto px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
           >
-            Tìm kiếm
+            {t('components.searchBar.submit')}
           </button>
         </div>
 
@@ -114,14 +109,14 @@ export default function SearchBar() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Thành phố
+                {t('components.searchBar.city')}
               </label>
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Tất cả</option>
+                <option value="">{t('common.all')}</option>
                 {cities.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -132,43 +127,43 @@ export default function SearchBar() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Loại hình
+                {t('components.searchBar.type')}
               </label>
               <select
                 value={propertyType}
                 onChange={(e) => setPropertyType(e.target.value as PropertyType)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Tất cả</option>
-                <option value="house">Nhà</option>
-                <option value="apartment">Căn hộ</option>
-                <option value="villa">Biệt thự</option>
-                <option value="townhouse">Nhà phố</option>
+                <option value="">{t('common.all')}</option>
+                <option value="house">{t('common.propertyType.house')}</option>
+                <option value="apartment">{t('common.propertyType.apartment')}</option>
+                <option value="villa">{t('common.propertyType.villa')}</option>
+                <option value="townhouse">{t('common.propertyType.townhouse')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Trạng thái
+                {t('components.searchBar.status')}
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as PropertyStatus)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Tất cả</option>
-                <option value="for-sale">Cần bán</option>
-                <option value="for-rent">Cho thuê</option>
+                <option value="">{t('common.all')}</option>
+                <option value="for-sale">{t('common.propertyStatus.forSale')}</option>
+                <option value="for-rent">{t('common.propertyStatus.forRent')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Giá tối thiểu (triệu)
+                {t('components.searchBar.minPrice')}
               </label>
               <input
                 type="number"
-                placeholder="0"
+                placeholder={t('components.searchBar.minPricePlaceholder')}
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -177,11 +172,11 @@ export default function SearchBar() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Giá tối đa (triệu)
+                {t('components.searchBar.maxPrice')}
               </label>
               <input
                 type="number"
-                placeholder="Không giới hạn"
+                placeholder={t('components.searchBar.maxPricePlaceholder')}
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -190,14 +185,14 @@ export default function SearchBar() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Số phòng ngủ tối thiểu
+                {t('components.searchBar.bedrooms')}
               </label>
               <select
                 value={bedrooms}
                 onChange={(e) => setBedrooms(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Tất cả</option>
+                <option value="">{t('common.all')}</option>
                 <option value="1">1+</option>
                 <option value="2">2+</option>
                 <option value="3">3+</option>
