@@ -37,6 +37,7 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             name: [user.lastName, user.firstName].filter(Boolean).join(' ') || user.email,
             email: user.email,
+            roles: user.roles ?? [],
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
           };
@@ -58,12 +59,14 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.accessToken = (user as any).accessToken;
         token.refreshToken = (user as any).refreshToken;
+        token.roles = (user as any).roles ?? [];
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.roles = (token.roles as string[]) ?? [];
         (session as any).accessToken = token.accessToken;
       }
       return session;
