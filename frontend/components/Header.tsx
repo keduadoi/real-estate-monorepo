@@ -15,6 +15,8 @@ export default function Header() {
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
 
+  const isAdmin = session?.user?.roles?.includes('ROLE_ADMIN') ?? false;
+
   // Close user menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -41,16 +43,28 @@ export default function Header() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:space-x-4">
             <Link
-              href="/"
-              className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
+              href="/buy"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/buy') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
-              Trang chủ
+              Mua
+            </Link>
+            <Link
+              href="/rent"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/rent') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
+            >
+              Thuê
             </Link>
             <Link
               href="/feed"
               className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/feed') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
             >
               Bảng tin
+            </Link>
+            <Link
+              href="/news"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/news') ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-700 hover:text-primary-600'}`}
+            >
+              Tin tức
             </Link>
             <Link
               href="/search"
@@ -64,6 +78,14 @@ export default function Header() {
 
             {session ? (
               <>
+                {isAdmin && (
+                  <Link
+                    href="/admin/news"
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/admin') ? 'text-amber-600 border-b-2 border-amber-600' : 'text-amber-700 hover:text-amber-800'}`}
+                  >
+                    Quản trị
+                  </Link>
+                )}
                 <Link
                   href="/properties/new"
                   className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
@@ -159,11 +181,18 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden pb-3 pt-2 space-y-1">
             <Link
-              href="/"
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
+              href="/buy"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/buy') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Trang chủ
+              Mua
+            </Link>
+            <Link
+              href="/rent"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/rent') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Thuê
             </Link>
             <Link
               href="/feed"
@@ -171,6 +200,13 @@ export default function Header() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Bảng tin
+            </Link>
+            <Link
+              href="/news"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/news') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Tin tức
             </Link>
             <Link
               href="/search"
@@ -182,6 +218,15 @@ export default function Header() {
 
             {session ? (
               <>
+                {isAdmin && (
+                  <Link
+                    href="/admin/news"
+                    className="block text-amber-700 hover:bg-amber-50 px-3 py-2 rounded-md text-base font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Quản trị
+                  </Link>
+                )}
                 <Link
                   href="/properties/new"
                   className="block text-primary-600 hover:bg-primary-50 px-3 py-2 rounded-md text-base font-medium"

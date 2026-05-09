@@ -14,6 +14,11 @@ const nextConfig = {
         port: '8080',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
     ],
   },
   // Disable router cache to ensure fresh data on navigation

@@ -123,3 +123,56 @@ export interface UpdatePriceRequest {
   currency?: string;
   reason?: string;
 }
+
+// News Service types
+
+export interface NewsArticleSummary {
+  id: number;
+  title: string;
+  summary: string;
+  author: string | null;
+  category: string | null;
+  imageUrl: string | null;
+  publishedAt: string | null;
+}
+
+export interface NewsArticleResponse {
+  id: number;
+  title: string;
+  summary: string;
+  content: string;
+  author: string | null;
+  category: string | null;
+  imageUrl: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewsListResponse {
+  data: NewsArticleSummary[];
+  total: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
+export interface CreateNewsArticleRequest {
+  title: string;
+  summary: string;
+  content: string;
+  author?: string;
+  category?: string;
+  imageUrl?: string;
+  publishedAt?: string;
+}
+
+export interface UpdateNewsArticleRequest {
+  title?: string;
+  summary?: string;
+  content?: string;
+  author?: string;
+  category?: string;
+  imageUrl?: string;
+  publishedAt?: string;
+}

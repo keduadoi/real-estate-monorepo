@@ -1,0 +1,95 @@
+import SearchBar from '@/components/SearchBar';
+import PropertyGrid from '@/components/PropertyGrid';
+import Pagination from '@/components/Pagination';
+import { propertyApi } from '@/lib/api/propertyApi';
+import { mapApiPropertyToUi } from '@/lib/api/mapper';
+import { SortOption } from '@/lib/utils';
+
+export const metadata = {
+  title: 'Nhà đất cho thuê | BĐS Vietnam',
+  description: 'Danh sách bất động sản đang cho thuê — giá tính theo tháng.',
+};
+
+export const dynamic = 'force-dynamic';
+
+interface RentPageProps {
+  searchParams: {
+    page?: string;
+    sort?: SortOption;
+  };
+}
+
+function getSortParams(sort?: SortOption): { sortBy: string; sortDirection: 'asc' | 'desc' } {
+  switch (sort) {
+    case 'newest':
+      return { sortBy: 'createdAt', sortDirection: 'desc' };
+    case 'oldest':
+      return { sortBy: 'createdAt', sortDirection: 'asc' };
+    case 'price-low':
+      return { sortBy: 'price', sortDirection: 'asc' };
+    case 'price-high':
+      return { sortBy: 'price', sortDirection: 'desc' };
+    default:
+      return { sortBy: 'createdAt', sortDirection: 'desc' };
+  }
+}
+
+export default async function RentPage({ searchParams }: RentPageProps) {
+  const currentPage = Math.max(1, Number(searchParams.page) || 1);
+  const perPage = 12;
+  const { sortBy, sortDirection } = getSortParams(searchParams.sort);
+
+  const apiResponse = await propertyApi.search(
+    { status: 'FOR_RENT', sortBy, sortDirection },
+    currentPage - 1,
+    perPage,
+  );
+
+  const paginated = {
+    data: apiResponse.data.map(mapApiPropertyToUi),
+    total: apiResponse.total,
+    page: apiResponse.page + 1,
+    perPage: apiResponse.perPage,
+    totalPages: apiResponse.totalPages,
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          Nhà đất cho thuê
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Tìm nhà thuê, căn hộ, biệt thự cho thuê dài hạn — giá hiển thị tính theo tháng.
+        </p>
+      </div>
+
+      <SearchBar />
+
+      {searchParams.sort && (
+        <div className="mb-4">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            Sắp xếp:{' '}
+            {{
+              newest: 'Mới nhất',
+              oldest: 'Cũ nhất',
+              'price-low': 'Giá thấp - cao',
+              'price-high': 'Giá cao - thấp',
+            }[searchParams.sort]}
+          </span>
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-gray-900">Bất động sản cho thuê</h2>
+        <p className="text-gray-600 mt-1">
+          Hiển thị {paginated.data.length} trong tổng số {paginated.total} bất động sản — giá theo tháng
+        </p>
+      </div>
+
+      <PropertyGrid properties={paginated.data} />
+
+      <Pagination currentPage={paginated.page} totalPages={paginated.totalPages} />
+    </div>
+  );
+}

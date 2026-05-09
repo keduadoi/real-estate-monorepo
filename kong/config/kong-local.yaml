@@ -33,6 +33,13 @@ services:
     read_timeout: 60000
     retries: 3
 
+  - name: news-service
+    url: http://host.docker.internal:8085
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
 # ============================================================================
 # GLOBAL PLUGINS
 # ============================================================================
@@ -242,6 +249,28 @@ routes:
       - OPTIONS
     strip_path: false
 
+  # --- News Service: Public read routes ---
+  - name: news-public-get
+    service: news-service
+    paths:
+      - /api/news
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  # --- News Service: Protected write routes ---
+  - name: news-protected
+    service: news-service
+    paths:
+      - /api/news
+    methods:
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    strip_path: false
+
   # --- Backend: Static uploads ---
   - name: uploads
     service: property-service
@@ -275,6 +304,15 @@ routes:
     service: price-service
     paths:
       - /api/prices/actuator/health
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: health-news-service
+    service: news-service
+    paths:
+      - /api/news/actuator/health
     methods:
       - GET
       - OPTIONS

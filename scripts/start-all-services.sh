@@ -55,7 +55,7 @@ if docker ps --format '{{.Names}}' | grep -q "^property-service$"; then
     echo "   Property service is already running, rebuilding..."
 fi
 docker compose up -d --build
-echo -e "${GREEN}✅ Property service started (DB: port 5432, App: port 8080)${NC}"
+echo -e "${GREEN}✅ Property service started (DB: port 5432, Redis: port 6379, App: port 8080)${NC}"
 echo ""
 
 # ============================================================================
@@ -111,9 +111,22 @@ echo -e "${GREEN}✅ Price service started (DB: port 5435, App: port 8084, gRPC:
 echo ""
 
 # ============================================================================
-# STEP 7: Start Kong Gateway (Docker Compose)
+# STEP 7: Start News Service (Docker Compose)
 # ============================================================================
-echo -e "${BLUE}━━━ Step 7: Starting Kong Gateway (Docker Compose) ━━━${NC}"
+echo -e "${BLUE}━━━ Step 7: Starting News Service (Docker Compose) ━━━${NC}"
+cd "$ROOT_DIR/news-service"
+
+if docker ps --format '{{.Names}}' | grep -q "^news-service$"; then
+    echo "   News service is already running, rebuilding..."
+fi
+docker compose up -d --build
+echo -e "${GREEN}✅ News service started (DB: port 5436, App: port 8085)${NC}"
+echo ""
+
+# ============================================================================
+# STEP 8: Start Kong Gateway (Docker Compose)
+# ============================================================================
+echo -e "${BLUE}━━━ Step 8: Starting Kong Gateway (Docker Compose) ━━━${NC}"
 cd "$ROOT_DIR/kong"
 
 if docker ps --filter "name=kong-gateway" --format '{{.Status}}' 2>/dev/null | grep -q "Up"; then
@@ -139,9 +152,9 @@ fi
 echo ""
 
 # ============================================================================
-# STEP 8: Health Checks
+# STEP 9: Health Checks
 # ============================================================================
-echo -e "${BLUE}━━━ Step 8: Health Checks ━━━${NC}"
+echo -e "${BLUE}━━━ Step 9: Health Checks ━━━${NC}"
 
 check_health() {
     local name=$1
@@ -167,13 +180,14 @@ check_health "Auth Service" "http://localhost:8081/actuator/health"
 check_health "Post Service" "http://localhost:8082/actuator/health"
 check_health "Analytics Service" "http://localhost:8083/actuator/health"
 check_health "Price Service" "http://localhost:8084/actuator/health"
+check_health "News Service" "http://localhost:8085/actuator/health"
 check_health "Kong Gateway" "http://localhost:8001/status"
 echo ""
 
 # ============================================================================
-# STEP 9: Start Frontend
+# STEP 10: Start Frontend
 # ============================================================================
-echo -e "${BLUE}━━━ Step 9: Frontend ━━━${NC}"
+echo -e "${BLUE}━━━ Step 10: Frontend ━━━${NC}"
 
 if [ "$SKIP_FRONTEND" = true ]; then
     echo -e "${YELLOW}ℹ️  Skipping frontend (--no-frontend flag).${NC}"
@@ -249,12 +263,15 @@ echo "   Auth Service:  http://localhost:8081"
 echo "   Post Service:  http://localhost:8082"
 echo "   Analytics Svc: http://localhost:8083"
 echo "   Price Service: http://localhost:8084 (gRPC: 9090)"
+echo "   News Service:  http://localhost:8085"
 echo ""
-echo "🐘 Databases, Kafka & MongoDB (Docker):"
+echo "🐘 Databases, Cache, Kafka & MongoDB (Docker):"
 echo "   Property DB:   localhost:5432 (realestatedb)"
 echo "   Auth DB:       localhost:5433 (authdb)"
 echo "   Post DB:       localhost:5434 (postdb)"
 echo "   Price DB:      localhost:5435 (pricedb)"
+echo "   News DB:       localhost:5436 (newsdb)"
+echo "   Redis:         localhost:6379 (property-service cache)"
 echo "   Kafka:         localhost:29092"
 echo "   MongoDB:       localhost:27017 (analyticsdb)"
 echo ""
@@ -262,7 +279,7 @@ echo "🔧 Commands:"
 echo "   Status:        $SCRIPT_DIR/status-all-services.sh"
 echo "   Stop:          $SCRIPT_DIR/stop-all-services.sh"
 echo "   Logs:          docker logs -f <container-name>"
-echo "                  (property-service | auth-service | post-service | analytics-service | price-service | kong-gateway)"
+echo "                  (property-service | auth-service | post-service | analytics-service | price-service | news-service | kong-gateway)"
 echo ""
 echo "🌐 Frontend Commands:"
 echo "   Start:   cd $ROOT_DIR/frontend && ./start-dev.sh"

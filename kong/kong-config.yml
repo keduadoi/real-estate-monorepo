@@ -24,3 +24,11 @@ services:
         paths:
           - /api/posts
         strip_path: false
+
+  - name: news-service
+    url: http://host.docker.internal:8085
+    routes:
+      - name: news-route
+        paths:
+          - /api/news
+        strip_path: false
