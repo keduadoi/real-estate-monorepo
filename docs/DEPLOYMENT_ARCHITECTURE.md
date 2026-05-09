@@ -96,8 +96,14 @@
 │  │ DB: authdb  │  │ DB: realestate│ │ DB: postdb  │  │ DB: pricedb │         │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘         │
 │                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Property Cache (Redis 7, container: property-redis, Host: 6379)        │ │
+│  │  Caches: properties:list (TTL 60s), properties:cities (TTL 1h)          │ │
+│  │  Eviction: allkeys-lru @ 256MB. Used by property-service only (today).  │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
 │  Note: Services in K8s connect via host.docker.internal:PORT                 │
-│  Production: Replace with managed RDS PostgreSQL (Multi-AZ)                  │
+│  Production: Replace with managed RDS PostgreSQL (Multi-AZ) + ElastiCache    │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -108,14 +114,16 @@
 ### Local Development (Minikube)
 - **Databases run in Docker containers** (external to Kubernetes)
 - **Connection method**: K8s services connect to databases using `host.docker.internal:PORT`
-- **Ports**: 5432 (property), 5433 (auth), 5434 (post), 5435 (price), 27017 (analytics MongoDB)
-- **Containers**: `property-db`, `auth-db`, `post-db`, `price-db`, `analytics-mongo`
+- **Ports**: 5432 (property), 5433 (auth), 5434 (post), 5435 (price), 27017 (analytics MongoDB), 6379 (property-redis cache)
+- **Containers**: `property-db`, `auth-db`, `post-db`, `price-db`, `analytics-mongo`, `property-redis`
 - **Event streaming**: Kafka (KRaft mode) at port 29092, with a DOCKER listener on 29093 for cross-container communication
+- **Cache**: Redis 7 (`property-redis`) at port 6379 — used by property-service for `GET /api/properties` (TTL 60s) and `GET /api/properties/cities` (TTL 1h). Disable with `CACHE_ENABLED=false`.
 - **Why external?**: Simpler development workflow, easier database access from host machine
 
 ### Production (AWS EKS)
 - **Databases run as AWS RDS** (managed PostgreSQL) and **Amazon DocumentDB** (managed MongoDB)
 - **Connection method**: Private VPC endpoint (e.g., `mydb.abc123.us-east-1.rds.amazonaws.com:5432`)
+- **Cache**: Amazon ElastiCache for Redis (cluster mode disabled is enough at current scale)
 - **Event streaming**: Amazon MSK (managed Kafka) or self-hosted Kafka in EKS
 - **Features**: Multi-AZ deployment, automated backups, encryption at rest/transit
 - **Security**: Private subnets only, no public access
@@ -544,16 +552,18 @@ Content-Type: application/json
 | Auth Service | `http://localhost:8081` | `kubectl port-forward svc/auth-service 8081:8081 -n real-estate` |
 | Post Service | `http://localhost:8082` | `kubectl port-forward svc/post-service 8082:8082 -n real-estate` |
 | Price Service | `http://localhost:8084` | `kubectl port-forward svc/price-service 8084:8084 -n real-estate` |
+| Property Cache (Redis) | `redis://localhost:6379` | N/A — runs as Docker container alongside property-service |
 
-### Database Connections (Docker)
+### Database & Cache Connections (Docker)
 
-| Database | Container Name | Host Port | Internal Port | Database Name |
+| Store | Container Name | Host Port | Internal Port | Database Name |
 |----------|---------------|-----------|---------------|---------------|
 | Property DB | property-db | 5432 | 5432 | realestatedb |
 | Auth DB | auth-db | 5433 | 5432 | authdb |
 | Post DB | post-db | 5434 | 5432 | postdb |
 | Price DB | price-db | 5435 | 5432 | pricedb |
 | Analytics MongoDB | analytics-mongo | 27017 | 27017 | analyticsdb |
+| Property Cache | property-redis | 6379 | 6379 | (Redis db 0) |
 
 ---
 
@@ -998,6 +1008,7 @@ The Auth Service is a dedicated Spring Boot application handling:
 | PostgreSQL (Price) | Docker (price-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | MongoDB (Analytics) | Docker (analytics-mongo) | DocumentDB / MongoDB Atlas | N/A | N/A | N/A |
 | Kafka | Docker (analytics-kafka) | Amazon MSK / Self-hosted | N/A | N/A | N/A |
+| Redis (Property Cache) | Docker (property-redis) | ElastiCache for Redis (Multi-AZ) | N/A | N/A | N/A |
 
 **Key Differences:**
 - **Local Development**: Databases run in Docker containers, accessed via `host.docker.internal`
@@ -1222,6 +1233,7 @@ The Real Estate application now has:
 - **Post Service**: Social feed functionality (posts, comments, likes)
 - **Price Service**: Price management, price history, gRPC integration, circuit breaker resilience
 - **Analytics Service**: User activity tracking with Kafka event streaming and MongoDB persistence
+- **Property Cache (Redis)**: Spring `@Cacheable` over `GET /api/properties` (TTL 60s) and `GET /api/properties/cities` (TTL 1h); writes evict via `@CacheEvict(allEntries=true)`. `CacheErrorHandler` makes Redis outages degrade gracefully to direct DB reads. Kill-switch via `CACHE_ENABLED=false`.
 - **Monitoring Stack**: Prometheus, Grafana, AlertManager
 - **Production-ready Infrastructure**: HPA, PDB, network policies, TLS
 - **CI/CD Pipeline**: Automated build, test, and deployment
@@ -1236,6 +1248,7 @@ The Real Estate application now has:
 | Database per Service | Docker PostgreSQL containers (external) | AWS RDS Multi-AZ PostgreSQL |
 | Analytics Store | Docker MongoDB (analytics-mongo) | Amazon DocumentDB / MongoDB Atlas |
 | Event Streaming | Docker Kafka KRaft (analytics-kafka) | Amazon MSK / Self-hosted Kafka |
+| Property Cache | Docker Redis (`property-redis`, 6379) | Amazon ElastiCache for Redis (Multi-AZ) |
 | Database Connection | `host.docker.internal:PORT` | Private VPC endpoint |
 | Service Discovery | Kubernetes DNS (*.svc.cluster.local) | Same |
 | Rate Limiting | Redis-backed distributed rate limiting | Same |
@@ -1260,6 +1273,11 @@ psql -h localhost -p 5432 -U postgres -d realestatedb -c "SELECT 1"  # Backend D
 psql -h localhost -p 5433 -U postgres -d authdb -c "SELECT 1"         # Auth DB
 psql -h localhost -p 5434 -U postgres -d postdb -c "SELECT 1"         # Post DB
 psql -h localhost -p 5435 -U postgres -d pricedb -c "SELECT 1"        # Price DB
+
+# Property cache (Redis) comes up automatically as part of property-service's docker-compose.yml
+# (no separate step). Verify it's running:
+docker exec property-redis redis-cli PING                              # → PONG
+docker exec property-redis redis-cli INFO stats | grep keyspace_       # hits/misses
 
 # 2. Ensure Kubernetes services are deployed (one-time setup)
 # If not already deployed, run:
@@ -1317,11 +1335,21 @@ curl http://localhost:8000/api/properties/user \
 | `502 Bad Gateway` from Kong | Backend service down | Check pod status: `kubectl get pods -n real-estate` |
 | `Connection refused :8000` | Kong port-forward not running | Run: `kubectl port-forward svc/kong-proxy 8000:80 -n kong` |
 | Database connection error | Docker DB not running | Run: `docker-compose -f docker-compose-db.yml up -d` |
+| Property listings slow / no cache hits | `property-redis` not running, or `CACHE_ENABLED=false` | `docker start property-redis`; or unset `CACHE_ENABLED`. App still works without Redis (degrades to direct DB reads). |
+| `WARN Redis GET/PUT failed` in property-service logs | Redis container down or unreachable | Expected — `CacheErrorHandler` swallows the error. Restart `property-redis`; reads will repopulate. |
 
 ---
 
-**Version:** 3.3.0
-**Last Updated:** 2026-02-16
+**Version:** 3.4.0
+**Last Updated:** 2026-05-07
+**Changes in v3.4.0:**
+- **ADDED**: Property Cache (Redis 7) container `property-redis` on port 6379, used by property-service
+- **ADDED**: Spring `@Cacheable` on `GET /api/properties` (TTL 60s) and `GET /api/properties/cities` (TTL 1h); `@CacheEvict(allEntries=true)` on create/update/delete
+- **ADDED**: `CacheErrorHandler` for graceful degradation when Redis is down; `CACHE_ENABLED=false` kill-switch
+- **UPDATED**: Architecture diagram to include Property Cache box alongside the database row
+- **UPDATED**: Database Architecture Notes, port mapping, connections table, High Availability table, Architecture Highlights, Quick Reference, and Common Issues sections to reflect Redis
+- **PRODUCTION MAPPING**: Local `property-redis` ↔ Amazon ElastiCache for Redis (Multi-AZ)
+
 **Changes in v3.3.0:**
 - **ADDED**: Price Service (port 8084, gRPC 9090) to architecture diagram, route tables, and all references
 - **ADDED**: Price DB (PostgreSQL, port 5435, pricedb) to database tables and connection references

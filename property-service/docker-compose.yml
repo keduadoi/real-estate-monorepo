@@ -22,6 +22,22 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Redis - cache for property listings, cities, and future use cases
+  property-redis:
+    image: redis:7-alpine
+    container_name: property-redis
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    networks:
+      - property-service-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   # Spring Boot Property Service
   property-service:
     build:
@@ -38,12 +54,16 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:29093
       PRICE_SERVICE_GRPC_HOST: host.docker.internal
       PRICE_SERVICE_GRPC_PORT: 9090
+      REDIS_HOST: property-redis
+      REDIS_PORT: 6379
     ports:
       - "8080:8080"
     volumes:
       - ./uploads:/app/uploads
     depends_on:
       property-db:
+        condition: service_healthy
+      property-redis:
         condition: service_healthy
     networks:
       - property-service-network

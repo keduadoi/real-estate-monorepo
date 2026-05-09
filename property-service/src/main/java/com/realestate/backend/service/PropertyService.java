@@ -15,6 +15,9 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +25,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.realestate.backend.config.RedisCacheConfig.CACHE_CITIES;
+import static com.realestate.backend.config.RedisCacheConfig.CACHE_PROPERTIES_LIST;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -46,6 +52,7 @@ public class PropertyService {
     /**
      * Get all properties with pagination
      */
+    @Cacheable(cacheNames = CACHE_PROPERTIES_LIST)
     @CircuitBreaker(name = "database", fallbackMethod = "getAllPropertiesFallback")
     public PageResponse<PropertyDTO> getAllProperties(int page, int size, String sortBy, String sortDirection) {
         log.debug("Getting all properties - page: {}, size: {}, sortBy: {}, sortDirection: {}",
@@ -126,6 +133,7 @@ public class PropertyService {
     /**
      * Get distinct cities
      */
+    @Cacheable(cacheNames = CACHE_CITIES, key = "'all'")
     public List<String> getDistinctCities() {
         log.debug("Getting distinct cities");
         return propertyRepository.findDistinctCities();
@@ -135,6 +143,10 @@ public class PropertyService {
      * Create a new property.
      * If userId is not provided in request, uses the current authenticated user.
      */
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_PROPERTIES_LIST, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CITIES,          allEntries = true)
+    })
     @Transactional
     public PropertyDTO createProperty(CreatePropertyRequest request) {
         log.debug("Creating new property: {}", request.getTitle());
@@ -171,6 +183,10 @@ public class PropertyService {
      * Update an existing property.
      * Validates ownership - only property owner or admin can update.
      */
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_PROPERTIES_LIST, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CITIES,          allEntries = true)
+    })
     @Transactional
     public PropertyDTO updateProperty(Long id, UpdatePropertyRequest request) {
         log.debug("Updating property with ID: {}", id);
@@ -209,6 +225,10 @@ public class PropertyService {
      * Delete a property by ID.
      * Validates ownership - only property owner or admin can delete.
      */
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CACHE_PROPERTIES_LIST, allEntries = true),
+            @CacheEvict(cacheNames = CACHE_CITIES,          allEntries = true)
+    })
     @Transactional
     public void deleteProperty(Long id) {
         log.debug("Deleting property with ID: {}", id);
