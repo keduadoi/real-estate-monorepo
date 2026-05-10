@@ -40,6 +40,13 @@ services:
     read_timeout: 60000
     retries: 3
 
+  - name: ai-search-service
+    url: http://host.docker.internal:8086
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
 # ============================================================================
 # GLOBAL PLUGINS
 # ============================================================================
@@ -249,6 +256,16 @@ routes:
       - OPTIONS
     strip_path: false
 
+  # --- AI Search Service: Public parse endpoint ---
+  - name: ai-search-parse
+    service: ai-search-service
+    paths:
+      - /api/ai-search
+    methods:
+      - POST
+      - OPTIONS
+    strip_path: false
+
   # --- News Service: Public read routes ---
   - name: news-public-get
     service: news-service
@@ -313,6 +330,15 @@ routes:
     service: news-service
     paths:
       - /api/news/actuator/health
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: health-ai-search-service
+    service: ai-search-service
+    paths:
+      - /api/ai-search/actuator/health
     methods:
       - GET
       - OPTIONS

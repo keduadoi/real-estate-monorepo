@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: ai-search-service
+  main:
+    web-application-type: servlet
+
+server:
+  port: 8086
+
+ai-search:
+  parser:
+    mode: ${AI_SEARCH_PARSER_MODE:regex}
+    fallback-on-error: ${AI_SEARCH_PARSER_FALLBACK:regex}
+  cache:
+    max-entries: 1000
+    ttl-minutes: 10
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    base-url: https://api.anthropic.com
+    model: claude-haiku-4-5-20251001
+    max-tokens: 1024
+    timeout-seconds: 8
+    version: "2023-06-01"
+
+logging:
+  level:
+    com.realestate.aisearch: INFO
+    org.springframework.web: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always

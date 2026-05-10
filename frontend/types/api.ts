@@ -176,3 +176,40 @@ export interface UpdateNewsArticleRequest {
   imageUrl?: string;
   publishedAt?: string;
 }
+
+// ---- AI Search ----------------------------------------------------------
+
+export type AiParserMode = 'regex' | 'llm';
+export type AiChipConfidence = 'high' | 'medium' | 'low';
+
+export interface AiSearchChip {
+  id: string;
+  label: string;
+  field: string;
+  value: unknown;
+  confidence: AiChipConfidence;
+}
+
+export interface AiSearchFilters {
+  propertyType?: PropertyType;
+  status?: PropertyStatus;
+  bedrooms?: number;
+  bathrooms?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minArea?: number;
+  maxArea?: number;
+  cities?: string[];
+  districts?: string[];
+  freeText?: string;
+}
+
+export interface AiSearchParseResponse {
+  originalQuery: string;
+  filters: AiSearchFilters;
+  chips: AiSearchChip[];
+  warnings: string[];
+  parserMode: AiParserMode;
+  parserLatencyMs: number;
+  cacheHit: boolean;
+}

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import SearchBar from '@/components/SearchBar';
+import SearchModeSwitcher from '@/components/SearchModeSwitcher';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
 import { propertyApi } from '@/lib/api/propertyApi';
@@ -76,7 +76,7 @@ export default async function RentPage({ searchParams }: RentPageProps) {
         </p>
       </div>
 
-      <SearchBar />
+      <SearchModeSwitcher />
 
       {searchParams.sort && (
         <div className="mb-4">

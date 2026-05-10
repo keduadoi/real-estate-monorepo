@@ -406,5 +406,17 @@
       "unlike": "Bỏ thích",
       "like": "Thích"
     }
+  },
+  "aiSearch": {
+    "placeholder": "Mô tả nhà bạn muốn tìm…",
+    "submit": "Tìm",
+    "interpretedAs": "Hiểu là:",
+    "lowConfidence": "Có thể chưa đúng — bấm × nếu sai",
+    "fallbackBanner": "AI tạm không khả dụng, đang dùng tìm kiếm thường.",
+    "rateLimited": "Bạn đã tìm quá nhiều — thử lại sau {seconds}s",
+    "errorPrefix": "Lỗi AI search:",
+    "toggleLabel": "Tìm bằng AI",
+    "toggleAria": "Chuyển giữa tìm bằng AI và bộ lọc thường",
+    "beta": "thử nghiệm"
   }
 }

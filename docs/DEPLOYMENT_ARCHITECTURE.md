@@ -522,6 +522,8 @@ Content-Type: application/json
 | **Prices** |
 | prices-public-get | `/api/prices` | GET | price-service | 8084 | No | 100/min |
 | prices-protected | `/api/prices` | PUT | price-service | 8084 | JWT | 100/min |
+| **AI Search** |
+| ai-search-parse | `/api/ai-search/parse` | POST | ai-search-service | 8086 | No | 100/min |
 | **File Upload** |
 | upload-routes | `/api/upload/*` | POST | property-service | 8080 | JWT | 50/min |
 | uploads-static | `/uploads/*` | GET | property-service | 8080 | No | 200/min |
@@ -540,6 +542,7 @@ Content-Type: application/json
 | Post Service | `post-service.real-estate.svc.cluster.local` | 8082 | real-estate |
 | Analytics Service | `analytics-service.real-estate.svc.cluster.local` | 8083 | real-estate |
 | Price Service | `price-service.real-estate.svc.cluster.local` | 8084 | real-estate |
+| AI Search Service | `ai-search-service.real-estate.svc.cluster.local` | 8086 | real-estate |
 
 ### Local Development Port Mapping
 
@@ -552,6 +555,7 @@ Content-Type: application/json
 | Auth Service | `http://localhost:8081` | `kubectl port-forward svc/auth-service 8081:8081 -n real-estate` |
 | Post Service | `http://localhost:8082` | `kubectl port-forward svc/post-service 8082:8082 -n real-estate` |
 | Price Service | `http://localhost:8084` | `kubectl port-forward svc/price-service 8084:8084 -n real-estate` |
+| AI Search Service | `http://localhost:8086` | `kubectl port-forward svc/ai-search-service 8086:8086 -n real-estate` |
 | Property Cache (Redis) | `redis://localhost:6379` | N/A — runs as Docker container alongside property-service |
 
 ### Database & Cache Connections (Docker)
@@ -627,6 +631,7 @@ Kong Gateway serves as the central entry point for all API traffic, providing:
 │  property-service   │ real-estate-backend-backend.real-estate │ 8080 │ HTTP │
 │  post-service       │ post-service.real-estate.svc            │ 8082 │ HTTP │
 │  price-service      │ price-service.real-estate.svc           │ 8084 │ HTTP │
+│  ai-search-service  │ ai-search-service.real-estate.svc       │ 8086 │ HTTP │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -668,6 +673,8 @@ Kong Gateway serves as the central entry point for all API traffic, providing:
 │  prices-public-get      │ /api/prices (GET)               │ No              │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
 │  prices-protected       │ /api/prices (PUT)               │ Yes (JWT)       │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  ai-search-parse        │ /api/ai-search/parse (POST)     │ No              │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
 │  admin-routes           │ /api/admin/*                    │ Yes (JWT+Admin) │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
@@ -1340,8 +1347,15 @@ curl http://localhost:8000/api/properties/user \
 
 ---
 
-**Version:** 3.4.0
-**Last Updated:** 2026-05-07
+**Version:** 3.5.0
+**Last Updated:** 2026-05-10
+**Changes in v3.5.0:**
+- **ADDED**: AI Search Service (port 8086, stateless) for natural-language property queries
+- **ADDED**: Pluggable parser via `AI_SEARCH_PARSER_MODE` env var: `regex` (default, in-process, $0) or `llm` (Claude Haiku 4.5 via `ANTHROPIC_API_KEY`); fallback to regex on LLM error via `AI_SEARCH_PARSER_FALLBACK=regex`
+- **ADDED**: Kong route `ai-search-parse` (`POST /api/ai-search/parse`, public) and service block targeting port 8086
+- **ADDED**: Frontend AiSearchBar / InterpretedChips components on `/buy`, `/rent`, `/search` behind `NEXT_PUBLIC_AI_SEARCH=1`
+- **NOTE**: ai-search-service is stateless (Caffeine in-process cache, no DB) — production should add Redis for multi-replica cache sharing
+
 **Changes in v3.4.0:**
 - **ADDED**: Property Cache (Redis 7) container `property-redis` on port 6379, used by property-service
 - **ADDED**: Spring `@Cacheable` on `GET /api/properties` (TTL 60s) and `GET /api/properties/cities` (TTL 1h); `@CacheEvict(allEntries=true)` on create/update/delete

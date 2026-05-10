@@ -84,10 +84,17 @@ cd ../analytics-service && docker compose up -d --build
 # 5. Start price-service (DB + app + gRPC)
 cd ../price-service && docker compose up -d --build
 
-# 6. Start Kong Gateway
+# 6. Start news-service (DB + app)
+cd ../news-service && docker compose up -d --build
+
+# 7. Start ai-search-service (stateless, regex parser by default; set
+#    AI_SEARCH_PARSER_MODE=llm + ANTHROPIC_API_KEY=... to use Claude)
+cd ../ai-search-service && docker compose up -d --build
+
+# 8. Start Kong Gateway
 cd ../kong && docker compose up -d
 
-# 7. Start frontend
+# 9. Start frontend (set NEXT_PUBLIC_AI_SEARCH=1 in .env.local for the AI bar)
 cd ../frontend && npm run dev
 ```
 
@@ -103,6 +110,8 @@ cd ../frontend && npm run dev
 | Analytics Service | http://localhost:8083 | Analytics service (direct access) |
 | Price Service | http://localhost:8084 | Price service (direct access) |
 | Price Service gRPC | localhost:9090 | gRPC endpoint (used by property-service) |
+| News Service | http://localhost:8085 | News service (direct access) |
+| AI Search Service | http://localhost:8086 | Natural-language query parser (regex / LLM) |
 | Kong Admin | http://localhost:8001 | Kong admin API |
 | Kafka | localhost:29092 | Event broker (external listener) |
 | MongoDB | localhost:27017 | Analytics event store (analyticsdb) |
@@ -115,7 +124,10 @@ cd ../frontend && npm run dev
 | Auth DB | localhost | 5433 | authdb | postgres | postgres |
 | Post DB | localhost | 5434 | postdb | postgres | postgres |
 | Price DB | localhost | 5435 | pricedb | postgres | postgres |
+| News DB | localhost | 5436 | newsdb | postgres | postgres |
 | MongoDB | localhost | 27017 | analyticsdb | (none) | (none) |
+
+> ai-search-service is stateless — no database.
 
 Connect with psql:
 ```bash
@@ -150,6 +162,9 @@ docker exec analytics-mongo mongosh analyticsdb
 | `analytics-service` | Analytics Spring Boot | 8083 |
 | `price-db` | Price PostgreSQL | 5435 |
 | `price-service` | Price Spring Boot | 8084, 9090 (gRPC) |
+| `news-db` | News PostgreSQL | 5436 |
+| `news-service` | News Spring Boot | 8085 |
+| `ai-search-service` | AI Search Spring Boot (stateless) | 8086 |
 | `kong-gateway` | Kong API Gateway | 8000, 8001 |
 
 ## Scripts Reference
@@ -209,6 +224,12 @@ docker logs -f analytics-service
 # Price Service
 docker logs -f price-service
 
+# News Service
+docker logs -f news-service
+
+# AI Search Service
+docker logs -f ai-search-service
+
 # Kong
 docker logs -f kong-gateway
 
@@ -235,6 +256,12 @@ cd analytics-service && docker compose restart analytics-service
 
 # Restart price-service app only (keeps DB running)
 cd price-service && docker compose restart price-service
+
+# Restart news-service app only (keeps DB running)
+cd news-service && docker compose restart news-service
+
+# Restart ai-search-service (stateless — pick up env var changes like AI_SEARCH_PARSER_MODE)
+cd ai-search-service && docker compose restart ai-search-service
 
 # Restart Kong
 cd kong && docker compose restart
@@ -308,6 +335,8 @@ cd ../auth-service && docker compose down -v
 cd ../post-service && docker compose down -v
 cd ../analytics-service && docker compose down -v
 cd ../price-service && docker compose down -v
+cd ../news-service && docker compose down -v
+cd ../ai-search-service && docker compose down -v
 cd ../kong && docker compose down
 ```
 
@@ -327,6 +356,8 @@ cd ../kong && docker compose down
    docker logs post-service
    docker logs analytics-service
    docker logs price-service
+   docker logs news-service
+   docker logs ai-search-service
    ```
 
 3. Check if port is in use:
@@ -336,6 +367,8 @@ cd ../kong && docker compose down
    lsof -i :8082
    lsof -i :8083
    lsof -i :8084
+   lsof -i :8085
+   lsof -i :8086
    ```
 
 4. Rebuild from scratch:
@@ -402,7 +435,27 @@ NEXTAUTH_SECRET=your-secret-key-here-change-in-production-min-32-characters-long
 NEXT_PUBLIC_KONG_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
 NEXT_PUBLIC_AUTH_API_URL=http://127.0.0.1:8000
+
+# Show the natural-language AI search bar on /buy, /rent, /search.
+NEXT_PUBLIC_AI_SEARCH=1
 ```
+
+### AI Search Service (parser mode switch)
+
+`ai-search-service` is stateless and chooses its parser at startup via env vars:
+
+```bash
+# Default — in-process regex, $0 per query, no API key needed
+AI_SEARCH_PARSER_MODE=regex
+
+# Use Claude Haiku 4.5 for broader coverage (~$0.001–0.002 per query)
+AI_SEARCH_PARSER_MODE=llm
+AI_SEARCH_PARSER_FALLBACK=regex          # silently fall back to regex on LLM error
+ANTHROPIC_API_KEY=sk-ant-...              # required when MODE=llm
+```
+
+Set these in your shell or in `ai-search-service/.env` before running
+`docker compose up -d --build` (or `cd ai-search-service && docker compose restart`).
 
 ### Kong Configuration
 Kong runs in **DB-less mode** locally using a declarative config file at `kong/config/kong-local.yaml`. This file defines all services, routes, and plugins. Services point to `host.docker.internal` to reach backend services running on the host via Docker port mappings.
@@ -431,14 +484,21 @@ curl http://localhost:8000/api/properties
 # Posts
 curl http://localhost:8000/api/posts
 
+# AI Search (regex parser, public)
+curl -X POST http://localhost:8000/api/ai-search/parse \
+  -H "Content-Type: application/json" \
+  -d '{"query":"a house near the beach with 3 bedrooms, max 5 billion vnd","locale":"en"}'
+
 # Health checks
 curl http://localhost:8080/actuator/health
 curl http://localhost:8081/actuator/health
 curl http://localhost:8082/actuator/health
 curl http://localhost:8083/actuator/health
 curl http://localhost:8084/actuator/health
+curl http://localhost:8085/actuator/health
+curl http://localhost:8086/actuator/health
 ```
 
 ---
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-05-10

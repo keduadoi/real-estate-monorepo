@@ -406,5 +406,17 @@
       "unlike": "Unlike",
       "like": "Like"
     }
+  },
+  "aiSearch": {
+    "placeholder": "Describe what you're looking for…",
+    "submit": "Search",
+    "interpretedAs": "Interpreted as:",
+    "lowConfidence": "May not be exact — click × if wrong",
+    "fallbackBanner": "AI search is temporarily unavailable, showing keyword results.",
+    "rateLimited": "Too many searches — try again in {seconds}s",
+    "errorPrefix": "AI search error:",
+    "toggleLabel": "AI search",
+    "toggleAria": "Toggle between AI search and filter form",
+    "beta": "beta"
   }
 }

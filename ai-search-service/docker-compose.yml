@@ -1,0 +1,28 @@
+version: '3.8'
+
+# =============================================================================
+# AI Search Service - Standalone Docker Compose
+# =============================================================================
+# Stateless service. No database. Optional Anthropic API key for mode=llm.
+# Usage: docker-compose up -d
+# =============================================================================
+
+services:
+  ai-search-service:
+    build:
+      context: ..
+      dockerfile: ai-search-service/Dockerfile
+    container_name: ai-search-service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      AI_SEARCH_PARSER_MODE: ${AI_SEARCH_PARSER_MODE:-regex}
+      AI_SEARCH_PARSER_FALLBACK: ${AI_SEARCH_PARSER_FALLBACK:-regex}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

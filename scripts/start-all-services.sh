@@ -124,9 +124,26 @@ echo -e "${GREEN}✅ News service started (DB: port 5436, App: port 8085)${NC}"
 echo ""
 
 # ============================================================================
-# STEP 8: Start Kong Gateway (Docker Compose)
+# STEP 8: Start AI Search Service (Docker Compose)
 # ============================================================================
-echo -e "${BLUE}━━━ Step 8: Starting Kong Gateway (Docker Compose) ━━━${NC}"
+echo -e "${BLUE}━━━ Step 8: Starting AI Search Service (Docker Compose) ━━━${NC}"
+cd "$ROOT_DIR/ai-search-service"
+
+if docker ps --format '{{.Names}}' | grep -q "^ai-search-service$"; then
+    echo "   AI search service is already running, rebuilding..."
+fi
+docker compose up -d --build
+echo -e "${GREEN}✅ AI search service started (App: port 8086)${NC}"
+echo "   Mode: ${AI_SEARCH_PARSER_MODE:-regex}  (override with AI_SEARCH_PARSER_MODE=llm)"
+if [ -z "$ANTHROPIC_API_KEY" ] && [ "${AI_SEARCH_PARSER_MODE:-regex}" = "llm" ]; then
+    echo -e "   ${YELLOW}⚠️  ANTHROPIC_API_KEY not set; LLM parser calls will fail.${NC}"
+fi
+echo ""
+
+# ============================================================================
+# STEP 9: Start Kong Gateway (Docker Compose)
+# ============================================================================
+echo -e "${BLUE}━━━ Step 9: Starting Kong Gateway (Docker Compose) ━━━${NC}"
 cd "$ROOT_DIR/kong"
 
 if docker ps --filter "name=kong-gateway" --format '{{.Status}}' 2>/dev/null | grep -q "Up"; then
@@ -152,9 +169,9 @@ fi
 echo ""
 
 # ============================================================================
-# STEP 9: Health Checks
+# STEP 10: Health Checks
 # ============================================================================
-echo -e "${BLUE}━━━ Step 9: Health Checks ━━━${NC}"
+echo -e "${BLUE}━━━ Step 10: Health Checks ━━━${NC}"
 
 check_health() {
     local name=$1
@@ -181,13 +198,14 @@ check_health "Post Service" "http://localhost:8082/actuator/health"
 check_health "Analytics Service" "http://localhost:8083/actuator/health"
 check_health "Price Service" "http://localhost:8084/actuator/health"
 check_health "News Service" "http://localhost:8085/actuator/health"
+check_health "AI Search Svc" "http://localhost:8086/actuator/health"
 check_health "Kong Gateway" "http://localhost:8001/status"
 echo ""
 
 # ============================================================================
-# STEP 10: Start Frontend
+# STEP 11: Start Frontend
 # ============================================================================
-echo -e "${BLUE}━━━ Step 10: Frontend ━━━${NC}"
+echo -e "${BLUE}━━━ Step 11: Frontend ━━━${NC}"
 
 if [ "$SKIP_FRONTEND" = true ]; then
     echo -e "${YELLOW}ℹ️  Skipping frontend (--no-frontend flag).${NC}"
@@ -264,6 +282,7 @@ echo "   Post Service:  http://localhost:8082"
 echo "   Analytics Svc: http://localhost:8083"
 echo "   Price Service: http://localhost:8084 (gRPC: 9090)"
 echo "   News Service:  http://localhost:8085"
+echo "   AI Search:     http://localhost:8086"
 echo ""
 echo "🐘 Databases, Cache, Kafka & MongoDB (Docker):"
 echo "   Property DB:   localhost:5432 (realestatedb)"
@@ -279,7 +298,7 @@ echo "🔧 Commands:"
 echo "   Status:        $SCRIPT_DIR/status-all-services.sh"
 echo "   Stop:          $SCRIPT_DIR/stop-all-services.sh"
 echo "   Logs:          docker logs -f <container-name>"
-echo "                  (property-service | auth-service | post-service | analytics-service | price-service | news-service | kong-gateway)"
+echo "                  (property-service | auth-service | post-service | analytics-service | price-service | news-service | ai-search-service | kong-gateway)"
 echo ""
 echo "🌐 Frontend Commands:"
 echo "   Start:   cd $ROOT_DIR/frontend && ./start-dev.sh"

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import SearchBar from '@/components/SearchBar';
+import AiSearchChipsBanner from '@/components/AiSearchChipsBanner';
+import SearchModeSwitcher from '@/components/SearchModeSwitcher';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
 import { propertyApi } from '@/lib/api/propertyApi';
@@ -109,7 +110,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         )}
       </div>
 
-      <SearchBar />
+      <AiSearchChipsBanner />
+      <SearchModeSwitcher />
 
       {hasFilters && (
         <div className="mb-6 flex flex-wrap gap-2">
