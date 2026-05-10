@@ -10,7 +10,9 @@
     "news": "News",
     "search": "Search",
     "admin": "Admin",
-    "postListing": "Post listing"
+    "postListing": "Post listing",
+    "allBuy": "All for sale",
+    "allRent": "All for rent"
   },
   "auth": {
     "signIn": "Sign in",
@@ -406,6 +408,12 @@
       "unlike": "Unlike",
       "like": "Like"
     }
+  },
+  "commonFilters": {
+    "byPrice": "By price",
+    "byType": "By property type",
+    "byBedrooms": "By bedrooms",
+    "byCity": "By city"
   },
   "aiSearch": {
     "placeholder": "Describe what you're looking for…",

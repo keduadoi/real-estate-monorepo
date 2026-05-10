@@ -10,7 +10,9 @@
     "news": "Tin tức",
     "search": "Tìm kiếm",
     "admin": "Quản trị",
-    "postListing": "Đăng tin"
+    "postListing": "Đăng tin",
+    "allBuy": "Tất cả nhà bán",
+    "allRent": "Tất cả nhà thuê"
   },
   "auth": {
     "signIn": "Đăng nhập",
@@ -406,6 +408,12 @@
       "unlike": "Bỏ thích",
       "like": "Thích"
     }
+  },
+  "commonFilters": {
+    "byPrice": "Theo mức giá",
+    "byType": "Theo loại nhà đất",
+    "byBedrooms": "Theo số phòng ngủ",
+    "byCity": "Theo khu vực"
   },
   "aiSearch": {
     "placeholder": "Mô tả nhà bạn muốn tìm…",

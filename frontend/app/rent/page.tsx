@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import SearchModeSwitcher from '@/components/SearchModeSwitcher';
+import CommonFiltersSidebar from '@/components/CommonFiltersSidebar';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
 import { propertyApi } from '@/lib/api/propertyApi';
@@ -78,25 +79,33 @@ export default async function RentPage({ searchParams }: RentPageProps) {
 
       <SearchModeSwitcher />
 
-      {searchParams.sort && (
-        <div className="mb-4">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-            {t('rent.sortPrefix')}{' '}
-            {t(`common.sort.${SORT_KEYS[searchParams.sort]}`)}
-          </span>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8">
+        <div>
+          {searchParams.sort && (
+            <div className="mb-4">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                {t('rent.sortPrefix')}{' '}
+                {t(`common.sort.${SORT_KEYS[searchParams.sort]}`)}
+              </span>
+            </div>
+          )}
+
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900">{t('rent.sectionHeading')}</h2>
+            <p className="text-gray-600 mt-1">
+              {t('rent.showing', { shown: paginated.data.length, total: paginated.total })}
+            </p>
+          </div>
+
+          <PropertyGrid properties={paginated.data} />
+
+          <Pagination currentPage={paginated.page} totalPages={paginated.totalPages} />
         </div>
-      )}
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-gray-900">{t('rent.sectionHeading')}</h2>
-        <p className="text-gray-600 mt-1">
-          {t('rent.showing', { shown: paginated.data.length, total: paginated.total })}
-        </p>
+        <div className="hidden lg:block">
+          <CommonFiltersSidebar status="for-rent" />
+        </div>
       </div>
-
-      <PropertyGrid properties={paginated.data} />
-
-      <Pagination currentPage={paginated.page} totalPages={paginated.totalPages} />
     </div>
   );
 }

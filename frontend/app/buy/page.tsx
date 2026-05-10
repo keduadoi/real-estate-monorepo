@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import SearchModeSwitcher from '@/components/SearchModeSwitcher';
+import CommonFiltersSidebar from '@/components/CommonFiltersSidebar';
 import PropertyGrid from '@/components/PropertyGrid';
 import Pagination from '@/components/Pagination';
 import { propertyApi } from '@/lib/api/propertyApi';
@@ -78,25 +79,33 @@ export default async function BuyPage({ searchParams }: BuyPageProps) {
 
       <SearchModeSwitcher />
 
-      {searchParams.sort && (
-        <div className="mb-4">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-            {t('buy.sortPrefix')}{' '}
-            {t(`common.sort.${SORT_KEYS[searchParams.sort]}`)}
-          </span>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8">
+        <div>
+          {searchParams.sort && (
+            <div className="mb-4">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                {t('buy.sortPrefix')}{' '}
+                {t(`common.sort.${SORT_KEYS[searchParams.sort]}`)}
+              </span>
+            </div>
+          )}
+
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900">{t('buy.sectionHeading')}</h2>
+            <p className="text-gray-600 mt-1">
+              {t('buy.showing', { shown: paginated.data.length, total: paginated.total })}
+            </p>
+          </div>
+
+          <PropertyGrid properties={paginated.data} />
+
+          <Pagination currentPage={paginated.page} totalPages={paginated.totalPages} />
         </div>
-      )}
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-gray-900">{t('buy.sectionHeading')}</h2>
-        <p className="text-gray-600 mt-1">
-          {t('buy.showing', { shown: paginated.data.length, total: paginated.total })}
-        </p>
+        <div className="hidden lg:block">
+          <CommonFiltersSidebar status="for-sale" />
+        </div>
       </div>
-
-      <PropertyGrid properties={paginated.data} />
-
-      <Pagination currentPage={paginated.page} totalPages={paginated.totalPages} />
     </div>
   );
 }
