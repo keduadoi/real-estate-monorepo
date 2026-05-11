@@ -1,0 +1,50 @@
+# =============================================================================
+# Comment Service - Standalone Docker Compose
+# =============================================================================
+services:
+  comment-db:
+    image: postgres:16-alpine
+    container_name: comment-db
+    environment:
+      POSTGRES_DB: commentsdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - comment-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  comment-service:
+    build:
+      context: ..
+      dockerfile: comment-service/Dockerfile
+    container_name: comment-service
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: comment-db
+      DB_PORT: 5432
+      DB_NAME: commentsdb
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      PROPERTY_SERVICE_URL: http://host.docker.internal:8080
+      IP_HASH_SECRET: ${IP_HASH_SECRET:-dev-only-rotate-me-in-prod-please}
+      COMMENTS_DISABLED: ${COMMENTS_DISABLED:-false}
+    depends_on:
+      comment-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8087/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  comment-db-data:

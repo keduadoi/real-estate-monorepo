@@ -293,6 +293,16 @@
     }
   },
   "admin": {
+    "comments": {
+      "heading": "Comments — moderation queue",
+      "description": "Comments with at least one unresolved report.",
+      "empty": "No reports waiting.",
+      "hide": "Hide",
+      "restore": "Restore",
+      "hidePrompt": "Reason for hiding (e.g. spam, abuse)",
+      "restoreConfirm": "Restore this hidden comment?",
+      "hiddenBadge": "Hidden"
+    },
     "news": {
       "list": {
         "heading": "News administration",
@@ -408,6 +418,29 @@
       "unlike": "Unlike",
       "like": "Like"
     }
+  },
+  "comments": {
+    "heading": "Comments ({count})",
+    "empty": "No comments yet — be the first to ask.",
+    "composerNamePlaceholder": "Your name",
+    "composerBodyPlaceholder": "Write a comment…",
+    "submit": "Post",
+    "cancel": "Cancel",
+    "reply": "Reply",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this comment?",
+    "report": "Report",
+    "reportReasonPrompt": "Reason: spam / abuse / off-topic / other",
+    "reportInvalidReason": "Reason must be: spam, abuse, off-topic, or other",
+    "reportSubmitted": "Thanks — a moderator will review.",
+    "like": "Like",
+    "guestBadge": "Guest",
+    "ownerBadge": "Owner",
+    "adminBadge": "Admin",
+    "editedSuffix": "(edited)",
+    "hidden": "This comment has been hidden.",
+    "loadMore": "Load more"
   },
   "commonFilters": {
     "byPrice": "By price",

@@ -91,10 +91,13 @@ cd ../news-service && docker compose up -d --build
 #    AI_SEARCH_PARSER_MODE=llm + ANTHROPIC_API_KEY=... to use Claude)
 cd ../ai-search-service && docker compose up -d --build
 
-# 8. Start Kong Gateway
+# 8. Start comment-service (DB + app)
+cd ../comment-service && docker compose up -d --build
+
+# 9. Start Kong Gateway
 cd ../kong && docker compose up -d
 
-# 9. Start frontend (set NEXT_PUBLIC_AI_SEARCH=1 in .env.local for the AI bar)
+# 10. Start frontend (set NEXT_PUBLIC_AI_SEARCH=1 in .env.local for the AI bar)
 cd ../frontend && npm run dev
 ```
 
@@ -112,6 +115,7 @@ cd ../frontend && npm run dev
 | Price Service gRPC | localhost:9090 | gRPC endpoint (used by property-service) |
 | News Service | http://localhost:8085 | News service (direct access) |
 | AI Search Service | http://localhost:8086 | Natural-language query parser (regex / LLM) |
+| Comment Service | http://localhost:8087 | Property comments service (direct access) |
 | Kong Admin | http://localhost:8001 | Kong admin API |
 | Kafka | localhost:29092 | Event broker (external listener) |
 | MongoDB | localhost:27017 | Analytics event store (analyticsdb) |
@@ -125,6 +129,7 @@ cd ../frontend && npm run dev
 | Post DB | localhost | 5434 | postdb | postgres | postgres |
 | Price DB | localhost | 5435 | pricedb | postgres | postgres |
 | News DB | localhost | 5436 | newsdb | postgres | postgres |
+| Comment DB | localhost | 5437 | commentsdb | postgres | postgres |
 | MongoDB | localhost | 27017 | analyticsdb | (none) | (none) |
 
 > ai-search-service is stateless — no database.
@@ -142,6 +147,12 @@ psql -h localhost -p 5434 -U postgres -d postdb
 
 # Price DB
 psql -h localhost -p 5435 -U postgres -d pricedb
+
+# News DB
+psql -h localhost -p 5436 -U postgres -d newsdb
+
+# Comment DB
+psql -h localhost -p 5437 -U postgres -d commentsdb
 
 # MongoDB (Analytics)
 docker exec analytics-mongo mongosh analyticsdb
@@ -165,6 +176,8 @@ docker exec analytics-mongo mongosh analyticsdb
 | `news-db` | News PostgreSQL | 5436 |
 | `news-service` | News Spring Boot | 8085 |
 | `ai-search-service` | AI Search Spring Boot (stateless) | 8086 |
+| `comment-db` | Comment PostgreSQL | 5437 |
+| `comment-service` | Comment Spring Boot | 8087 |
 | `kong-gateway` | Kong API Gateway | 8000, 8001 |
 
 ## Scripts Reference
@@ -230,6 +243,9 @@ docker logs -f news-service
 # AI Search Service
 docker logs -f ai-search-service
 
+# Comment Service
+docker logs -f comment-service
+
 # Kong
 docker logs -f kong-gateway
 
@@ -262,6 +278,9 @@ cd news-service && docker compose restart news-service
 
 # Restart ai-search-service (stateless — pick up env var changes like AI_SEARCH_PARSER_MODE)
 cd ai-search-service && docker compose restart ai-search-service
+
+# Restart comment-service app only (keeps DB running)
+cd comment-service && docker compose restart comment-service
 
 # Restart Kong
 cd kong && docker compose restart
@@ -337,6 +356,7 @@ cd ../analytics-service && docker compose down -v
 cd ../price-service && docker compose down -v
 cd ../news-service && docker compose down -v
 cd ../ai-search-service && docker compose down -v
+cd ../comment-service && docker compose down -v
 cd ../kong && docker compose down
 ```
 
@@ -358,6 +378,7 @@ cd ../kong && docker compose down
    docker logs price-service
    docker logs news-service
    docker logs ai-search-service
+   docker logs comment-service
    ```
 
 3. Check if port is in use:
@@ -369,6 +390,7 @@ cd ../kong && docker compose down
    lsof -i :8084
    lsof -i :8085
    lsof -i :8086
+   lsof -i :8087
    ```
 
 4. Rebuild from scratch:
@@ -407,6 +429,8 @@ cd ../kong && docker compose down
    docker exec auth-db pg_isready -U postgres
    docker exec post-db pg_isready -U postgres
    docker exec price-db pg_isready -U postgres
+   docker exec news-db pg_isready -U postgres
+   docker exec comment-db pg_isready -U postgres
    ```
 
 ### Frontend API Errors
@@ -489,6 +513,12 @@ curl -X POST http://localhost:8000/api/ai-search/parse \
   -H "Content-Type: application/json" \
   -d '{"query":"a house near the beach with 3 bedrooms, max 5 billion vnd","locale":"en"}'
 
+# News (public reads)
+curl http://localhost:8000/api/news
+
+# Comments on a property (public read)
+curl http://localhost:8000/api/properties/1/comments
+
 # Health checks
 curl http://localhost:8080/actuator/health
 curl http://localhost:8081/actuator/health
@@ -497,6 +527,7 @@ curl http://localhost:8083/actuator/health
 curl http://localhost:8084/actuator/health
 curl http://localhost:8085/actuator/health
 curl http://localhost:8086/actuator/health
+curl http://localhost:8087/actuator/health
 ```
 
 ---

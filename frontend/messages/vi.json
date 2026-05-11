@@ -293,6 +293,16 @@
     }
   },
   "admin": {
+    "comments": {
+      "heading": "Bình luận — Hàng đợi kiểm duyệt",
+      "description": "Các bình luận có ít nhất một báo cáo chưa xử lý.",
+      "empty": "Không có báo cáo nào đang chờ.",
+      "hide": "Ẩn",
+      "restore": "Khôi phục",
+      "hidePrompt": "Lý do ẩn (ví dụ: spam, abuse)",
+      "restoreConfirm": "Khôi phục bình luận này?",
+      "hiddenBadge": "Đã ẩn"
+    },
     "news": {
       "list": {
         "heading": "Quản trị tin tức",
@@ -408,6 +418,29 @@
       "unlike": "Bỏ thích",
       "like": "Thích"
     }
+  },
+  "comments": {
+    "heading": "Bình luận ({count})",
+    "empty": "Chưa có bình luận — hãy là người đầu tiên hỏi đáp.",
+    "composerNamePlaceholder": "Tên của bạn",
+    "composerBodyPlaceholder": "Viết bình luận của bạn…",
+    "submit": "Gửi bình luận",
+    "cancel": "Hủy",
+    "reply": "Trả lời",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "deleteConfirm": "Xóa bình luận này?",
+    "report": "Báo cáo",
+    "reportReasonPrompt": "Lý do: spam / abuse / off-topic / other",
+    "reportInvalidReason": "Lý do phải là: spam, abuse, off-topic hoặc other",
+    "reportSubmitted": "Cảm ơn bạn — quản trị viên sẽ xem xét.",
+    "like": "Thích",
+    "guestBadge": "Khách",
+    "ownerBadge": "Chủ tin",
+    "adminBadge": "Quản trị",
+    "editedSuffix": "(đã sửa)",
+    "hidden": "Bình luận này đã bị ẩn.",
+    "loadMore": "Xem thêm"
   },
   "commonFilters": {
     "byPrice": "Theo mức giá",

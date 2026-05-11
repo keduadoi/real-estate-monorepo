@@ -213,3 +213,55 @@ export interface AiSearchParseResponse {
   parserLatencyMs: number;
   cacheHit: boolean;
 }
+
+// ---- Comments -----------------------------------------------------------
+
+export interface CommentDTO {
+  id: number;
+  propertyId: number;
+  parentId?: number | null;
+  userId?: string | null;
+  displayName?: string | null;
+  gravatarHash?: string | null;
+  isOwnerOfProperty: boolean;
+  isAdmin: boolean;
+  body?: string | null;
+  likeCount: number;
+  likedByCurrent: boolean;
+  replyCount: number;
+  replies?: CommentDTO[];
+  createdAt: string;
+  updatedAt?: string | null;
+  editable: boolean;
+  hidden: boolean;
+}
+
+export interface CommentListResponse {
+  data: CommentDTO[];
+  total: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
+export interface CaptchaChallenge {
+  captchaId: string;
+  question: string;
+}
+
+export interface CreateCommentRequest {
+  body: string;
+  displayName?: string;
+  gravatarHash?: string;
+  captchaId?: string;
+  captchaAnswer?: string;
+  /** Honeypot — must always be empty. */
+  website?: string;
+}
+
+export type ReportReason = 'spam' | 'abuse' | 'off-topic' | 'other';
+
+export interface ReportCommentRequest {
+  reason: ReportReason;
+  note?: string;
+}

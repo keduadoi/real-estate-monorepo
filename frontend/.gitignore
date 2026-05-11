@@ -27,6 +27,10 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# local dev runtime state (PID + log written by start-all-services.sh)
+.frontend.pid
+.frontend.log
+
 # vercel
 .vercel
 

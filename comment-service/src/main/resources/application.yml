@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: comment-service
+  main:
+    web-application-type: servlet
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5437}/${DB_NAME:commentsdb}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8087
+
+comments:
+  disabled: ${COMMENTS_DISABLED:false}
+  ip-hash-secret: ${IP_HASH_SECRET:dev-only-rotate-me-in-prod-please}
+  edit-window-minutes: 15
+  body-min-length: 1
+  body-max-length: 1000
+  display-name-max-length: 50
+  rate-limit:
+    anon-per-ip-per-5min: 5
+    anon-per-ip-per-day: 30
+    user-per-id-per-5min: 30
+    user-per-id-per-day: 200
+    per-property-per-min: 20
+    like-per-identity-per-min: 60
+  captcha:
+    ttl-seconds: 300
+    max-pending: 10000
+  property-service:
+    base-url: ${PROPERTY_SERVICE_URL:http://localhost:8080}
+    timeout-seconds: 4
+    cache-ttl-seconds: 60
+
+logging:
+  level:
+    com.realestate.comments: DEBUG
+    org.springframework.web: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always

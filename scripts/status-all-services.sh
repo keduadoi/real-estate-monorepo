@@ -55,6 +55,7 @@ check_db "Auth DB    " "auth-db" "5433"
 check_db "Post DB    " "post-db" "5434"
 check_db "Price DB   " "price-db" "5435"
 check_db "News DB    " "news-db" "5436"
+check_db "Comment DB " "comment-db" "5437"
 echo ""
 
 # ============================================================================
@@ -112,6 +113,7 @@ check_service "Analytics  " "analytics-service" "8083"
 check_service "Price      " "price-service" "8084"
 check_service "News       " "news-service" "8085"
 check_service "AI Search  " "ai-search-service" "8086"
+check_service "Comment    " "comment-service" "8087"
 echo ""
 
 # ============================================================================
@@ -157,6 +159,7 @@ check_health "Analytics Svc" "http://localhost:8083/actuator/health"
 check_health "Price Service" "http://localhost:8084/actuator/health"
 check_health "News Service " "http://localhost:8085/actuator/health"
 check_health "AI Search Svc" "http://localhost:8086/actuator/health"
+check_health "Comment Svc  " "http://localhost:8087/actuator/health"
 # Kong health (Docker — direct access)
 if curl -s http://localhost:8001/status > /dev/null 2>&1; then
     echo -e "Kong Gateway:  ${GREEN}✅ Healthy${NC}"
@@ -202,6 +205,7 @@ echo "   Analytics Svc: http://localhost:8083"
 echo "   Price Service: http://localhost:8084 (gRPC: 9090)"
 echo "   News Service:  http://localhost:8085"
 echo "   AI Search:     http://localhost:8086"
+echo "   Comment Svc:   http://localhost:8087"
 echo ""
 echo "🔧 Commands:"
 echo "   Start all:  ./scripts/start-all-services.sh"

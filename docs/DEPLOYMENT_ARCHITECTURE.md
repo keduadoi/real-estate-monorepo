@@ -41,13 +41,17 @@
 │  │                                                                          │ │
 │  │  Routes:                                                                 │ │
 │  │  • /auth/*       → Auth Service (login, register, refresh, etc.)        │ │
-│  │  • /api/*        → Backend/Post Service (properties, posts, etc.)       │ │
+│  │  • /api/properties/*, /api/upload/*, /api/admin/*  → Property Service   │ │
+│  │  • /api/posts/*  → Post Service          • /api/prices/* → Price Service│ │
+│  │  • /api/news/*   → News Service          • /api/ai-search/* → AI Search │ │
+│  │  • /api/properties/{id}/comments, /api/comments/*, /api/captcha,        │ │
+│  │    /api/admin/comments  → Comment Service                               │ │
 │  │  • /.well-known/jwks.json → Auth Service (public keys for JWT)          │ │
 │  └──────────────────────────────┬───────────────────────────────────────────┘ │
 │                                 │                                             │
-│     ┌──────────┬──────────┼──────────┬──────────┐                              │
-│     │          │          │          │          │                              │
-│     ▼          ▼          ▼          ▼          ▼                              │
+│     ┌──────────┬──────────┬──────────┬──────────┐                             │
+│     │          │          │          │          │                             │
+│     ▼          ▼          ▼          ▼          ▼                             │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                │
 │  │  AUTH   │ │PROPERTY │ │  POST   │ │ANALYTICS│ │  PRICE  │                │
 │  │ SERVICE │ │ SERVICE │ │ SERVICE │ │ SERVICE │ │ SERVICE │                │
@@ -58,11 +62,25 @@
 │  │         │ │         │ │         │ │         │ │         │                │
 │  │Port:8081│ │Port:8080│ │Port:8082│ │Port:8083│ │Port:8084│                │
 │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘                │
-│       │           │           │            │           │                      │
-│       │   Kafka events (user activity / price changes) │                      │
-│       └───────────┼───────────┼────────────┤───────────┘                      │
-│                   │    gRPC ──────────────────────────▶│                      │
-│                                 ▼                                             │
+│       │           │           │           │           │                       │
+│       │   Kafka events (user activity / price changes)                        │
+│       │ ──────────┼─ ─ ─ ─ ─ ─┼─ ─ ─ ─ ─ ─┼─ ─ ─ ─ ─ ▶│                       │
+│       │           │  gRPC ──────────────────────────▶ │                       │
+│       │                                                                       │
+│  Stand-alone services (no Kafka/gRPC today, called via Kong):                 │
+│  ┌─────────┐           ┌─────────┐        ┌─────────┐                         │
+│  │  NEWS   │           │AI SEARCH│        │ COMMENT │                         │
+│  │ SERVICE │           │ SERVICE │        │ SERVICE │                         │
+│  │         │           │         │        │         │                         │
+│  │• Public │           │• Parse  │        │• Threads│                         │
+│  │  reads  │           │  NL→    │        │• Replies│                         │
+│  │• Admin  │           │  filter │        │• Likes  │                         │
+│  │  CRUD   │           │• Regex/ │        │• Captcha│                         │
+│  │         │           │  LLM    │        │• Admin  │                         │
+│  │Port:8085│           │Port:8086│        │Port:8087│                         │
+│  └────┬────┘           └─────────┘        └────┬────┘                         │
+│       │                                        │                              │
+│       ▼                                        ▼                              │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │                    ANALYTICS PIPELINE                                    │ │
 │  │                                                                          │ │
@@ -96,6 +114,17 @@
 │  │ DB: authdb  │  │ DB: realestate│ │ DB: postdb  │  │ DB: pricedb │         │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘         │
 │                                                                               │
+│  ┌─────────────┐  ┌─────────────┐                                            │
+│  │  News DB    │  │ Comment DB  │                                            │
+│  │ PostgreSQL  │  │ PostgreSQL  │                                            │
+│  │ Container:  │  │ Container:  │                                            │
+│  │  news-db    │  │ comment-db  │                                            │
+│  │             │  │             │                                            │
+│  │ Host: 5436  │  │ Host: 5437  │                                            │
+│  │ DB: newsdb  │  │DB:commentsdb│                                            │
+│  └─────────────┘  └─────────────┘                                            │
+│  (ai-search-service is stateless — Caffeine in-process cache, no DB.)        │
+│                                                                               │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │  Property Cache (Redis 7, container: property-redis, Host: 6379)        │ │
 │  │  Caches: properties:list (TTL 60s), properties:cities (TTL 1h)          │ │
@@ -114,8 +143,8 @@
 ### Local Development (Minikube)
 - **Databases run in Docker containers** (external to Kubernetes)
 - **Connection method**: K8s services connect to databases using `host.docker.internal:PORT`
-- **Ports**: 5432 (property), 5433 (auth), 5434 (post), 5435 (price), 27017 (analytics MongoDB), 6379 (property-redis cache)
-- **Containers**: `property-db`, `auth-db`, `post-db`, `price-db`, `analytics-mongo`, `property-redis`
+- **Ports**: 5432 (property), 5433 (auth), 5434 (post), 5435 (price), 5436 (news), 5437 (comment), 27017 (analytics MongoDB), 6379 (property-redis cache)
+- **Containers**: `property-db`, `auth-db`, `post-db`, `price-db`, `news-db`, `comment-db`, `analytics-mongo`, `property-redis`
 - **Event streaming**: Kafka (KRaft mode) at port 29092, with a DOCKER listener on 29093 for cross-container communication
 - **Cache**: Redis 7 (`property-redis`) at port 6379 — used by property-service for `GET /api/properties` (TTL 60s) and `GET /api/properties/cities` (TTL 1h). Disable with `CACHE_ENABLED=false`.
 - **Why external?**: Simpler development workflow, easier database access from host machine
@@ -523,7 +552,15 @@ Content-Type: application/json
 | prices-public-get | `/api/prices` | GET | price-service | 8084 | No | 100/min |
 | prices-protected | `/api/prices` | PUT | price-service | 8084 | JWT | 100/min |
 | **AI Search** |
-| ai-search-parse | `/api/ai-search/parse` | POST | ai-search-service | 8086 | No | 100/min |
+| ai-search-parse | `/api/ai-search` | POST | ai-search-service | 8086 | No | 100/min |
+| **News** |
+| news-public-get | `/api/news` | GET | news-service | 8085 | No | 100/min |
+| news-protected | `/api/news` | POST,PUT,DELETE | news-service | 8085 | JWT+Admin | 100/min |
+| **Comments** |
+| comments-captcha | `/api/captcha` | GET | comment-service | 8087 | No | 100/min |
+| comments-on-property | `/api/properties/{id}/comments` | GET,POST | comment-service | 8087 | JWT (POST) | 100/min |
+| comments-by-id | `/api/comments/*` | GET,POST,PUT,DELETE | comment-service | 8087 | JWT (writes) | 100/min |
+| comments-admin | `/api/admin/comments/*` | ALL | comment-service | 8087 | JWT+Admin | 100/min |
 | **File Upload** |
 | upload-routes | `/api/upload/*` | POST | property-service | 8080 | JWT | 50/min |
 | uploads-static | `/uploads/*` | GET | property-service | 8080 | No | 200/min |
@@ -542,7 +579,9 @@ Content-Type: application/json
 | Post Service | `post-service.real-estate.svc.cluster.local` | 8082 | real-estate |
 | Analytics Service | `analytics-service.real-estate.svc.cluster.local` | 8083 | real-estate |
 | Price Service | `price-service.real-estate.svc.cluster.local` | 8084 | real-estate |
+| News Service | `news-service.real-estate.svc.cluster.local` | 8085 | real-estate |
 | AI Search Service | `ai-search-service.real-estate.svc.cluster.local` | 8086 | real-estate |
+| Comment Service | `comment-service.real-estate.svc.cluster.local` | 8087 | real-estate |
 
 ### Local Development Port Mapping
 
@@ -555,7 +594,9 @@ Content-Type: application/json
 | Auth Service | `http://localhost:8081` | `kubectl port-forward svc/auth-service 8081:8081 -n real-estate` |
 | Post Service | `http://localhost:8082` | `kubectl port-forward svc/post-service 8082:8082 -n real-estate` |
 | Price Service | `http://localhost:8084` | `kubectl port-forward svc/price-service 8084:8084 -n real-estate` |
+| News Service | `http://localhost:8085` | `kubectl port-forward svc/news-service 8085:8085 -n real-estate` |
 | AI Search Service | `http://localhost:8086` | `kubectl port-forward svc/ai-search-service 8086:8086 -n real-estate` |
+| Comment Service | `http://localhost:8087` | `kubectl port-forward svc/comment-service 8087:8087 -n real-estate` |
 | Property Cache (Redis) | `redis://localhost:6379` | N/A — runs as Docker container alongside property-service |
 
 ### Database & Cache Connections (Docker)
@@ -566,6 +607,8 @@ Content-Type: application/json
 | Auth DB | auth-db | 5433 | 5432 | authdb |
 | Post DB | post-db | 5434 | 5432 | postdb |
 | Price DB | price-db | 5435 | 5432 | pricedb |
+| News DB | news-db | 5436 | 5432 | newsdb |
+| Comment DB | comment-db | 5437 | 5432 | commentsdb |
 | Analytics MongoDB | analytics-mongo | 27017 | 27017 | analyticsdb |
 | Property Cache | property-redis | 6379 | 6379 | (Redis db 0) |
 
@@ -631,7 +674,9 @@ Kong Gateway serves as the central entry point for all API traffic, providing:
 │  property-service   │ real-estate-backend-backend.real-estate │ 8080 │ HTTP │
 │  post-service       │ post-service.real-estate.svc            │ 8082 │ HTTP │
 │  price-service      │ price-service.real-estate.svc           │ 8084 │ HTTP │
+│  news-service       │ news-service.real-estate.svc            │ 8085 │ HTTP │
 │  ai-search-service  │ ai-search-service.real-estate.svc       │ 8086 │ HTTP │
+│  comment-service    │ comment-service.real-estate.svc         │ 8087 │ HTTP │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -674,7 +719,19 @@ Kong Gateway serves as the central entry point for all API traffic, providing:
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
 │  prices-protected       │ /api/prices (PUT)               │ Yes (JWT)       │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
-│  ai-search-parse        │ /api/ai-search/parse (POST)     │ No              │
+│  ai-search-parse        │ /api/ai-search (POST)           │ No              │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  news-public-get        │ /api/news (GET)                 │ No              │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  news-protected         │ /api/news (POST,PUT,DEL)        │ Yes (JWT+Admin) │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  comments-captcha       │ /api/captcha (GET)              │ No              │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  comments-on-property   │ /api/properties/{id}/comments   │ JWT (POST only) │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  comments-by-id         │ /api/comments/* (R/W)           │ JWT (writes)    │
+├─────────────────────────┼─────────────────────────────────┼─────────────────┤
+│  comments-admin         │ /api/admin/comments/*           │ Yes (JWT+Admin) │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
 │  admin-routes           │ /api/admin/*                    │ Yes (JWT+Admin) │
 ├─────────────────────────┼─────────────────────────────────┼─────────────────┤
@@ -1009,10 +1066,15 @@ The Auth Service is a dedicated Spring Boot application handling:
 | Post Service | K8s (Minikube) | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
 | Analytics Service | Docker Compose | K8s (EKS) | 2 | 2-5 (CPU 70%) | minAvailable: 1 |
 | Price Service | Docker Compose | K8s (EKS) | 3 | 3-10 (CPU 70%) | minAvailable: 2 |
+| News Service | Docker Compose | K8s (EKS) | 2 | 2-5 (CPU 70%) | minAvailable: 1 |
+| AI Search Service | Docker Compose | K8s (EKS) | 2 | 2-5 (CPU 70%) | minAvailable: 1 |
+| Comment Service | Docker Compose | K8s (EKS) | 2 | 2-5 (CPU 70%) | minAvailable: 1 |
 | PostgreSQL (Auth) | Docker (auth-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Property) | Docker (property-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Post) | Docker (post-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | PostgreSQL (Price) | Docker (price-db) | RDS Multi-AZ | N/A | N/A | N/A |
+| PostgreSQL (News) | Docker (news-db) | RDS Multi-AZ | N/A | N/A | N/A |
+| PostgreSQL (Comment) | Docker (comment-db) | RDS Multi-AZ | N/A | N/A | N/A |
 | MongoDB (Analytics) | Docker (analytics-mongo) | DocumentDB / MongoDB Atlas | N/A | N/A | N/A |
 | Kafka | Docker (analytics-kafka) | Amazon MSK / Self-hosted | N/A | N/A | N/A |
 | Redis (Property Cache) | Docker (property-redis) | ElastiCache for Redis (Multi-AZ) | N/A | N/A | N/A |
@@ -1179,9 +1241,11 @@ cd property-service && docker-compose -f docker-compose-db.yml up -d
 cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
 cd ../post-service && docker-compose -f docker-compose-db.yml up -d
 cd ../price-service && docker-compose -f docker-compose-db.yml up -d
+cd ../news-service && docker-compose -f docker-compose-db.yml up -d
+cd ../comment-service && docker-compose -f docker-compose-db.yml up -d
 
 # Verify databases are running
-docker ps | grep -E "postgres|auth-db|post-db|price-db"
+docker ps | grep -E "postgres|auth-db|post-db|price-db|news-db|comment-db"
 
 # 3. Deploy Kong API Gateway
 cd ../kong
@@ -1237,8 +1301,11 @@ The Real Estate application now has:
 - **Kong API Gateway**: Centralized entry point with JWT validation, rate limiting, CORS
 - **Auth Service**: Dedicated authentication microservice with key rotation
 - **Backend Service**: Property management, file uploads, and search
-- **Post Service**: Social feed functionality (posts, comments, likes)
+- **Post Service**: Social feed functionality (posts, likes)
 - **Price Service**: Price management, price history, gRPC integration, circuit breaker resilience
+- **News Service**: Real-estate news/articles with public reads and admin-only CRUD (port 8085, `newsdb`)
+- **AI Search Service**: Stateless natural-language → structured filter parser (regex default, optional LLM via Claude Haiku); port 8086, no DB
+- **Comment Service**: Property-scoped comment threads with replies, likes, captcha, and admin moderation (port 8087, `commentsdb`)
 - **Analytics Service**: User activity tracking with Kafka event streaming and MongoDB persistence
 - **Property Cache (Redis)**: Spring `@Cacheable` over `GET /api/properties` (TTL 60s) and `GET /api/properties/cities` (TTL 1h); writes evict via `@CacheEvict(allEntries=true)`. `CacheErrorHandler` makes Redis outages degrade gracefully to direct DB reads. Kill-switch via `CACHE_ENABLED=false`.
 - **Monitoring Stack**: Prometheus, Grafana, AlertManager
@@ -1273,13 +1340,17 @@ cd property-service && docker-compose -f docker-compose-db.yml up -d
 cd ../auth-service && docker-compose -f docker-compose-db.yml up -d
 cd ../post-service && docker-compose -f docker-compose-db.yml up -d
 cd ../price-service && docker-compose -f docker-compose-db.yml up -d
+cd ../news-service && docker-compose -f docker-compose-db.yml up -d
+cd ../comment-service && docker-compose -f docker-compose-db.yml up -d
 
 # Verify databases are accessible
-docker ps | grep -E "postgres|auth-db|post-db|price-db"
+docker ps | grep -E "postgres|auth-db|post-db|price-db|news-db|comment-db"
 psql -h localhost -p 5432 -U postgres -d realestatedb -c "SELECT 1"  # Backend DB
 psql -h localhost -p 5433 -U postgres -d authdb -c "SELECT 1"         # Auth DB
 psql -h localhost -p 5434 -U postgres -d postdb -c "SELECT 1"         # Post DB
 psql -h localhost -p 5435 -U postgres -d pricedb -c "SELECT 1"        # Price DB
+psql -h localhost -p 5436 -U postgres -d newsdb -c "SELECT 1"         # News DB
+psql -h localhost -p 5437 -U postgres -d commentsdb -c "SELECT 1"     # Comment DB
 
 # Property cache (Redis) comes up automatically as part of property-service's docker-compose.yml
 # (no separate step). Verify it's running:
@@ -1315,12 +1386,17 @@ curl http://localhost:8000/api/properties          # Backend via Kong
 curl http://localhost:8000/auth/login              # Auth via Kong (POST)
 curl http://localhost:8000/api/posts               # Posts via Kong
 curl http://localhost:8000/api/prices/1            # Prices via Kong
+curl http://localhost:8000/api/news                # News via Kong
+curl http://localhost:8000/api/properties/1/comments  # Comments via Kong
 
 # Direct service access (bypass Kong)
 curl http://localhost:8080/actuator/health         # Backend direct
 curl http://localhost:8081/actuator/health         # Auth direct
 curl http://localhost:8082/actuator/health         # Posts direct
 curl http://localhost:8084/actuator/health         # Prices direct
+curl http://localhost:8085/actuator/health         # News direct
+curl http://localhost:8086/actuator/health         # AI Search direct
+curl http://localhost:8087/actuator/health         # Comments direct
 
 # Get JWT token
 TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
@@ -1347,8 +1423,17 @@ curl http://localhost:8000/api/properties/user \
 
 ---
 
-**Version:** 3.5.0
-**Last Updated:** 2026-05-10
+**Version:** 3.6.0
+**Last Updated:** 2026-05-11
+**Changes in v3.6.0:**
+- **ADDED**: Comment Service (port 8087, `commentsdb` on port 5437) — property-scoped threads (`/api/properties/{id}/comments`), single-comment ops (`/api/comments/*`), captcha (`/api/captcha`), and admin moderation (`/api/admin/comments/*`)
+- **ADDED**: News Service (port 8085, `newsdb` on port 5436) — public `GET /api/news` reads and admin-only writes — backfilled into the architecture diagram and tables
+- **ADDED**: New Kong services and routes for `news-service` and `comment-service` (both via `host.docker.internal` in local mode); Kong gateway config already in `kong/config/kong-local.yaml`
+- **ADDED**: News DB and Comment DB rows to the database section, port mapping, connections table, and High Availability table
+- **UPDATED**: Main system architecture ASCII diagram with a second row of services (NEWS, AI SEARCH, COMMENT)
+- **UPDATED**: Quick Start, Quick Reference, Summary, and Architecture Highlights to include the three newest services
+- **NOTE**: The PRD for property comments lives at `docs/PROPERTY_COMMENTS_PRD.md`
+
 **Changes in v3.5.0:**
 - **ADDED**: AI Search Service (port 8086, stateless) for natural-language property queries
 - **ADDED**: Pluggable parser via `AI_SEARCH_PARSER_MODE` env var: `regex` (default, in-process, $0) or `llm` (Claude Haiku 4.5 via `ANTHROPIC_API_KEY`); fallback to regex on LLM error via `AI_SEARCH_PARSER_FALLBACK=regex`

@@ -47,6 +47,13 @@ services:
     read_timeout: 60000
     retries: 3
 
+  - name: comment-service
+    url: http://host.docker.internal:8087
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+
 # ============================================================================
 # GLOBAL PLUGINS
 # ============================================================================
@@ -266,6 +273,47 @@ routes:
       - OPTIONS
     strip_path: false
 
+  # --- Comment Service: Captcha (public) ---
+  - name: comments-captcha
+    service: comment-service
+    paths:
+      - /api/captcha
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  # --- Comment Service: Property-scoped comments (list + create) ---
+  - name: comments-on-property
+    service: comment-service
+    paths:
+      - ~/api/properties/[0-9]+/comments$
+    methods:
+      - GET
+      - POST
+      - OPTIONS
+    strip_path: false
+
+  # --- Comment Service: Single-comment ops (reply, edit, delete, like, report) ---
+  - name: comments-by-id
+    service: comment-service
+    paths:
+      - /api/comments
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    strip_path: false
+
+  # --- Comment Service: Admin moderation ---
+  - name: comments-admin
+    service: comment-service
+    paths:
+      - /api/admin/comments
+    strip_path: false
+
   # --- News Service: Public read routes ---
   - name: news-public-get
     service: news-service
@@ -339,6 +387,15 @@ routes:
     service: ai-search-service
     paths:
       - /api/ai-search/actuator/health
+    methods:
+      - GET
+      - OPTIONS
+    strip_path: false
+
+  - name: health-comment-service
+    service: comment-service
+    paths:
+      - /api/comments/actuator/health
     methods:
       - GET
       - OPTIONS

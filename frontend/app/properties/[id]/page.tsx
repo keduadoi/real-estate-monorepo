@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import ImageGallery from '@/components/ImageGallery';
 import PropertyActionButtons from '@/components/PropertyActionButtons';
 import PriceHistory from '@/components/PriceHistory';
+import PropertyComments from '@/components/PropertyComments';
 import { propertyApi } from '@/lib/api/propertyApi';
 import { mapApiPropertyToUi } from '@/lib/api/mapper';
 import { formatPrice, formatArea } from '@/lib/utils';
@@ -213,27 +214,31 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                   {t('properties.detail.features')}
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {property.features.map((feature) => (
-                    <div
-                      key={feature}
-                      className="flex items-center text-gray-700"
-                    >
-                      <svg
-                        className="w-5 h-5 mr-2 text-green-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                  {property.features.map((feature) => {
+                    const featureKey = `properties.form.featuresList.${feature}` as any;
+                    const label = t.has(featureKey) ? t(featureKey) : feature;
+                    return (
+                      <div
+                        key={feature}
+                        className="flex items-center text-gray-700"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      {t(`properties.form.featuresList.${feature}` as any) || feature}
-                    </div>
-                  ))}
+                        <svg
+                          className="w-5 h-5 mr-2 text-green-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        {label}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -284,6 +289,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           </div>
         </div>
       </div>
+
+      <PropertyComments propertyId={Number(property.id)} />
     </div>
   );
 }
