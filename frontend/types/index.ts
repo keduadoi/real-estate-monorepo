@@ -1,5 +1,6 @@
 export type PropertyType = 'house' | 'apartment' | 'villa' | 'townhouse';
 export type PropertyStatus = 'for-sale' | 'for-rent';
+export type GeocodingStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'SKIPPED';
 
 export interface Property {
   id: string;
@@ -17,6 +18,9 @@ export interface Property {
   createdAt: string;
   userId: string;
   features: string[];
+  latitude: number | null;
+  longitude: number | null;
+  geocodingStatus: GeocodingStatus;
 }
 
 export interface User {

@@ -73,6 +73,9 @@ export function mapApiPropertyToUi(apiProperty: ApiProperty): UiProperty {
     features: apiProperty.features,
     userId: apiProperty.userId,
     createdAt: apiProperty.createdAt,
+    latitude: apiProperty.latitude ?? null,
+    longitude: apiProperty.longitude ?? null,
+    geocodingStatus: apiProperty.geocodingStatus ?? 'PENDING',
   };
 }
 

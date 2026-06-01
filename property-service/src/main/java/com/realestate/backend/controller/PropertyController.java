@@ -156,6 +156,18 @@ public class PropertyController {
     }
 
     /**
+     * Re-trigger geocoding for one property. Owner or admin only.
+     * POST /api/properties/{id}/geocode
+     */
+    @PostMapping("/{id}/geocode")
+    public ResponseEntity<PropertyDTO> regeocodeProperty(@PathVariable Long id) {
+        log.info("POST /api/properties/{}/geocode", id);
+
+        PropertyDTO property = propertyService.regeocodeProperty(id);
+        return ResponseEntity.ok(property);
+    }
+
+    /**
      * Check if property exists
      * HEAD /api/properties/{id}
      */

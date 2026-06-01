@@ -1,5 +1,6 @@
 package com.realestate.backend.repository;
 
+import com.realestate.backend.entity.GeocodingStatus;
 import com.realestate.backend.entity.Property;
 import com.realestate.backend.entity.PropertyStatus;
 import com.realestate.backend.entity.PropertyType;
@@ -10,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -85,4 +88,10 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
      * Count properties by user ID
      */
     long countByUserId(String userId);
+
+    /**
+     * Stream properties whose geocoding status is in the given set, paged.
+     * Used by the backfill runner to find PENDING/FAILED rows.
+     */
+    Page<Property> findByGeocodingStatusIn(Collection<GeocodingStatus> statuses, Pageable pageable);
 }

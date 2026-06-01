@@ -132,6 +132,12 @@ resilience4j:
         limit-for-period: 50
         limit-refresh-period: 1s
         timeout-duration: 0s
+      # Nominatim public endpoint policy: max 1 request per second.
+      # See https://operations.osmfoundation.org/policies/nominatim/
+      nominatim:
+        limit-for-period: 1
+        limit-refresh-period: 1s
+        timeout-duration: 5s
 
 # Actuator Configuration
 management:
@@ -177,6 +183,19 @@ app:
     enabled: ${CACHE_ENABLED:true}
     properties-list-ttl-seconds: 60
     cities-ttl-seconds: 3600
+
+  # Map / geocoding configuration.
+  # To switch providers, change `geocoding-provider` to `google` (or another impl
+  # we add) and supply its credentials. No code changes required.
+  maps:
+    geocoding-provider: ${MAP_GEOCODING_PROVIDER:nominatim}
+    nominatim:
+      base-url: ${NOMINATIM_BASE_URL:https://nominatim.openstreetmap.org}
+      # Nominatim policy requires identifying the app with a real contact.
+      user-agent: ${NOMINATIM_USER_AGENT:RealEstateApp/1.0 (contact@example.com)}
+      accept-language: ${NOMINATIM_ACCEPT_LANGUAGE:vi,en}
+    google:
+      api-key: ${GOOGLE_MAPS_API_KEY:}
 
 # Analytics Configuration
 analytics:

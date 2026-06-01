@@ -39,6 +39,9 @@ public class PropertyMapper {
                 .userId(property.getUserId())
                 .createdAt(property.getCreatedAt())
                 .updatedAt(property.getUpdatedAt())
+                .latitude(property.getLatitude())
+                .longitude(property.getLongitude())
+                .geocodingStatus(property.getGeocodingStatus())
                 .build();
     }
 

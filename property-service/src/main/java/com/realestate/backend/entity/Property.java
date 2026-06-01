@@ -110,4 +110,21 @@ public class Property {
     @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Geographic coordinates derived from {@link #address} + {@link #city}.
+     * Null until the geocoding pipeline has produced a SUCCESS result.
+     */
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
+    @Column(name = "geocoded_at")
+    private LocalDateTime geocodedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "geocoding_status", nullable = false, length = 20)
+    private GeocodingStatus geocodingStatus = GeocodingStatus.PENDING;
 }

@@ -1,5 +1,6 @@
 package com.realestate.backend.dto;
 
+import com.realestate.backend.entity.GeocodingStatus;
 import com.realestate.backend.entity.PropertyStatus;
 import com.realestate.backend.entity.PropertyType;
 import lombok.AllArgsConstructor;
@@ -37,4 +38,7 @@ public class PropertyDTO {
     private String userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Double latitude;
+    private Double longitude;
+    private GeocodingStatus geocodingStatus;
 }

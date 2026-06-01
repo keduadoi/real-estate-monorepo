@@ -10,11 +10,14 @@ import com.realestate.backend.mapper.PropertyMapper;
 import com.realestate.backend.repository.PropertyRepository;
 import com.realestate.backend.security.UserContext;
 import com.realestate.backend.security.UserInfo;
+import com.realestate.backend.service.geocoding.GeocodingService;
+import com.realestate.backend.service.geocoding.PropertyGeocodeRequested;
 import com.realestate.backend.specification.PropertySpecification;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -48,6 +51,8 @@ public class PropertyService {
     private final PropertyMapper propertyMapper;
     private final StorageService storageService;
     private final PriceGrpcClient priceGrpcClient;
+    private final GeocodingService geocodingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Get all properties with pagination
@@ -174,6 +179,9 @@ public class PropertyService {
                     savedProperty.getId(), e.getMessage());
         }
 
+        // Schedule async geocoding to run after this transaction commits.
+        eventPublisher.publishEvent(new PropertyGeocodeRequested(savedProperty.getId()));
+
         log.info("Property created successfully with ID: {} by user: {}",
                 savedProperty.getId(), savedProperty.getUserId());
         return propertyMapper.toDTO(savedProperty);
@@ -198,8 +206,25 @@ public class PropertyService {
         validateOwnership(property);
 
         BigDecimal oldPrice = property.getPrice();
+        String oldAddress = property.getAddress();
+        String oldCity = property.getCity();
         propertyMapper.updateEntity(property, request);
+
+        boolean locationChanged =
+                (request.getAddress() != null && !request.getAddress().equals(oldAddress))
+                || (request.getCity() != null && !request.getCity().equals(oldCity));
+        if (locationChanged) {
+            property.setGeocodingStatus(com.realestate.backend.entity.GeocodingStatus.PENDING);
+            property.setLatitude(null);
+            property.setLongitude(null);
+            property.setGeocodedAt(null);
+        }
+
         Property updatedProperty = propertyRepository.save(property);
+
+        if (locationChanged) {
+            eventPublisher.publishEvent(new PropertyGeocodeRequested(updatedProperty.getId()));
+        }
 
         // Sync price change to price-service if price was updated
         if (request.getPrice() != null && request.getPrice().compareTo(oldPrice) != 0) {
@@ -248,6 +273,20 @@ public class PropertyService {
         propertyRepository.deleteById(id);
         log.info("Property deleted successfully with ID: {} by user: {}",
                 id, UserContext.getCurrentUserId().orElse("unknown"));
+    }
+
+    /**
+     * Re-trigger geocoding for one property. Owner or admin only.
+     * Runs synchronously so the caller sees the resulting status.
+     */
+    @Transactional
+    public PropertyDTO regeocodeProperty(Long id) {
+        log.debug("Re-geocoding property with ID: {}", id);
+        Property property = propertyRepository.findById(id)
+                .orElseThrow(() -> new PropertyNotFoundException("Property not found with ID: " + id));
+        validateOwnership(property);
+        geocodingService.geocodeSync(property);
+        return propertyMapper.toDTO(property);
     }
 
     /**

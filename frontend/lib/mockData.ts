@@ -143,6 +143,9 @@ export const generateMockProperties = (count: number = 100): Property[] => {
       ).toISOString(),
       userId: mockUsers[randomInt(0, mockUsers.length - 1)].id,
       features: propertyFeatures,
+      latitude: null,
+      longitude: null,
+      geocodingStatus: 'PENDING',
     });
   }
 

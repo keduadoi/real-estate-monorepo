@@ -442,6 +442,13 @@
     "hidden": "This comment has been hidden.",
     "loadMore": "Load more"
   },
+  "maps": {
+    "heading": "Location",
+    "pending": "Map will appear shortly — we're looking up this address.",
+    "unavailable": "Map unavailable for this property.",
+    "attribution": "Map data © {provider}",
+    "openExternal": "Open in maps"
+  },
   "commonFilters": {
     "byPrice": "By price",
     "byType": "By property type",

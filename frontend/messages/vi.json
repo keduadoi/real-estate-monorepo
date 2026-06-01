@@ -442,6 +442,13 @@
     "hidden": "Bình luận này đã bị ẩn.",
     "loadMore": "Xem thêm"
   },
+  "maps": {
+    "heading": "Vị trí",
+    "pending": "Bản đồ sẽ xuất hiện trong giây lát — chúng tôi đang tra cứu địa chỉ này.",
+    "unavailable": "Bản đồ không khả dụng cho bất động sản này.",
+    "attribution": "Dữ liệu bản đồ © {provider}",
+    "openExternal": "Mở trong ứng dụng bản đồ"
+  },
   "commonFilters": {
     "byPrice": "Theo mức giá",
     "byType": "Theo loại nhà đất",

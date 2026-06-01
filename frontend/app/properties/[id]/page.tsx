@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import ImageGallery from '@/components/ImageGallery';
 import PropertyActionButtons from '@/components/PropertyActionButtons';
 import PriceHistory from '@/components/PriceHistory';
+import PropertyMap from '@/components/PropertyMap';
 import PropertyComments from '@/components/PropertyComments';
 import { propertyApi } from '@/lib/api/propertyApi';
 import { mapApiPropertyToUi } from '@/lib/api/mapper';
@@ -289,6 +290,13 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
           </div>
         </div>
       </div>
+
+      <PropertyMap
+        latitude={property.latitude}
+        longitude={property.longitude}
+        address={`${property.address}, ${property.city}`}
+        geocodingStatus={property.geocodingStatus}
+      />
 
       <PropertyComments propertyId={Number(property.id)} />
     </div>
