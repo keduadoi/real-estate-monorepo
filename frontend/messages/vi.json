@@ -388,6 +388,8 @@
     "imageGallery": {
       "previous": "Ảnh trước",
       "next": "Ảnh kế",
+      "openFullscreen": "Xem ảnh toàn màn hình",
+      "closeFullscreen": "Đóng toàn màn hình",
       "altImage": "{title} - Ảnh {index}",
       "altThumb": "{title} - Hình thu nhỏ {index}"
     },

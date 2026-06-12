@@ -388,6 +388,8 @@
     "imageGallery": {
       "previous": "Previous image",
       "next": "Next image",
+      "openFullscreen": "View image in full screen",
+      "closeFullscreen": "Close full screen",
       "altImage": "{title} - Image {index}",
       "altThumb": "{title} - Thumbnail {index}"
     },
