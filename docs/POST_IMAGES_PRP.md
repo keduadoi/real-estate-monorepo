@@ -4,7 +4,7 @@
 **Version**: 1.0
 **Date**: 2026-06-12
 **Author**: Engineering Team
-**Status**: Draft - Pending Review
+**Status**: ✅ Implemented (2026-06-12)
 **Depends on**: [POST_SERVICE_PRP.md](./POST_SERVICE_PRP.md) (implemented)
 
 ---
@@ -568,5 +568,5 @@ Phases 1 and 2.1–2.2 can proceed in parallel.
 
 ---
 
-**Document Status**: Ready for Review
-**Next Steps**: Approval → Implementation Phase 1
+**Document Status**: Implemented — shipped in commit `ef25071` (feature) with follow-ups `4f2d9e4` (timestamp fix) and `a87ecf2` (single-image display)
+**Next Steps**: Future considerations (§13) remain open

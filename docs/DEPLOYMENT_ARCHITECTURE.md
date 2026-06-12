@@ -515,7 +515,15 @@ Content-Type: application/json
 | Get My Posts | `/feed/me` | `GET /api/posts/me` | `post-service:8082/api/posts/me` | Yes |
 | Create Post | `/feed` | `POST /api/posts` | `post-service:8082/api/posts` | Yes |
 | Like Post | `/feed` | `POST /api/posts/{id}/like` | `post-service:8082/api/posts/{id}/like` | Yes |
+| Get Replies | `/feed` | `GET /api/posts/{id}/replies` | `post-service:8082/api/posts/{id}/replies` | No |
+| Reply to Post | `/feed` | `POST /api/posts/{id}/replies` | `post-service:8082/api/posts/{id}/replies` | Yes |
+| Delete Reply | `/feed` | `DELETE /api/posts/{id}/replies/{replyId}` | `post-service:8082/api/posts/{id}/replies/{replyId}` | Yes |
 | Search Posts | `/feed/search` | `GET /api/posts/search` | `post-service:8082/api/posts/search` | No |
+
+> Posts support up to 10 image attachments. The frontend uploads files first via
+> `POST /api/upload/temp` (property-service storage) and passes the returned URLs
+> as `imageUrls` in the create-post request; post-service stores URLs only.
+> Replies are single-level — replies cannot be replied to.
 
 ---
 
@@ -548,6 +556,8 @@ Content-Type: application/json
 | posts-user | `/api/posts/user` | GET | post-service | 8082 | No | 100/min |
 | posts-search | `/api/posts/search` | GET | post-service | 8082 | No | 100/min |
 | posts-like | `/api/posts/{id}/like` | POST | post-service | 8082 | JWT | 100/min |
+| posts-public-get | `/api/posts/{id}/replies` | GET | post-service | 8082 | No | 100/min |
+| posts-protected | `/api/posts/{id}/replies[/{replyId}]` | POST,DELETE | post-service | 8082 | JWT | 100/min |
 | **Prices** |
 | prices-public-get | `/api/prices` | GET | price-service | 8084 | No | 100/min |
 | prices-protected | `/api/prices` | PUT | price-service | 8084 | JWT | 100/min |
@@ -1301,12 +1311,12 @@ The Real Estate application now has:
 - **Kong API Gateway**: Centralized entry point with JWT validation, rate limiting, CORS
 - **Auth Service**: Dedicated authentication microservice with key rotation
 - **Backend Service**: Property management, file uploads, and search
-- **Post Service**: Social feed functionality (posts, likes)
+- **Post Service**: Social feed functionality (posts with up to 10 image attachments, likes, single-level replies)
 - **Price Service**: Price management, price history, gRPC integration, circuit breaker resilience
 - **News Service**: Real-estate news/articles with public reads and admin-only CRUD (port 8085, `newsdb`)
 - **AI Search Service**: Stateless natural-language → structured filter parser (regex default, optional LLM via Claude Haiku); port 8086, no DB
 - **Comment Service**: Property-scoped comment threads with replies, likes, captcha, and admin moderation (port 8087, `commentsdb`)
-- **Analytics Service**: User activity tracking with Kafka event streaming and MongoDB persistence
+- **Analytics Service**: User activity tracking with Kafka event streaming and MongoDB persistence. Producers in auth/property/post/price services are fire-and-forget: sends run on a dedicated daemon thread with a bounded queue and `max.block.ms=2s`, so a Kafka outage never blocks request threads (events are dropped, oldest first, while the broker is down)
 - **Property Cache (Redis)**: Spring `@Cacheable` over `GET /api/properties` (TTL 60s) and `GET /api/properties/cities` (TTL 1h); writes evict via `@CacheEvict(allEntries=true)`. `CacheErrorHandler` makes Redis outages degrade gracefully to direct DB reads. Kill-switch via `CACHE_ENABLED=false`.
 - **Monitoring Stack**: Prometheus, Grafana, AlertManager
 - **Production-ready Infrastructure**: HPA, PDB, network policies, TLS

@@ -34,8 +34,13 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/actuator/health",
-              "host": ["{{kong_url}}"],
-              "path": ["actuator", "health"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
             },
             "description": "Check Kong Gateway health status"
           }
@@ -47,8 +52,14 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/auth/actuator/health",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "actuator", "health"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "actuator",
+                "health"
+              ]
             },
             "description": "Check Auth Service health via Kong"
           }
@@ -60,8 +71,13 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/.well-known/jwks.json",
-              "host": ["{{kong_url}}"],
-              "path": [".well-known", "jwks.json"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                ".well-known",
+                "jwks.json"
+              ]
             },
             "description": "Get JSON Web Key Set for JWT validation"
           }
@@ -113,8 +129,13 @@
             },
             "url": {
               "raw": "{{kong_url}}/auth/register",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "register"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
             },
             "description": "Register a new user account.\n\nPassword requirements:\n- Minimum 8 characters (12 in production)\n- At least one uppercase letter\n- At least one lowercase letter\n- At least one digit"
           }
@@ -166,8 +187,13 @@
             },
             "url": {
               "raw": "{{kong_url}}/auth/login",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Authenticate user and receive JWT tokens.\n\nRate limit: 10 requests/minute"
           }
@@ -213,8 +239,13 @@
             },
             "url": {
               "raw": "{{kong_url}}/auth/refresh",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "refresh"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Refresh access token using refresh token.\n\nRefresh tokens are rotated on each use for security."
           }
@@ -249,8 +280,13 @@
             ],
             "url": {
               "raw": "{{kong_url}}/auth/me",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "me"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
             },
             "description": "Get current authenticated user information.\n\nRequires valid JWT token."
           }
@@ -275,8 +311,13 @@
             },
             "url": {
               "raw": "{{kong_url}}/auth/change-password",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "change-password"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
             },
             "description": "Change password for authenticated user.\n\nRequires valid JWT token and current password."
           }
@@ -297,8 +338,13 @@
             },
             "url": {
               "raw": "{{kong_url}}/auth/forgot-password",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "forgot-password"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
             },
             "description": "Request password reset email.\n\nA reset token will be sent to the provided email address."
           }
@@ -319,8 +365,13 @@
             },
             "url": {
               "raw": "{{kong_url}}/auth/reset-password",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "reset-password"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
             },
             "description": "Reset password using token from email.\n\nToken expires after 1 hour."
           }
@@ -337,8 +388,13 @@
             ],
             "url": {
               "raw": "{{kong_url}}/auth/logout",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "logout"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
             },
             "description": "Logout and invalidate refresh token.\n\nRequires valid JWT token."
           }
@@ -376,8 +432,13 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/api/properties?page=0&size=10",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties"],
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -399,8 +460,14 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/api/properties/1",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "1"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "1"
+              ]
             },
             "description": "Get a specific property by ID.\n\nPublic endpoint - no authentication required."
           }
@@ -412,8 +479,14 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/api/properties/search?city=Ho Chi Minh&minPrice=100000&maxPrice=500000&propertyType=APARTMENT",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "search"],
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "search"
+              ],
               "query": [
                 {
                   "key": "city",
@@ -462,8 +535,14 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/api/properties/cities",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "cities"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "cities"
+              ]
             },
             "description": "Get list of all cities with properties.\n\nPublic endpoint - no authentication required."
           }
@@ -493,8 +572,14 @@
             ],
             "url": {
               "raw": "{{kong_url}}/api/properties/user",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "user"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "user"
+              ]
             },
             "description": "Get properties owned by the authenticated user.\n\nRequires valid JWT token."
           }
@@ -540,8 +625,13 @@
             },
             "url": {
               "raw": "{{kong_url}}/api/properties",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties"
+              ]
             },
             "description": "Create a new property listing.\n\nRequires valid JWT token.\n\nProperty types: APARTMENT, HOUSE, VILLA, LAND, OFFICE\nListing types: SALE, RENT"
           }
@@ -566,8 +656,14 @@
             },
             "url": {
               "raw": "{{kong_url}}/api/properties/{{property_id}}",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "{{property_id}}"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "{{property_id}}"
+              ]
             },
             "description": "Update an existing property.\n\nRequires valid JWT token.\nOnly the property owner can update."
           }
@@ -584,14 +680,341 @@
             ],
             "url": {
               "raw": "{{kong_url}}/api/properties/{{property_id}}",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "{{property_id}}"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "{{property_id}}"
+              ]
             },
             "description": "Delete a property listing.\n\nRequires valid JWT token.\nOnly the property owner can delete."
           }
         }
       ],
       "description": "Property management endpoints.\n\nPublic endpoints (GET) have no authentication.\nProtected endpoints (POST, PUT, DELETE) require JWT token."
+    },
+    {
+      "name": "Posts",
+      "description": "Social feed: posts (text + up to 10 images), likes, and single-level replies. Served by post-service via Kong.",
+      "item": [
+        {
+          "name": "Get Feed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/posts?page=0&size=20",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Paginated feed, newest first. Public; pass Authorization to get isLikedByCurrentUser."
+          }
+        },
+        {
+          "name": "Get Post by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/:postId",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ":postId"
+              ]
+            },
+            "description": "Single post with imageUrls, likeCount, replyCount."
+          }
+        },
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/posts",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ]
+            },
+            "description": "Create a post. content and imageUrls are each optional, but at least one is required. Max 10 images; upload files first via POST /api/upload/temp and pass the returned URLs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Hello from Postman!\",\n    \"imageUrls\": [\n        \"http://localhost:8080/uploads/temp/example.jpg\"\n    ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/:postId",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ":postId"
+              ]
+            },
+            "description": "Owner or admin only. Text edit only — images are set at creation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Updated content\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/:postId",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ":postId"
+              ]
+            },
+            "description": "Owner or admin only. Cascades to likes, images, and replies."
+          }
+        },
+        {
+          "name": "Toggle Like",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/:postId/like",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ":postId",
+                "like"
+              ]
+            },
+            "description": "Like if not liked, unlike if already liked. Returns {liked, likeCount}."
+          }
+        },
+        {
+          "name": "Get Replies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/:postId/replies?page=0&size=20",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ":postId",
+                "replies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Paginated replies for a post, oldest first. Public."
+          }
+        },
+        {
+          "name": "Create Reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/:postId/replies",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ":postId",
+                "replies"
+              ]
+            },
+            "description": "Reply to a post (single level — replies cannot be replied to). Content 1-2000 chars.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Nice post!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Reply",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/:postId/replies/:replyId",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ":postId",
+                "replies",
+                ":replyId"
+              ]
+            },
+            "description": "Reply owner or admin only."
+          }
+        },
+        {
+          "name": "Get My Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/me?page=0&size=20",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Current authenticated user's posts."
+          }
+        },
+        {
+          "name": "Search Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/api/posts/search?q=real estate&page=0&size=20",
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "real estate"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Case-insensitive content search."
+          }
+        }
+      ]
     },
     {
       "name": "File Upload",
@@ -623,8 +1046,14 @@
             },
             "url": {
               "raw": "{{kong_url}}/api/upload/property-image",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "upload", "property-image"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "upload",
+                "property-image"
+              ]
             },
             "description": "Upload image for a property.\n\nRequires valid JWT token.\nMax file size: 10MB\nSupported formats: JPG, PNG, WebP"
           }
@@ -641,8 +1070,15 @@
             ],
             "url": {
               "raw": "{{kong_url}}/api/upload/property-image/{{image_id}}",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "upload", "property-image", "{{image_id}}"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "upload",
+                "property-image",
+                "{{image_id}}"
+              ]
             },
             "description": "Delete a property image.\n\nRequires valid JWT token.\nOnly the property owner can delete images."
           }
@@ -665,8 +1101,14 @@
             ],
             "url": {
               "raw": "{{kong_url}}/admin/keys/stats",
-              "host": ["{{kong_url}}"],
-              "path": ["admin", "keys", "stats"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "admin",
+                "keys",
+                "stats"
+              ]
             },
             "description": "Get JWT key rotation statistics.\n\nRequires admin role."
           }
@@ -683,8 +1125,14 @@
             ],
             "url": {
               "raw": "{{kong_url}}/admin/keys/rotate",
-              "host": ["{{kong_url}}"],
-              "path": ["admin", "keys", "rotate"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "admin",
+                "keys",
+                "rotate"
+              ]
             },
             "description": "Manually trigger JWT key rotation.\n\nRequires admin role.\nUse with caution - existing tokens signed with old key remain valid during grace period."
           }
@@ -701,8 +1149,12 @@
             ],
             "url": {
               "raw": "{{kong_url}}/users?page=0&size=20",
-              "host": ["{{kong_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -729,8 +1181,14 @@
             ],
             "url": {
               "raw": "{{kong_url}}/api/admin/properties?page=0&size=20",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "admin", "properties"],
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "properties"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -776,8 +1234,14 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/api/properties/cities",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "cities"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "cities"
+              ]
             },
             "description": "Test rate limiting headers.\n\nCheck X-RateLimit-Limit-Minute and X-RateLimit-Remaining-Minute headers."
           }
@@ -816,8 +1280,13 @@
             ],
             "url": {
               "raw": "{{kong_url}}/auth/login",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Test CORS preflight request.\n\nVerifies that CORS headers are correctly configured."
           }
@@ -847,8 +1316,14 @@
             ],
             "url": {
               "raw": "{{kong_url}}/api/properties/user",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "user"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "user"
+              ]
             },
             "description": "Test that invalid JWT tokens are rejected.\n\nExpected: 401 Unauthorized"
           }
@@ -873,8 +1348,14 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/api/properties/user",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "user"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "user"
+              ]
             },
             "description": "Test that protected endpoints require token.\n\nExpected: 401 Unauthorized"
           }
@@ -902,8 +1383,14 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/api/properties/cities",
-              "host": ["{{kong_url}}"],
-              "path": ["api", "properties", "cities"]
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "api",
+                "properties",
+                "cities"
+              ]
             },
             "description": "Test X-Request-ID correlation header.\n\nUseful for request tracing across services."
           }

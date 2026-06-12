@@ -111,9 +111,9 @@ Frontend (Mock Data)
 
 ### 3.2 Non-Goals (Out of Scope for v1)
 
-- Comments on posts
+- ~~Comments on posts~~ — ✅ Delivered 2026-06-12 as single-level replies (`post_replies` table, `GET/POST /api/posts/{id}/replies`, `DELETE /api/posts/{id}/replies/{replyId}`)
 - Post sharing/reposting
-- Image/media attachments in posts
+- ~~Image/media attachments in posts~~ — ✅ Delivered 2026-06-12, see [POST_IMAGES_PRP.md](./POST_IMAGES_PRP.md)
 - Real-time notifications (WebSocket)
 - Post analytics dashboard
 - Hashtags and mentions
