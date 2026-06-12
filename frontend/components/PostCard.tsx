@@ -105,7 +105,7 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
               <button
                 key={index}
                 onClick={() => setLightboxIndex(index)}
-                className={`relative cursor-zoom-in bg-gray-200 ${
+                className={`relative cursor-zoom-in bg-gray-100 ${
                   images.length === 1
                     ? 'h-80 md:h-96'
                     : images.length === 3 && index === 0
@@ -118,7 +118,7 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
                   src={fixImageUrl(image)}
                   alt={t('imageAlt', { index: index + 1, author: authorName })}
                   fill
-                  className="object-cover"
+                  className={images.length === 1 ? 'object-contain' : 'object-cover'}
                   sizes={images.length === 1 ? '(max-width: 768px) 100vw, 60vw' : '(max-width: 768px) 50vw, 30vw'}
                 />
                 {showOverlay && (
