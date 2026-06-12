@@ -1,180 +1,166 @@
 # Real Estate Application - Monorepo
 
-Full-stack real estate application with Next.js frontend and Spring Boot backend.
+Full-stack real estate platform: a Next.js frontend behind a Kong API gateway, backed by eight Spring Boot microservices with Kafka-based analytics.
 
-## 📁 Monorepo Structure
+## 🏗️ Architecture
 
 ```
-real-estate-ui/
-├── frontend/              # Next.js frontend application
-│   ├── app/              # Next.js app directory (routes, pages)
-│   ├── components/       # React components
-│   ├── lib/              # Utility functions and mock data
-│   ├── types/            # TypeScript type definitions
-│   ├── public/           # Static assets
-│   ├── package.json      # Frontend dependencies
-│   └── .gitignore        # Frontend-specific ignores
-├── backend/              # Spring Boot backend API
-│   ├── src/
-│   │   ├── main/java/   # Java source code
-│   │   └── resources/   # Configuration files
-│   ├── pom.xml          # Maven dependencies
-│   ├── mvnw             # Maven Wrapper
-│   ├── .gitignore       # Backend-specific ignores
-│   └── README.md        # Backend documentation
-├── .gitignore           # Root-level ignores
-└── README.md            # This file (monorepo overview)
+Browser ──▶ Next.js Frontend (3000)
+                 │
+                 ▼
+        Kong API Gateway (8000)          JWT validation, rate limiting, CORS
+                 │
+   ┌─────────┬───┴─────┬─────────┬──────────┬─────────┬───────────┬──────────┐
+   ▼         ▼         ▼         ▼          ▼         ▼           ▼          ▼
+ AUTH    PROPERTY    POST     PRICE       NEWS    AI SEARCH    COMMENT   ANALYTICS
+ 8081      8080      8082      8084       8085      8086         8087       8083
+   │         │         │         │          │                      │          ▲
+   ▼         ▼         ▼         ▼          ▼                      ▼          │
+ authdb  propertydb  postdb   pricedb    newsdb               commentsdb   MongoDB
+ (5433)  (5432)      (5434)   (5435)     (5436)                 (5437)     (27017)
+            │ ▲                  ▲
+            │ └── gRPC ──────────┘
+            ▼
+          Redis (6379)        Kafka (29092) ◀── user-activity events from
+                                                auth / property / post / price
 ```
 
-## 🚀 Tech Stack
+- **Kong routes**: `/auth/*` → auth · `/api/properties/*`, `/api/upload/*`, `/api/admin/*` → property · `/api/posts/*` → post · `/api/prices/*` → price · `/api/news/*` → news · `/api/ai-search/*` → ai-search · `/api/comments/*`, `/api/properties/{id}/comments`, `/api/captcha` → comment · `/.well-known/jwks.json` → auth
+- Full details: [docs/DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md)
 
-### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Authentication**: NextAuth.js
-- **State Management**: React Hooks
+## 🧩 Services
 
-### Backend
-- **Framework**: Spring Boot 3.2.1
-- **Language**: Java 17
-- **Build Tool**: Maven
-- **Database**: H2 (development), PostgreSQL (production)
-- **ORM**: Spring Data JPA
-- **Utilities**: Lombok
+| Service | Port | Database | Purpose |
+|---------|------|----------|---------|
+| `frontend` | 3000 | — | Next.js 14 App Router UI (vi/en i18n, NextAuth) |
+| `kong` | 8000 / 8001 | — | API gateway (proxy / admin), JWT validation via JWKS |
+| `auth-service` | 8081 | PostgreSQL :5433 | Users, JWT issuing/refresh, JWKS, key rotation |
+| `property-service` | 8080 | PostgreSQL :5432 + Redis :6379 | Property CRUD, image uploads, search, cached reads, gRPC client to price-service |
+| `post-service` | 8082 | PostgreSQL :5434 | Social feed: posts (text + up to 10 images), likes, single-level replies |
+| `analytics-service` | 8083 | MongoDB :27017 | Consumes user-activity events from Kafka :29092 |
+| `price-service` | 8084 (gRPC 9090) | PostgreSQL :5435 | Price management, price history, gRPC server |
+| `news-service` | 8085 | PostgreSQL :5436 | Real-estate news/articles, public reads, admin CRUD |
+| `ai-search-service` | 8086 | — | Natural language → structured property filters (regex default, optional LLM) |
+| `comment-service` | 8087 | PostgreSQL :5437 | Property comment threads with replies, likes, captcha, admin moderation |
+
+All Java services: Spring Boot 3.2.x, Java 17, Maven, Spring Data JPA, Flyway migrations, one Docker Compose stack each (app + its database).
+
+Analytics is fire-and-forget: producers send on a dedicated daemon thread with a bounded queue and a 2s `max.block.ms`, so a Kafka outage never blocks request handling.
+
+## 📁 Repository Structure
+
+```
+real-estate-monorepo/
+├── frontend/             # Next.js 14 app (App Router, Tailwind, NextAuth, next-intl)
+├── auth-service/         # Each service: src/, pom.xml, Dockerfile,
+├── property-service/     #   docker-compose.yml, helm/ chart
+├── post-service/
+├── price-service/
+├── news-service/
+├── ai-search-service/
+├── comment-service/
+├── analytics-service/
+├── kong/                 # Gateway config, docker/k8s start scripts
+├── kafka/                # Kafka (KRaft) docker-compose
+├── grpc-proto/           # Shared protobuf definitions (property ↔ price)
+├── scripts/              # start/stop/status-all-services.sh, RDS helpers
+├── docs/                 # Architecture docs, PRPs, Postman collection
+├── jenkins/              # CI/CD pipelines (Jenkinsfile.ci / .cd)
+├── monitoring/           # Prometheus/Grafana helm charts
+└── terraform/            # AWS infrastructure (EKS, RDS, MSK)
+```
 
 ## 🏃 Getting Started
 
 ### Prerequisites
 
-- **Node.js**: 18+ (for frontend)
-- **Java**: 17+ (for backend)
-- **Maven**: Not required - Backend uses Maven Wrapper (mvnw)
+- Docker Desktop
+- Node.js 18+
+- Java 17 + Maven (for building services locally)
 
-### Run Frontend (Next.js)
+### Start everything
 
 ```bash
-# Navigate to frontend directory
+# Start Kong, all microservices, databases, Kafka, and MongoDB (Docker)
+./scripts/start-all-services.sh
+
+# Check status / stop
+./scripts/status-all-services.sh
+./scripts/stop-all-services.sh
+```
+
+### Start the frontend
+
+```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Run development server
-npm run dev
+npm run dev          # or ./start-dev.sh
 ```
 
-Frontend will be available at: `http://localhost:3000`
+Open `http://localhost:3000`. The frontend talks to the services through Kong at `http://localhost:8000`.
 
-### Run Backend (Spring Boot)
+### Run a single service
 
 ```bash
-# Navigate to backend directory
-cd backend
-
-# Build and run with Maven Wrapper
-./mvnw spring-boot:run
-
-# Or use the startup script
-./run.sh
+cd post-service
+docker compose up -d --build    # app + its database
+# or, against an already-running database:
+mvn spring-boot:run
 ```
 
-Backend API will be available at: `http://localhost:8080`
+See [docs/LOCAL_DEVELOPMENT_GUIDE.md](docs/LOCAL_DEVELOPMENT_GUIDE.md) for the full local workflow.
 
-## 📋 Available Features
+## 📋 Features
 
-### Frontend Features
-- ✅ Property listing and search
-- ✅ Property filtering (price, type, location)
-- ✅ User authentication (login/register)
-- ✅ Create property listings
-- ✅ Social media feed with infinite scroll
-- ✅ Like/unlike posts
-- ✅ Responsive design
+- ✅ Property listings: search, filters, map view (Leaflet), image galleries with fullscreen lightbox
+- ✅ AI-powered natural-language property search
+- ✅ Authentication: register/login with JWT (RS256 + JWKS), token refresh, key rotation
+- ✅ Social feed: posts with image attachments, likes, single-level replies, infinite scroll
+- ✅ Property comments: threads, replies, likes, captcha, admin moderation
+- ✅ News section with admin-managed articles
+- ✅ Vietnamese/English i18n with cookie-based switcher
+- ✅ User activity analytics via Kafka → MongoDB
+- ✅ Price history with gRPC property↔price integration
+- ✅ Observability: Spring Actuator + Prometheus metrics, Grafana dashboards
 
-### Backend Features
-- ✅ REST API structure
-- ✅ Health check endpoint
-- ⏳ User management (planned)
-- ⏳ Property CRUD operations (planned)
-- ⏳ Post management (planned)
-- ⏳ Authentication & Authorization (planned)
+## 🔗 API
 
-## 🔗 API Endpoints
+All client traffic goes through Kong (`http://localhost:8000`). Key route groups:
 
-### Backend (Port 8080)
-- `GET /api/health` - Health check
+| Prefix | Service | Notes |
+|--------|---------|-------|
+| `/auth/*` | auth-service | Public: register, login, refresh; rate-limited 10/min |
+| `/api/properties/*` | property-service | Public reads, JWT-protected writes |
+| `/api/upload/*` | property-service | Image uploads (also used for post images) |
+| `/api/posts/*` | post-service | Feed, posts, `{id}/like`, `{id}/replies` |
+| `/api/prices/*` | price-service | Price reads/updates |
+| `/api/news/*` | news-service | Public reads, admin CRUD |
+| `/api/ai-search/*` | ai-search-service | NL query parsing |
+| `/api/comments/*`, `/api/properties/{id}/comments` | comment-service | Comment threads |
 
-### Frontend API Routes (Port 3000)
-- `POST /api/auth/[...nextauth]` - Authentication
-- `GET/POST /api/posts` - Posts feed
-- `POST/DELETE /api/posts/[postId]/like` - Like/unlike posts
-- `POST /api/properties` - Create property
+Import [docs/postman/](docs/postman/) into Postman for a ready-to-use collection, or browse each service's Swagger UI at `http://localhost:<port>/swagger-ui.html`.
 
-## 🗂️ Environment Variables
+## 📚 Documentation
 
-### Frontend (frontend/.env.local)
-```env
-NEXTAUTH_SECRET=your-secret-key
-NEXTAUTH_URL=http://localhost:3000
-```
-
-### Backend (backend/src/main/resources/application.properties)
-Already configured in `backend/src/main/resources/application.properties`
-
-## 📝 Development Workflow
-
-1. **Frontend Development**: Make changes in `frontend/app/`, `frontend/components/`, or `frontend/lib/`
-2. **Backend Development**: Make changes in `backend/src/main/java/`
-3. **Type Definitions**: Update types in `frontend/types/index.ts`
-4. **API Integration**: Connect frontend to backend APIs (next phase)
+| Doc | Contents |
+|-----|----------|
+| [DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md) | Full system diagrams, request flows, route tables |
+| [LOCAL_DEVELOPMENT_GUIDE.md](docs/LOCAL_DEVELOPMENT_GUIDE.md) | Day-to-day development workflow |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) / [K8S_DEPLOYMENT_GUIDE.md](docs/K8S_DEPLOYMENT_GUIDE.md) | Production / Kubernetes deployment |
+| [SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md) | Security posture |
+| `docs/*_PRP.md`, `docs/*_PRD.md` | Feature proposals and their implementation status |
+| [jenkins/CI_CD_GUIDE.md](jenkins/CI_CD_GUIDE.md) | CI/CD pipelines |
+| [terraform/README.md](terraform/README.md) | AWS infrastructure |
 
 ## 🧪 Testing
 
-### Frontend
 ```bash
-cd frontend
-npm test
+# Any Java service
+cd post-service && mvn test
+
+# Frontend type-check / lint / build
+cd frontend && npx tsc --noEmit && npm run lint && npm run build
 ```
-
-### Backend
-```bash
-cd backend
-./mvnw test
-```
-
-## 📦 Building for Production
-
-### Frontend
-```bash
-cd frontend
-npm run build
-npm start
-```
-
-### Backend
-```bash
-cd backend
-./mvnw clean package
-java -jar target/backend-0.0.1-SNAPSHOT.jar
-```
-
-## 🔄 Migration Plan
-
-Currently, the frontend uses mock data. The migration plan:
-
-1. ✅ Set up Spring Boot backend
-2. ⏳ Create entity models (User, Property, Post, Like)
-3. ⏳ Implement repositories and services
-4. ⏳ Create REST controllers matching existing API routes
-5. ⏳ Update frontend to use backend APIs
-6. ⏳ Add authentication integration
-7. ⏳ Deploy to production
-
-## 👥 Contributors
-
-- Frontend: Next.js + TypeScript
-- Backend: Spring Boot + Java
 
 ## 📄 License
 
