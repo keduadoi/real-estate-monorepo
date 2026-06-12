@@ -27,6 +27,11 @@ spring:
       acks: 1
       properties:
         spring.json.add.type.headers: false
+        # Fail fast when the broker is down so analytics can never stall callers
+        # (default max.block.ms is 60s)
+        max.block.ms: 2000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
 
 server:
   port: 8084
