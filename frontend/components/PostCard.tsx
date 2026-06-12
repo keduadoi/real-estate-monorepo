@@ -8,6 +8,7 @@ import { toIntlLocale } from '@/lib/i18n/intlLocale';
 import { fixImageUrl } from '@/lib/utils';
 import LikeButton from './LikeButton';
 import ImageLightbox from './ImageLightbox';
+import ReplySection from './ReplySection';
 
 interface PostCardProps {
   post: Post;
@@ -19,6 +20,8 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
   const t = useTranslations('components.postCard');
   const intlLocale = toIntlLocale(useLocale());
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [showReplies, setShowReplies] = useState(false);
+  const [replyCount, setReplyCount] = useState(post.replyCount ?? 0);
 
   function formatTimestamp(timestamp: string): string {
     const now = new Date();
@@ -128,7 +131,7 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-gray-200">
+      <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
         <LikeButton
           postId={post.id}
           isLiked={post.isLikedByCurrentUser}
@@ -136,7 +139,40 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
           onToggle={handleLikeToggle}
           disabled={!isAuthenticated}
         />
+
+        <button
+          onClick={() => setShowReplies((prev) => !prev)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
+            showReplies ? 'text-primary-600' : 'text-gray-400 hover:text-primary-600'
+          }`}
+          title={t('replies')}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+            />
+          </svg>
+          <span className="text-sm font-medium">{replyCount}</span>
+        </button>
       </div>
+
+      {showReplies && (
+        <ReplySection
+          postId={post.id}
+          isAuthenticated={isAuthenticated}
+          onReplyAdded={() => setReplyCount((prev) => prev + 1)}
+          onReplyDeleted={() => setReplyCount((prev) => Math.max(0, prev - 1))}
+        />
+      )}
 
       {lightboxIndex !== null && (
         <ImageLightbox

@@ -413,7 +413,19 @@
       "hoursAgo": "{count} hours ago",
       "daysAgo": "{count} days ago",
       "imageAlt": "Photo {index} by {author}",
-      "moreImages": "+{count}"
+      "moreImages": "+{count}",
+      "replies": "Replies"
+    },
+    "replySection": {
+      "loading": "Loading replies...",
+      "empty": "No replies yet. Be the first to reply!",
+      "placeholder": "Write a reply...",
+      "submit": "Reply",
+      "submitting": "Replying...",
+      "loginRequired": "Sign in to reply",
+      "loadMore": "Load more replies",
+      "deleteReply": "Delete reply",
+      "generalError": "An error occurred. Please try again."
     },
     "postFeed": {
       "emptyTitle": "No posts yet",

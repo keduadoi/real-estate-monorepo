@@ -31,9 +31,23 @@ export interface Post {
   imageUrls: string[];
   author: PostAuthor;
   likeCount: number;
+  replyCount: number;
   isLikedByCurrentUser: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Reply {
+  id: string;
+  postId: string;
+  content: string;
+  author: PostAuthor;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateReplyRequest {
+  content: string;
 }
 
 export interface CreatePostRequest {
@@ -355,6 +369,78 @@ class PostApi {
     }
 
     return response.json();
+  }
+
+  /**
+   * Get paginated replies for a post (oldest first).
+   */
+  async getReplies(
+    postId: string,
+    page: number = 0,
+    size: number = 20,
+    options?: RequestOptions
+  ): Promise<PageResponse<Reply>> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      size: size.toString(),
+      _t: Date.now().toString(), // Cache-busting timestamp
+    });
+
+    const response = await fetch(`${this.getBaseUrl()}/api/posts/${postId}/replies?${params}`, {
+      cache: 'no-store',
+      headers: this.buildHeaders(options),
+    });
+
+    if (!response.ok) {
+      await this.handleError(response);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Reply to a post (single level - replies cannot be replied to).
+   * Requires authentication.
+   */
+  async createReply(
+    postId: string,
+    data: CreateReplyRequest,
+    options?: RequestOptions
+  ): Promise<Reply> {
+    if (!options?.accessToken) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetch(`${this.getBaseUrl()}/api/posts/${postId}/replies`, {
+      method: 'POST',
+      headers: this.buildHeaders(options, 'application/json'),
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      await this.handleError(response);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a reply.
+   * Requires authentication and ownership (or admin role).
+   */
+  async deleteReply(postId: string, replyId: string, options?: RequestOptions): Promise<void> {
+    if (!options?.accessToken) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetch(`${this.getBaseUrl()}/api/posts/${postId}/replies/${replyId}`, {
+      method: 'DELETE',
+      headers: this.buildHeaders(options),
+    });
+
+    if (!response.ok) {
+      await this.handleError(response);
+    }
   }
 
   /**

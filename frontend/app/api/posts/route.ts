@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
       email: session.user.email || null,
     },
     likeCount: 0,
+    replyCount: 0,
     isLikedByCurrentUser: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -24,6 +24,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("POST_NOT_FOUND", ex.getMessage()));
     }
 
+    @ExceptionHandler(ReplyNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleReplyNotFound(ReplyNotFoundException ex) {
+        log.warn("Reply not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("REPLY_NOT_FOUND", ex.getMessage()));
+    }
+
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
         log.warn("Unauthorized access: {}", ex.getMessage());

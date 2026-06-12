@@ -413,7 +413,19 @@
       "hoursAgo": "{count} giờ trước",
       "daysAgo": "{count} ngày trước",
       "imageAlt": "Ảnh {index} của {author}",
-      "moreImages": "+{count}"
+      "moreImages": "+{count}",
+      "replies": "Trả lời"
+    },
+    "replySection": {
+      "loading": "Đang tải trả lời...",
+      "empty": "Chưa có trả lời nào. Hãy là người đầu tiên trả lời!",
+      "placeholder": "Viết trả lời...",
+      "submit": "Trả lời",
+      "submitting": "Đang gửi...",
+      "loginRequired": "Đăng nhập để trả lời",
+      "loadMore": "Xem thêm trả lời",
+      "deleteReply": "Xóa trả lời",
+      "generalError": "Đã có lỗi xảy ra. Vui lòng thử lại."
     },
     "postFeed": {
       "emptyTitle": "Chưa có bài viết nào",

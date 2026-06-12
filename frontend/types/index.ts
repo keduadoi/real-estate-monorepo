@@ -94,7 +94,17 @@ export interface Post {
   imageUrls: string[];
   author: PostAuthor;
   likeCount: number;
+  replyCount: number;
   isLikedByCurrentUser: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Reply {
+  id: string;
+  postId: string;
+  content: string;
+  author: PostAuthor;
   createdAt: string;
   updatedAt: string;
 }

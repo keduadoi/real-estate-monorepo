@@ -1,19 +1,23 @@
 package com.realestate.post.service;
 
 import com.realestate.post.dto.request.CreatePostRequest;
+import com.realestate.post.dto.request.CreateReplyRequest;
 import com.realestate.post.dto.request.UpdatePostRequest;
 import com.realestate.post.dto.response.*;
 import com.realestate.post.entity.Like;
 import com.realestate.post.entity.Post;
 import com.realestate.post.entity.PostImage;
+import com.realestate.post.entity.Reply;
 import com.realestate.post.exception.ForbiddenException;
 import com.realestate.post.exception.InvalidPostException;
 import com.realestate.post.exception.PostNotFoundException;
+import com.realestate.post.exception.ReplyNotFoundException;
 import com.realestate.post.exception.ServiceUnavailableException;
 import com.realestate.post.exception.UnauthorizedException;
 import com.realestate.post.repository.LikeRepository;
 import com.realestate.post.repository.PostImageRepository;
 import com.realestate.post.repository.PostRepository;
+import com.realestate.post.repository.ReplyRepository;
 import com.realestate.post.security.UserContext;
 import com.realestate.post.security.UserInfo;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -38,6 +42,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final PostImageRepository postImageRepository;
+    private final ReplyRepository replyRepository;
 
     /**
      * Create a new post (text, images, or both)
@@ -74,7 +79,7 @@ public class PostService {
         log.info("Post created: id={}, userId={}, images={}",
                 saved.getId(), currentUser.getId(), saved.getImages().size());
 
-        return mapToResponse(saved, currentUser.getId(), 0, false);
+        return mapToResponse(saved, currentUser.getId(), 0, 0, false);
     }
 
     /**
@@ -112,9 +117,10 @@ public class PostService {
                 .orElseThrow(() -> new PostNotFoundException(postId));
 
         long likeCount = likeRepository.countByPostId(postId);
+        long replyCount = replyRepository.countByPostId(postId);
         boolean isLiked = currentUserId != null && likeRepository.existsByPostIdAndUserId(postId, currentUserId);
 
-        return mapToResponse(post, currentUserId, likeCount, isLiked);
+        return mapToResponse(post, currentUserId, likeCount, replyCount, isLiked);
     }
 
     /**
@@ -159,9 +165,10 @@ public class PostService {
         log.info("Post updated: id={}, by userId={}", postId, userId);
 
         long likeCount = likeRepository.countByPostId(postId);
+        long replyCount = replyRepository.countByPostId(postId);
         boolean isLiked = likeRepository.existsByPostIdAndUserId(postId, userId);
 
-        return mapToResponse(updated, userId, likeCount, isLiked);
+        return mapToResponse(updated, userId, likeCount, replyCount, isLiked);
     }
 
     /**
@@ -280,6 +287,13 @@ public class PostService {
                 ? new HashSet<>(likeRepository.findLikedPostIdsByUserAndPostIds(postIds, currentUserId))
                 : Collections.emptySet();
 
+        // Batch fetch reply counts
+        Map<UUID, Long> replyCounts = replyRepository.countRepliesByPostIds(postIds).stream()
+                .collect(Collectors.toMap(
+                        arr -> (UUID) arr[0],
+                        arr -> (Long) arr[1]
+                ));
+
         // Batch fetch images to avoid N+1 lazy loads
         Map<UUID, List<String>> imagesByPost = postImageRepository
                 .findByPostIdInOrderByPostIdAscSortOrderAsc(postIds).stream()
@@ -293,6 +307,7 @@ public class PostService {
                         post,
                         currentUserId,
                         likeCounts.getOrDefault(post.getId(), 0L),
+                        replyCounts.getOrDefault(post.getId(), 0L),
                         likedPostIds.contains(post.getId()),
                         imagesByPost.getOrDefault(post.getId(), Collections.emptyList())
                 ))
@@ -300,20 +315,89 @@ public class PostService {
     }
 
     /**
+     * Get paginated replies for a post (oldest first)
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<ReplyResponse> getReplies(UUID postId, int page, int size) {
+        if (!postRepository.existsById(postId)) {
+            throw new PostNotFoundException(postId);
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Reply> replies = replyRepository.findByPostIdOrderByCreatedAtAsc(postId, pageable);
+
+        List<ReplyResponse> responses = replies.getContent().stream()
+                .map(this::mapReplyToResponse)
+                .toList();
+
+        return new PageResponse<>(
+                responses,
+                replies.getTotalElements(),
+                replies.getNumber(),
+                replies.getSize(),
+                replies.getTotalPages()
+        );
+    }
+
+    /**
+     * Create a reply on a post (single level — replies cannot be replied to)
+     */
+    public ReplyResponse createReply(UUID postId, CreateReplyRequest request) {
+        UserInfo currentUser = UserContext.getCurrentUser()
+                .orElseThrow(() -> new UnauthorizedException("Authentication required"));
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException(postId));
+
+        Reply reply = Reply.builder()
+                .post(post)
+                .content(request.content().trim())
+                .userId(currentUser.getId())
+                .authorName(currentUser.getFullName())
+                .authorEmail(currentUser.getEmail())
+                .build();
+
+        Reply saved = replyRepository.save(reply);
+        log.info("Reply created: id={}, postId={}, userId={}", saved.getId(), postId, currentUser.getId());
+
+        return mapReplyToResponse(saved);
+    }
+
+    /**
+     * Delete a reply (reply owner or admin only)
+     */
+    public void deleteReply(UUID postId, UUID replyId) {
+        String userId = UserContext.getCurrentUserId()
+                .orElseThrow(() -> new UnauthorizedException("Authentication required"));
+
+        Reply reply = replyRepository.findById(replyId)
+                .filter(r -> r.getPost().getId().equals(postId))
+                .orElseThrow(() -> new ReplyNotFoundException(replyId));
+
+        if (!reply.getUserId().equals(userId) && !UserContext.isAdmin()) {
+            throw new ForbiddenException("You can only delete your own replies");
+        }
+
+        replyRepository.delete(reply);
+        log.info("Reply deleted: id={}, postId={}, by userId={}", replyId, postId, userId);
+    }
+
+    /**
      * Map entity to response DTO (images read from the entity, lazy-loaded within transaction)
      */
-    private PostResponse mapToResponse(Post post, String currentUserId, long likeCount, boolean isLiked) {
+    private PostResponse mapToResponse(Post post, String currentUserId, long likeCount, long replyCount,
+                                       boolean isLiked) {
         List<String> imageUrls = post.getImages().stream()
                 .map(PostImage::getImageUrl)
                 .toList();
-        return mapToResponse(post, currentUserId, likeCount, isLiked, imageUrls);
+        return mapToResponse(post, currentUserId, likeCount, replyCount, isLiked, imageUrls);
     }
 
     /**
      * Map entity to response DTO with pre-fetched image URLs
      */
-    private PostResponse mapToResponse(Post post, String currentUserId, long likeCount, boolean isLiked,
-                                       List<String> imageUrls) {
+    private PostResponse mapToResponse(Post post, String currentUserId, long likeCount, long replyCount,
+                                       boolean isLiked, List<String> imageUrls) {
         return PostResponse.builder()
                 .id(post.getId())
                 .content(post.getContent())
@@ -324,9 +408,28 @@ public class PostService {
                         .email(post.getAuthorEmail())
                         .build())
                 .likeCount(likeCount)
+                .replyCount(replyCount)
                 .isLikedByCurrentUser(isLiked)
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Map reply entity to response DTO
+     */
+    private ReplyResponse mapReplyToResponse(Reply reply) {
+        return ReplyResponse.builder()
+                .id(reply.getId())
+                .postId(reply.getPost().getId())
+                .content(reply.getContent())
+                .author(PostAuthorResponse.builder()
+                        .id(reply.getUserId())
+                        .name(reply.getAuthorName())
+                        .email(reply.getAuthorEmail())
+                        .build())
+                .createdAt(reply.getCreatedAt())
+                .updatedAt(reply.getUpdatedAt())
                 .build();
     }
 }

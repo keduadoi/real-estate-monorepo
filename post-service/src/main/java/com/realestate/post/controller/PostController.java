@@ -1,10 +1,12 @@
 package com.realestate.post.controller;
 
 import com.realestate.post.dto.request.CreatePostRequest;
+import com.realestate.post.dto.request.CreateReplyRequest;
 import com.realestate.post.dto.request.UpdatePostRequest;
 import com.realestate.post.dto.response.LikeResponse;
 import com.realestate.post.dto.response.PageResponse;
 import com.realestate.post.dto.response.PostResponse;
+import com.realestate.post.dto.response.ReplyResponse;
 import com.realestate.post.exception.UnauthorizedException;
 import com.realestate.post.security.UserContext;
 import com.realestate.post.service.PostService;
@@ -123,7 +125,9 @@ public class PostController {
     public ResponseEntity<PostResponse> createPost(
             @Valid @RequestBody CreatePostRequest request) {
 
-        log.debug("Creating post: contentLength={}", request.content().length());
+        log.debug("Creating post: contentLength={}, images={}",
+                request.content() != null ? request.content().length() : 0,
+                request.imageUrls() != null ? request.imageUrls().size() : 0);
         PostResponse response = postService.createPost(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -185,6 +189,70 @@ public class PostController {
 
         log.debug("Toggling like: postId={}", id);
         return ResponseEntity.ok(postService.toggleLike(id));
+    }
+
+    /**
+     * Get paginated replies for a post
+     */
+    @GetMapping("/{id}/replies")
+    @Operation(summary = "Get replies", description = "Get paginated replies for a post, oldest first")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Replies retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Post not found")
+    })
+    public ResponseEntity<PageResponse<ReplyResponse>> getReplies(
+            @Parameter(description = "Post ID")
+            @PathVariable UUID id,
+            @Parameter(description = "Page number (0-based)")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.debug("Getting replies: postId={}, page={}, size={}", id, page, size);
+        return ResponseEntity.ok(postService.getReplies(id, page, size));
+    }
+
+    /**
+     * Reply to a post (single level — replies cannot be replied to)
+     */
+    @PostMapping("/{id}/replies")
+    @Operation(summary = "Create reply", description = "Reply to a post (requires authentication)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Reply created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "404", description = "Post not found")
+    })
+    public ResponseEntity<ReplyResponse> createReply(
+            @Parameter(description = "Post ID")
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateReplyRequest request) {
+
+        log.debug("Creating reply: postId={}", id);
+        ReplyResponse response = postService.createReply(id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Delete a reply
+     */
+    @DeleteMapping("/{id}/replies/{replyId}")
+    @Operation(summary = "Delete reply", description = "Delete a reply (owner or admin only)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Reply deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Not authorized to delete this reply"),
+            @ApiResponse(responseCode = "404", description = "Reply not found")
+    })
+    public ResponseEntity<Void> deleteReply(
+            @Parameter(description = "Post ID")
+            @PathVariable UUID id,
+            @Parameter(description = "Reply ID")
+            @PathVariable UUID replyId) {
+
+        log.debug("Deleting reply: postId={}, replyId={}", id, replyId);
+        postService.deleteReply(id, replyId);
+        return ResponseEntity.noContent().build();
     }
 
     /**

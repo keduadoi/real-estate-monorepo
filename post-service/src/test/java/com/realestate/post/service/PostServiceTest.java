@@ -1,20 +1,25 @@
 package com.realestate.post.service;
 
 import com.realestate.post.dto.request.CreatePostRequest;
+import com.realestate.post.dto.request.CreateReplyRequest;
 import com.realestate.post.dto.request.UpdatePostRequest;
 import com.realestate.post.dto.response.LikeResponse;
 import com.realestate.post.dto.response.PageResponse;
 import com.realestate.post.dto.response.PostResponse;
+import com.realestate.post.dto.response.ReplyResponse;
 import com.realestate.post.entity.Like;
 import com.realestate.post.entity.Post;
 import com.realestate.post.entity.PostImage;
+import com.realestate.post.entity.Reply;
 import com.realestate.post.exception.ForbiddenException;
 import com.realestate.post.exception.InvalidPostException;
 import com.realestate.post.exception.PostNotFoundException;
+import com.realestate.post.exception.ReplyNotFoundException;
 import com.realestate.post.exception.UnauthorizedException;
 import com.realestate.post.repository.LikeRepository;
 import com.realestate.post.repository.PostImageRepository;
 import com.realestate.post.repository.PostRepository;
+import com.realestate.post.repository.ReplyRepository;
 import com.realestate.post.security.UserContext;
 import com.realestate.post.security.UserInfo;
 import org.junit.jupiter.api.AfterEach;
@@ -46,6 +51,9 @@ class PostServiceTest {
 
     @Mock
     private PostImageRepository postImageRepository;
+
+    @Mock
+    private ReplyRepository replyRepository;
 
     @InjectMocks
     private PostService postService;
@@ -282,6 +290,135 @@ class PostServiceTest {
         assertThat(response.liked()).isFalse();
         assertThat(response.likeCount()).isEqualTo(0);
         verify(likeRepository).delete(existingLike);
+    }
+
+    @Test
+    void createReply_Success() {
+        Post post = createPost(POST_ID, "Original post", OTHER_USER_ID);
+        CreateReplyRequest request = new CreateReplyRequest("Nice post!");
+
+        when(postRepository.findById(POST_ID)).thenReturn(Optional.of(post));
+        when(replyRepository.save(any(Reply.class))).thenAnswer(invocation -> {
+            Reply reply = invocation.getArgument(0);
+            reply.setId(UUID.randomUUID());
+            return reply;
+        });
+
+        ReplyResponse response = postService.createReply(POST_ID, request);
+
+        assertThat(response.postId()).isEqualTo(POST_ID);
+        assertThat(response.content()).isEqualTo("Nice post!");
+        assertThat(response.author().id()).isEqualTo(USER_ID);
+        verify(replyRepository).save(any(Reply.class));
+    }
+
+    @Test
+    void createReply_PostNotFound() {
+        when(postRepository.findById(POST_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> postService.createReply(POST_ID, new CreateReplyRequest("Hi")))
+                .isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    void createReply_Unauthorized() {
+        UserContext.clear();
+
+        assertThatThrownBy(() -> postService.createReply(POST_ID, new CreateReplyRequest("Hi")))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void getReplies_Success() {
+        Post post = createPost(POST_ID, "Original post", OTHER_USER_ID);
+        Reply reply = createReply(UUID.randomUUID(), post, "First!", USER_ID);
+
+        when(postRepository.existsById(POST_ID)).thenReturn(true);
+        when(replyRepository.findByPostIdOrderByCreatedAtAsc(eq(POST_ID), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(reply), PageRequest.of(0, 20), 1));
+
+        PageResponse<ReplyResponse> response = postService.getReplies(POST_ID, 0, 20);
+
+        assertThat(response.data()).hasSize(1);
+        assertThat(response.data().get(0).content()).isEqualTo("First!");
+        assertThat(response.data().get(0).postId()).isEqualTo(POST_ID);
+    }
+
+    @Test
+    void getReplies_PostNotFound() {
+        when(postRepository.existsById(POST_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> postService.getReplies(POST_ID, 0, 20))
+                .isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    void deleteReply_OwnerSuccess() {
+        Post post = createPost(POST_ID, "Original post", OTHER_USER_ID);
+        UUID replyId = UUID.randomUUID();
+        Reply reply = createReply(replyId, post, "Mine", USER_ID);
+
+        when(replyRepository.findById(replyId)).thenReturn(Optional.of(reply));
+
+        postService.deleteReply(POST_ID, replyId);
+
+        verify(replyRepository).delete(reply);
+    }
+
+    @Test
+    void deleteReply_NotOwner_Forbidden() {
+        Post post = createPost(POST_ID, "Original post", USER_ID);
+        UUID replyId = UUID.randomUUID();
+        Reply reply = createReply(replyId, post, "Someone else's", OTHER_USER_ID);
+
+        when(replyRepository.findById(replyId)).thenReturn(Optional.of(reply));
+
+        assertThatThrownBy(() -> postService.deleteReply(POST_ID, replyId))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void deleteReply_WrongPost_NotFound() {
+        Post otherPost = createPost(UUID.randomUUID(), "Another post", OTHER_USER_ID);
+        UUID replyId = UUID.randomUUID();
+        Reply reply = createReply(replyId, otherPost, "Mine", USER_ID);
+
+        when(replyRepository.findById(replyId)).thenReturn(Optional.of(reply));
+
+        assertThatThrownBy(() -> postService.deleteReply(POST_ID, replyId))
+                .isInstanceOf(ReplyNotFoundException.class);
+    }
+
+    @Test
+    void getFeed_IncludesReplyCount() {
+        Post post = createPost(POST_ID, "With replies", USER_ID);
+
+        when(postRepository.findAllByOrderByCreatedAtDesc(any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(post), PageRequest.of(0, 20), 1));
+        when(likeRepository.countLikesByPostIds(any())).thenReturn(Collections.emptyList());
+        when(likeRepository.findLikedPostIdsByUserAndPostIds(any(), eq(USER_ID)))
+                .thenReturn(Collections.emptyList());
+        when(postImageRepository.findByPostIdInOrderByPostIdAscSortOrderAsc(any()))
+                .thenReturn(Collections.emptyList());
+        when(replyRepository.countRepliesByPostIds(any()))
+                .thenReturn(List.<Object[]>of(new Object[]{POST_ID, 3L}));
+
+        PageResponse<PostResponse> response = postService.getFeed(0, 20);
+
+        assertThat(response.data().get(0).replyCount()).isEqualTo(3);
+    }
+
+    private Reply createReply(UUID id, Post post, String content, String userId) {
+        return Reply.builder()
+                .id(id)
+                .post(post)
+                .content(content)
+                .userId(userId)
+                .authorName("Test User")
+                .authorEmail("test@example.com")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 
     private Post createPost(UUID id, String content, String userId) {
