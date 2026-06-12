@@ -90,7 +90,8 @@ export interface PostAuthor {
 
 export interface Post {
   id: string;
-  content: string;
+  content: string | null;
+  imageUrls: string[];
   author: PostAuthor;
   likeCount: number;
   isLikedByCurrentUser: boolean;

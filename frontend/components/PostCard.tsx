@@ -1,9 +1,13 @@
 'use client';
 
+import { useState } from 'react';
+import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { Post } from '@/types';
 import { toIntlLocale } from '@/lib/i18n/intlLocale';
+import { fixImageUrl } from '@/lib/utils';
 import LikeButton from './LikeButton';
+import ImageLightbox from './ImageLightbox';
 
 interface PostCardProps {
   post: Post;
@@ -14,6 +18,7 @@ interface PostCardProps {
 export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCardProps) {
   const t = useTranslations('components.postCard');
   const intlLocale = toIntlLocale(useLocale());
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   function formatTimestamp(timestamp: string): string {
     const now = new Date();
@@ -46,6 +51,12 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
 
   const authorName = post.author.name || post.author.email || t('anonymous');
 
+  // Defensive default: older cached responses may not include imageUrls
+  const images = post.imageUrls ?? [];
+  const MAX_VISIBLE_IMAGES = 4;
+  const visibleImages = images.slice(0, MAX_VISIBLE_IMAGES);
+  const hiddenCount = images.length - visibleImages.length;
+
   const getInitials = (name: string): string => {
     const parts = name.split(' ');
     if (parts.length >= 2) {
@@ -73,11 +84,49 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
         </div>
       </div>
 
-      <div className="mt-4">
-        <p className="text-gray-900 whitespace-pre-wrap break-words">
-          {post.content}
-        </p>
-      </div>
+      {post.content && (
+        <div className="mt-4">
+          <p className="text-gray-900 whitespace-pre-wrap break-words">
+            {post.content}
+          </p>
+        </div>
+      )}
+
+      {images.length > 0 && (
+        <div className={`mt-4 grid gap-1 rounded-lg overflow-hidden ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {visibleImages.map((image, index) => {
+            const isLastVisible = index === visibleImages.length - 1;
+            const showOverlay = isLastVisible && hiddenCount > 0;
+            return (
+              <button
+                key={index}
+                onClick={() => setLightboxIndex(index)}
+                className={`relative cursor-zoom-in bg-gray-200 ${
+                  images.length === 1
+                    ? 'h-80 md:h-96'
+                    : images.length === 3 && index === 0
+                    ? 'row-span-2 h-full min-h-[20rem]'
+                    : 'h-40 md:h-48'
+                }`}
+                aria-label={t('imageAlt', { index: index + 1, author: authorName })}
+              >
+                <Image
+                  src={fixImageUrl(image)}
+                  alt={t('imageAlt', { index: index + 1, author: authorName })}
+                  fill
+                  className="object-cover"
+                  sizes={images.length === 1 ? '(max-width: 768px) 100vw, 60vw' : '(max-width: 768px) 50vw, 30vw'}
+                />
+                {showOverlay && (
+                  <span className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-2xl font-semibold">
+                    {t('moreImages', { count: hiddenCount })}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="mt-4 pt-4 border-t border-gray-200">
         <LikeButton
@@ -88,6 +137,15 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
           disabled={!isAuthenticated}
         />
       </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images}
+          initialIndex={lightboxIndex}
+          title={authorName}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 }

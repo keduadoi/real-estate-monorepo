@@ -5,11 +5,14 @@ import com.realestate.post.dto.request.UpdatePostRequest;
 import com.realestate.post.dto.response.*;
 import com.realestate.post.entity.Like;
 import com.realestate.post.entity.Post;
+import com.realestate.post.entity.PostImage;
 import com.realestate.post.exception.ForbiddenException;
+import com.realestate.post.exception.InvalidPostException;
 import com.realestate.post.exception.PostNotFoundException;
 import com.realestate.post.exception.ServiceUnavailableException;
 import com.realestate.post.exception.UnauthorizedException;
 import com.realestate.post.repository.LikeRepository;
+import com.realestate.post.repository.PostImageRepository;
 import com.realestate.post.repository.PostRepository;
 import com.realestate.post.security.UserContext;
 import com.realestate.post.security.UserInfo;
@@ -34,23 +37,42 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
+    private final PostImageRepository postImageRepository;
 
     /**
-     * Create a new post
+     * Create a new post (text, images, or both)
      */
     public PostResponse createPost(CreatePostRequest request) {
         UserInfo currentUser = UserContext.getCurrentUser()
                 .orElseThrow(() -> new UnauthorizedException("Authentication required"));
 
+        boolean hasContent = request.content() != null && !request.content().isBlank();
+        boolean hasImages = request.imageUrls() != null && !request.imageUrls().isEmpty();
+        if (!hasContent && !hasImages) {
+            throw new InvalidPostException("Post must have content or at least one image");
+        }
+
         Post post = Post.builder()
-                .content(request.content())
+                .content(hasContent ? request.content().trim() : null)
                 .userId(currentUser.getId())
                 .authorName(currentUser.getFullName())
                 .authorEmail(currentUser.getEmail())
                 .build();
 
-        Post saved = postRepository.save(post);
-        log.info("Post created: id={}, userId={}", saved.getId(), currentUser.getId());
+        if (hasImages) {
+            List<String> urls = request.imageUrls();
+            for (int i = 0; i < urls.size(); i++) {
+                post.getImages().add(PostImage.builder()
+                        .post(post)
+                        .imageUrl(urls.get(i))
+                        .sortOrder(i)
+                        .build());
+            }
+        }
+
+        Post saved = postRepository.save(post); // Cascades to images
+        log.info("Post created: id={}, userId={}, images={}",
+                saved.getId(), currentUser.getId(), saved.getImages().size());
 
         return mapToResponse(saved, currentUser.getId(), 0, false);
     }
@@ -258,23 +280,44 @@ public class PostService {
                 ? new HashSet<>(likeRepository.findLikedPostIdsByUserAndPostIds(postIds, currentUserId))
                 : Collections.emptySet();
 
+        // Batch fetch images to avoid N+1 lazy loads
+        Map<UUID, List<String>> imagesByPost = postImageRepository
+                .findByPostIdInOrderByPostIdAscSortOrderAsc(postIds).stream()
+                .collect(Collectors.groupingBy(
+                        image -> image.getPost().getId(),
+                        Collectors.mapping(PostImage::getImageUrl, Collectors.toList())
+                ));
+
         return posts.stream()
                 .map(post -> mapToResponse(
                         post,
                         currentUserId,
                         likeCounts.getOrDefault(post.getId(), 0L),
-                        likedPostIds.contains(post.getId())
+                        likedPostIds.contains(post.getId()),
+                        imagesByPost.getOrDefault(post.getId(), Collections.emptyList())
                 ))
                 .toList();
     }
 
     /**
-     * Map entity to response DTO
+     * Map entity to response DTO (images read from the entity, lazy-loaded within transaction)
      */
     private PostResponse mapToResponse(Post post, String currentUserId, long likeCount, boolean isLiked) {
+        List<String> imageUrls = post.getImages().stream()
+                .map(PostImage::getImageUrl)
+                .toList();
+        return mapToResponse(post, currentUserId, likeCount, isLiked, imageUrls);
+    }
+
+    /**
+     * Map entity to response DTO with pre-fetched image URLs
+     */
+    private PostResponse mapToResponse(Post post, String currentUserId, long likeCount, boolean isLiked,
+                                       List<String> imageUrls) {
         return PostResponse.builder()
                 .id(post.getId())
                 .content(post.getContent())
+                .imageUrls(imageUrls)
                 .author(PostAuthorResponse.builder()
                         .id(post.getUserId())
                         .name(post.getAuthorName())

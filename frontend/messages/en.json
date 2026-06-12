@@ -400,14 +400,20 @@
       "submitting": "Posting...",
       "cancel": "Cancel",
       "loginRequired": "Please sign in to post",
-      "generalError": "An error occurred. Please try again."
+      "generalError": "An error occurred. Please try again.",
+      "addPhotos": "Add photos",
+      "imageCounter": "{current}/{max}",
+      "removeImage": "Remove image",
+      "uploadFailed": "Failed to upload images. Please try again."
     },
     "postCard": {
       "anonymous": "Anonymous user",
       "justNow": "Just now",
       "minutesAgo": "{count} minutes ago",
       "hoursAgo": "{count} hours ago",
-      "daysAgo": "{count} days ago"
+      "daysAgo": "{count} days ago",
+      "imageAlt": "Photo {index} by {author}",
+      "moreImages": "+{count}"
     },
     "postFeed": {
       "emptyTitle": "No posts yet",

@@ -27,7 +27,8 @@ export interface PostAuthor {
 
 export interface Post {
   id: string;
-  content: string;
+  content: string | null;
+  imageUrls: string[];
   author: PostAuthor;
   likeCount: number;
   isLikedByCurrentUser: boolean;
@@ -36,7 +37,8 @@ export interface Post {
 }
 
 export interface CreatePostRequest {
-  content: string;
+  content?: string;
+  imageUrls?: string[];
 }
 
 export interface UpdatePostRequest {

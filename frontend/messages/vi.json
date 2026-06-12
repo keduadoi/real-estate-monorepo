@@ -400,14 +400,20 @@
       "submitting": "Đang đăng...",
       "cancel": "Hủy",
       "loginRequired": "Vui lòng đăng nhập để đăng bài viết",
-      "generalError": "Đã có lỗi xảy ra. Vui lòng thử lại."
+      "generalError": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "addPhotos": "Thêm ảnh",
+      "imageCounter": "{current}/{max}",
+      "removeImage": "Xóa ảnh",
+      "uploadFailed": "Tải ảnh lên thất bại. Vui lòng thử lại."
     },
     "postCard": {
       "anonymous": "Người dùng ẩn danh",
       "justNow": "Vừa xong",
       "minutesAgo": "{count} phút trước",
       "hoursAgo": "{count} giờ trước",
-      "daysAgo": "{count} ngày trước"
+      "daysAgo": "{count} ngày trước",
+      "imageAlt": "Ảnh {index} của {author}",
+      "moreImages": "+{count}"
     },
     "postFeed": {
       "emptyTitle": "Chưa có bài viết nào",

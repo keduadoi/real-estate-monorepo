@@ -89,16 +89,18 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { content } = body;
+  const { content, imageUrls } = body;
 
-  if (!content || content.trim().length === 0) {
-    return NextResponse.json({ error: 'Content is required' }, { status: 400 });
+  const hasContent = typeof content === 'string' && content.trim().length > 0;
+  const hasImages = Array.isArray(imageUrls) && imageUrls.length > 0;
+  if (!hasContent && !hasImages) {
+    return NextResponse.json({ error: 'Content or images required' }, { status: 400 });
   }
 
   const accessToken = session.accessToken;
 
   // Try backend first
-  const backendResponse = await tryBackendRequest('POST', '/api/posts', { content }, accessToken);
+  const backendResponse = await tryBackendRequest('POST', '/api/posts', { content, imageUrls }, accessToken);
 
   if (backendResponse?.ok) {
     const data = await backendResponse.json();
@@ -113,7 +115,8 @@ export async function POST(request: NextRequest) {
   // Fallback to mock data
   const newPost = {
     id: `mock-${global.postIdCounter++}`,
-    content: content.trim(),
+    content: hasContent ? content.trim() : null,
+    imageUrls: hasImages ? imageUrls : [],
     author: {
       id: session.user.id,
       name: session.user.name || null,

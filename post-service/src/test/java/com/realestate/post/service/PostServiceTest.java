@@ -7,10 +7,13 @@ import com.realestate.post.dto.response.PageResponse;
 import com.realestate.post.dto.response.PostResponse;
 import com.realestate.post.entity.Like;
 import com.realestate.post.entity.Post;
+import com.realestate.post.entity.PostImage;
 import com.realestate.post.exception.ForbiddenException;
+import com.realestate.post.exception.InvalidPostException;
 import com.realestate.post.exception.PostNotFoundException;
 import com.realestate.post.exception.UnauthorizedException;
 import com.realestate.post.repository.LikeRepository;
+import com.realestate.post.repository.PostImageRepository;
 import com.realestate.post.repository.PostRepository;
 import com.realestate.post.security.UserContext;
 import com.realestate.post.security.UserInfo;
@@ -41,6 +44,9 @@ class PostServiceTest {
     @Mock
     private LikeRepository likeRepository;
 
+    @Mock
+    private PostImageRepository postImageRepository;
+
     @InjectMocks
     private PostService postService;
 
@@ -66,7 +72,7 @@ class PostServiceTest {
 
     @Test
     void createPost_Success() {
-        CreatePostRequest request = new CreatePostRequest("Hello World!");
+        CreatePostRequest request = new CreatePostRequest("Hello World!", null);
         Post savedPost = createPost(POST_ID, "Hello World!", USER_ID);
 
         when(postRepository.save(any(Post.class))).thenReturn(savedPost);
@@ -76,13 +82,55 @@ class PostServiceTest {
         assertThat(response.id()).isEqualTo(POST_ID);
         assertThat(response.content()).isEqualTo("Hello World!");
         assertThat(response.author().id()).isEqualTo(USER_ID);
+        assertThat(response.imageUrls()).isEmpty();
         verify(postRepository).save(any(Post.class));
+    }
+
+    @Test
+    void createPost_WithImages_OrderPreserved() {
+        List<String> urls = List.of("http://img/1.jpg", "http://img/2.jpg", "http://img/3.jpg");
+        CreatePostRequest request = new CreatePostRequest("With photos", urls);
+
+        when(postRepository.save(any(Post.class))).thenAnswer(invocation -> {
+            Post post = invocation.getArgument(0);
+            post.setId(POST_ID);
+            return post;
+        });
+
+        PostResponse response = postService.createPost(request);
+
+        assertThat(response.imageUrls()).containsExactlyElementsOf(urls);
+    }
+
+    @Test
+    void createPost_ImagesOnly_Success() {
+        CreatePostRequest request = new CreatePostRequest(null, List.of("http://img/1.jpg"));
+
+        when(postRepository.save(any(Post.class))).thenAnswer(invocation -> {
+            Post post = invocation.getArgument(0);
+            post.setId(POST_ID);
+            return post;
+        });
+
+        PostResponse response = postService.createPost(request);
+
+        assertThat(response.content()).isNull();
+        assertThat(response.imageUrls()).containsExactly("http://img/1.jpg");
+    }
+
+    @Test
+    void createPost_NoContentNoImages_Invalid() {
+        CreatePostRequest request = new CreatePostRequest("   ", Collections.emptyList());
+
+        assertThatThrownBy(() -> postService.createPost(request))
+                .isInstanceOf(InvalidPostException.class);
+        verify(postRepository, never()).save(any(Post.class));
     }
 
     @Test
     void createPost_Unauthorized() {
         UserContext.clear();
-        CreatePostRequest request = new CreatePostRequest("Hello World!");
+        CreatePostRequest request = new CreatePostRequest("Hello World!", null);
 
         assertThatThrownBy(() -> postService.createPost(request))
                 .isInstanceOf(UnauthorizedException.class);
@@ -99,11 +147,34 @@ class PostServiceTest {
         when(likeRepository.countLikesByPostIds(any())).thenReturn(Collections.emptyList());
         when(likeRepository.findLikedPostIdsByUserAndPostIds(any(), eq(USER_ID)))
                 .thenReturn(Collections.emptyList());
+        when(postImageRepository.findByPostIdInOrderByPostIdAscSortOrderAsc(any()))
+                .thenReturn(Collections.emptyList());
 
         PageResponse<PostResponse> response = postService.getFeed(0, 20);
 
         assertThat(response.data()).hasSize(2);
         assertThat(response.total()).isEqualTo(2);
+    }
+
+    @Test
+    void getFeed_IncludesImageUrlsInOrder() {
+        Post post = createPost(POST_ID, "With photos", USER_ID);
+
+        when(postRepository.findAllByOrderByCreatedAtDesc(any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(post), PageRequest.of(0, 20), 1));
+        when(likeRepository.countLikesByPostIds(any())).thenReturn(Collections.emptyList());
+        when(likeRepository.findLikedPostIdsByUserAndPostIds(any(), eq(USER_ID)))
+                .thenReturn(Collections.emptyList());
+        when(postImageRepository.findByPostIdInOrderByPostIdAscSortOrderAsc(any()))
+                .thenReturn(List.of(
+                        PostImage.builder().post(post).imageUrl("http://img/1.jpg").sortOrder(0).build(),
+                        PostImage.builder().post(post).imageUrl("http://img/2.jpg").sortOrder(1).build()
+                ));
+
+        PageResponse<PostResponse> response = postService.getFeed(0, 20);
+
+        assertThat(response.data().get(0).imageUrls())
+                .containsExactly("http://img/1.jpg", "http://img/2.jpg");
     }
 
     @Test

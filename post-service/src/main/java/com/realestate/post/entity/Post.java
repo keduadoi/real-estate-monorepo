@@ -25,9 +25,9 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @NotBlank(message = "Content is required")
-    @Size(min = 1, max = 5000, message = "Content must be between 1 and 5000 characters")
-    @Column(nullable = false, columnDefinition = "TEXT")
+    // Nullable: image-only posts are allowed; "content OR images" is enforced in PostService
+    @Size(max = 5000, message = "Content must be at most 5000 characters")
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @NotBlank(message = "User ID is required")
@@ -51,6 +51,11 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Like> likes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("sortOrder ASC")
+    @Builder.Default
+    private List<PostImage> images = new ArrayList<>();
 
     @Override
     public boolean equals(Object o) {
