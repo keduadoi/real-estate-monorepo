@@ -75,7 +75,8 @@ public class PostService {
             }
         }
 
-        Post saved = postRepository.save(post); // Cascades to images
+        // saveAndFlush so @CreationTimestamp/@UpdateTimestamp are populated before mapping the response
+        Post saved = postRepository.saveAndFlush(post); // Cascades to images
         log.info("Post created: id={}, userId={}, images={}",
                 saved.getId(), currentUser.getId(), saved.getImages().size());
 
@@ -160,7 +161,7 @@ public class PostService {
         }
 
         post.setContent(request.content());
-        Post updated = postRepository.save(post);
+        Post updated = postRepository.saveAndFlush(post);
 
         log.info("Post updated: id={}, by userId={}", postId, userId);
 
@@ -357,7 +358,8 @@ public class PostService {
                 .authorEmail(currentUser.getEmail())
                 .build();
 
-        Reply saved = replyRepository.save(reply);
+        // saveAndFlush so @CreationTimestamp/@UpdateTimestamp are populated before mapping the response
+        Reply saved = replyRepository.saveAndFlush(reply);
         log.info("Reply created: id={}, postId={}, userId={}", saved.getId(), postId, currentUser.getId());
 
         return mapReplyToResponse(saved);

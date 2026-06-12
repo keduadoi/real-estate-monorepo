@@ -83,7 +83,7 @@ class PostServiceTest {
         CreatePostRequest request = new CreatePostRequest("Hello World!", null);
         Post savedPost = createPost(POST_ID, "Hello World!", USER_ID);
 
-        when(postRepository.save(any(Post.class))).thenReturn(savedPost);
+        when(postRepository.saveAndFlush(any(Post.class))).thenReturn(savedPost);
 
         PostResponse response = postService.createPost(request);
 
@@ -91,7 +91,7 @@ class PostServiceTest {
         assertThat(response.content()).isEqualTo("Hello World!");
         assertThat(response.author().id()).isEqualTo(USER_ID);
         assertThat(response.imageUrls()).isEmpty();
-        verify(postRepository).save(any(Post.class));
+        verify(postRepository).saveAndFlush(any(Post.class));
     }
 
     @Test
@@ -99,7 +99,7 @@ class PostServiceTest {
         List<String> urls = List.of("http://img/1.jpg", "http://img/2.jpg", "http://img/3.jpg");
         CreatePostRequest request = new CreatePostRequest("With photos", urls);
 
-        when(postRepository.save(any(Post.class))).thenAnswer(invocation -> {
+        when(postRepository.saveAndFlush(any(Post.class))).thenAnswer(invocation -> {
             Post post = invocation.getArgument(0);
             post.setId(POST_ID);
             return post;
@@ -114,7 +114,7 @@ class PostServiceTest {
     void createPost_ImagesOnly_Success() {
         CreatePostRequest request = new CreatePostRequest(null, List.of("http://img/1.jpg"));
 
-        when(postRepository.save(any(Post.class))).thenAnswer(invocation -> {
+        when(postRepository.saveAndFlush(any(Post.class))).thenAnswer(invocation -> {
             Post post = invocation.getArgument(0);
             post.setId(POST_ID);
             return post;
@@ -132,7 +132,7 @@ class PostServiceTest {
 
         assertThatThrownBy(() -> postService.createPost(request))
                 .isInstanceOf(InvalidPostException.class);
-        verify(postRepository, never()).save(any(Post.class));
+        verify(postRepository, never()).saveAndFlush(any(Post.class));
     }
 
     @Test
@@ -215,7 +215,7 @@ class PostServiceTest {
         UpdatePostRequest request = new UpdatePostRequest("Updated");
 
         when(postRepository.findById(POST_ID)).thenReturn(Optional.of(post));
-        when(postRepository.save(any(Post.class))).thenReturn(updatedPost);
+        when(postRepository.saveAndFlush(any(Post.class))).thenReturn(updatedPost);
         when(likeRepository.countByPostId(POST_ID)).thenReturn(0L);
         when(likeRepository.existsByPostIdAndUserId(POST_ID, USER_ID)).thenReturn(false);
 
@@ -298,7 +298,7 @@ class PostServiceTest {
         CreateReplyRequest request = new CreateReplyRequest("Nice post!");
 
         when(postRepository.findById(POST_ID)).thenReturn(Optional.of(post));
-        when(replyRepository.save(any(Reply.class))).thenAnswer(invocation -> {
+        when(replyRepository.saveAndFlush(any(Reply.class))).thenAnswer(invocation -> {
             Reply reply = invocation.getArgument(0);
             reply.setId(UUID.randomUUID());
             return reply;
@@ -309,7 +309,7 @@ class PostServiceTest {
         assertThat(response.postId()).isEqualTo(POST_ID);
         assertThat(response.content()).isEqualTo("Nice post!");
         assertThat(response.author().id()).isEqualTo(USER_ID);
-        verify(replyRepository).save(any(Reply.class));
+        verify(replyRepository).saveAndFlush(any(Reply.class));
     }
 
     @Test

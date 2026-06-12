@@ -58,6 +58,7 @@ export default function ReplySection({
   }, [loadReplies]);
 
   function formatTimestamp(timestamp: string): string {
+    if (!timestamp) return tTime('justNow');
     const now = new Date();
     const normalizedTimestamp = timestamp && !timestamp.endsWith('Z') && !timestamp.includes('+')
       ? timestamp + 'Z'

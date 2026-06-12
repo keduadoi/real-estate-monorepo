@@ -24,6 +24,7 @@ export default function PostCard({ post, onLikeToggle, isAuthenticated }: PostCa
   const [replyCount, setReplyCount] = useState(post.replyCount ?? 0);
 
   function formatTimestamp(timestamp: string): string {
+    if (!timestamp) return t('justNow');
     const now = new Date();
     const normalizedTimestamp = timestamp && !timestamp.endsWith('Z') && !timestamp.includes('+')
       ? timestamp + 'Z'
