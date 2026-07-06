@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   auth-db:
-    image: postgres:18-alpine
+    image: postgres:16-alpine
     container_name: auth-db
     environment:
       POSTGRES_DB: authdb
